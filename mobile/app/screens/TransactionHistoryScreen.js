@@ -1,0 +1,201 @@
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import theme from '../theme';
+import ScreenWrapper from '../components/ScreenWrapper';
+import { getTransactions } from '../../services/walletApi';
+
+const TX_TABS = [
+  { key: 'all', label: 'All' },
+  { key: 'deposit', label: 'Deposits' },
+  { key: 'withdrawal', label: 'Withdrawals' },
+  { key: 'payment', label: 'Payments' },
+];
+
+export default function TransactionHistoryScreen({ onNavigate }) {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [tab, setTab] = useState('all');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const load = useCallback(async (pageNum = 1, append = false) => {
+    try {
+      const params = { page: pageNum, limit: 20 };
+      if (tab !== 'all') params.type = tab;
+      const { data } = await getTransactions(params);
+      if (append) {
+        setTransactions((prev) => [...prev, ...(data.transactions || [])]);
+      } else {
+        setTransactions(data.transactions || []);
+      }
+      setTotalPages(data.totalPages || 1);
+    } catch {
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    setLoading(true);
+    setPage(1);
+    load(1);
+  }, [load]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    setPage(1);
+    load(1);
+  };
+
+  const loadMore = () => {
+    if (page < totalPages && !loading) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      load(nextPage, true);
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diff = now - d;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days === 0) return 'Today';
+    if (days === 1) return 'Yesterday';
+    return d.toLocaleDateString('en-UG', { day: 'numeric', month: 'short', year: 'numeric' });
+  };
+
+  const txIcon = (type) => {
+    switch (type) {
+      case 'deposit': return 'arrow-down-circle';
+      case 'withdrawal': return 'arrow-up-circle';
+      case 'payment': return 'cart-outline';
+      case 'payment_received': return 'wallet-outline';
+      case 'refund': return 'refresh-circle';
+      case 'transfer_out': return 'arrow-forward-circle';
+      case 'transfer_in': return 'arrow-back-circle';
+      default: return 'ellipse-outline';
+    }
+  };
+
+  const txColor = (type) => {
+    if (['deposit', 'payment_received', 'refund', 'transfer_in'].includes(type)) return theme.colors.green;
+    if (type === 'payment') return theme.colors.accent;
+    return theme.colors.red;
+  };
+
+  const txLabel = (type) => {
+    const labels = {
+      deposit: 'Deposit',
+      withdrawal: 'Withdrawal',
+      payment: 'Payment',
+      payment_received: 'Payment Received',
+      refund: 'Refund',
+      transfer_out: 'Transfer Sent',
+      transfer_in: 'Transfer Received',
+    };
+    return labels[type] || type;
+  };
+
+  const isCredit = (type) => ['deposit', 'payment_received', 'refund', 'transfer_in'].includes(type);
+
+  return (
+    <ScreenWrapper style={styles.safe}>
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => onNavigate?.('wallet')}>
+            <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Transaction History</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <View style={styles.tabRow}>
+          {TX_TABS.map((t) => (
+            <TouchableOpacity key={t.key} style={[styles.tab, tab === t.key && styles.tabOn]} onPress={() => setTab(t.key)}>
+              <Text style={[styles.tabText, tab === t.key && styles.tabTextOn]}>{t.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />}
+          onMomentumScrollEnd={({ nativeEvent }) => {
+            const { layoutMeasurement, contentOffset, contentSize } = nativeEvent;
+            if (layoutMeasurement.height + contentOffset.y >= contentSize.height - 40) {
+              loadMore();
+            }
+          }}
+        >
+          {loading && transactions.length === 0 ? (
+            <View style={styles.loadingWrap}>
+              <ActivityIndicator color={theme.colors.accent} size="large" />
+            </View>
+          ) : transactions.length === 0 ? (
+            <View style={styles.emptyTx}>
+              <Ionicons name="receipt-outline" size={48} color={theme.colors.mutedDark} />
+              <Text style={styles.emptyTxText}>No transactions found</Text>
+            </View>
+          ) : (
+            transactions.map((tx) => (
+              <View key={tx._id} style={styles.txRow}>
+                <View style={[styles.txIcon, { backgroundColor: txColor(tx.type) + '20' }]}>
+                  <Ionicons name={txIcon(tx.type)} size={20} color={txColor(tx.type)} />
+                </View>
+                <View style={styles.txInfo}>
+                  <Text style={styles.txType}>{txLabel(tx.type)}</Text>
+                  <Text style={styles.txDesc} numberOfLines={1}>{tx.description}</Text>
+                  <Text style={styles.txDate}>{formatDate(tx.createdAt)}{tx.reference ? ` · ${tx.reference}` : ''}</Text>
+                </View>
+                <View style={styles.txAmount}>
+                  <Text style={[styles.txValue, { color: txColor(tx.type) }]}>
+                    {isCredit(tx.type) ? '+' : '-'}UGX {(tx.amount || 0).toLocaleString()}
+                  </Text>
+                  <Text style={styles.txBalance}>Bal: UGX {(tx.balanceAfter || 0).toLocaleString()}</Text>
+                </View>
+              </View>
+            ))
+          )}
+          {page < totalPages && transactions.length > 0 && (
+            <View style={styles.loadMore}>
+              <ActivityIndicator color={theme.colors.accent} size="small" />
+            </View>
+          )}
+        </ScrollView>
+      </View>
+    </ScreenWrapper>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.colors.black },
+  container: { flex: 1, paddingTop: 12 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, marginBottom: 12 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.input, justifyContent: 'center', alignItems: 'center' },
+  title: { color: theme.colors.white, fontSize: 18, fontWeight: '800' },
+  tabRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, marginBottom: 16 },
+  tab: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: theme.colors.input, borderWidth: 1, borderColor: theme.colors.border },
+  tabOn: { backgroundColor: theme.colors.accentDim, borderColor: theme.colors.accent },
+  tabText: { color: theme.colors.muted, fontWeight: '700', fontSize: 12 },
+  tabTextOn: { color: theme.colors.accent },
+  loadingWrap: { paddingVertical: 60, alignItems: 'center' },
+  emptyTx: { alignItems: 'center', paddingVertical: 60 },
+  emptyTxText: { color: theme.colors.mutedDark, fontSize: 15, marginTop: 12 },
+  txRow: {
+    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: theme.colors.border,
+  },
+  txIcon: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  txInfo: { flex: 1 },
+  txType: { color: theme.colors.white, fontWeight: '800', fontSize: 14 },
+  txDesc: { color: theme.colors.muted, fontSize: 12, marginTop: 1 },
+  txDate: { color: theme.colors.mutedDark, fontSize: 11, marginTop: 2 },
+  txAmount: { alignItems: 'flex-end' },
+  txValue: { fontWeight: '900', fontSize: 14 },
+  txBalance: { color: theme.colors.mutedDark, fontSize: 10, marginTop: 2 },
+  loadMore: { paddingVertical: 20, alignItems: 'center' },
+});

@@ -1,0 +1,148 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import theme from '../theme';
+import ScreenWrapper from '../components/ScreenWrapper';
+import PrimaryButton from '../components/PrimaryButton';
+import { deposit } from '../../services/walletApi';
+
+const PRESETS = [10000, 20000, 50000, 100000, 200000, 500000];
+
+export default function DepositScreen({ onNavigate }) {
+  const [amount, setAmount] = useState('');
+  const [phone, setPhone] = useState('');
+  const [method, setMethod] = useState('mtn');
+  const [loading, setLoading] = useState(false);
+
+  const numericAmount = Number(amount.replace(/,/g, '')) || 0;
+
+  const handlePreset = (val) => setAmount(val.toLocaleString());
+
+  const handleDeposit = async () => {
+    if (numericAmount <= 0) return Alert.alert('Error', 'Enter an amount');
+    setLoading(true);
+    try {
+      const { data } = await deposit(numericAmount, method === 'mtn' ? 'mtn_momo' : 'airtel_money', phone);
+      Alert.alert('Success', `UGX ${numericAmount.toLocaleString()} deposited successfully!`, [
+        { text: 'OK', onPress: () => onNavigate?.('wallet') },
+      ]);
+    } catch (error) {
+      Alert.alert('Error', error.response?.data?.message || 'Deposit failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <ScreenWrapper style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => onNavigate?.('wallet')}>
+            <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Deposit</Text>
+          <View style={{ width: 40 }} />
+        </View>
+
+        <Text style={styles.section}>SELECT METHOD</Text>
+        <TouchableOpacity
+          style={[styles.methodCard, method === 'mtn' && styles.methodOn]}
+          onPress={() => setMethod('mtn')}
+        >
+          <View style={styles.methodLeft}>
+            <View style={[styles.logo, { backgroundColor: '#FFCC00' }]}>
+              <Text style={styles.logoText}>MTN</Text>
+            </View>
+            <Text style={styles.methodName}>MTN Mobile Money</Text>
+          </View>
+          <View style={[styles.radio, method === 'mtn' && styles.radioOn]} />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.methodCard, method === 'airtel' && styles.methodOn]}
+          onPress={() => setMethod('airtel')}
+        >
+          <View style={styles.methodLeft}>
+            <View style={[styles.logo, { backgroundColor: '#E40000' }]}>
+              <Text style={[styles.logoText, { color: '#fff' }]}>A</Text>
+            </View>
+            <Text style={styles.methodName}>Airtel Money</Text>
+          </View>
+          <View style={[styles.radio, method === 'airtel' && styles.radioOn]} />
+        </TouchableOpacity>
+
+        <Text style={styles.section}>AMOUNT</Text>
+        <View style={styles.amountInput}>
+          <Text style={styles.currency}>UGX</Text>
+          <TextInput
+            style={styles.input}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="number-pad"
+            placeholder="0"
+            placeholderTextColor={theme.colors.mutedDark}
+          />
+        </View>
+
+        <View style={styles.presets}>
+          {PRESETS.map((p) => (
+            <TouchableOpacity key={p} style={[styles.presetBtn, numericAmount === p && styles.presetOn]} onPress={() => handlePreset(p)}>
+              <Text style={[styles.presetText, numericAmount === p && styles.presetTextOn]}>UGX {p.toLocaleString()}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <Text style={styles.section}>MOMO NUMBER</Text>
+        <View style={styles.phoneInput}>
+          <Text style={styles.phonePrefix}>+256</Text>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            placeholder="7XX XXX XXX"
+            placeholderTextColor={theme.colors.mutedDark}
+          />
+        </View>
+        <Text style={styles.hint}>You'll receive a STK push prompt to approve payment on your phone.</Text>
+
+        <PrimaryButton onPress={handleDeposit} disabled={loading || numericAmount <= 0}>
+          {loading ? 'Processing...' : `Deposit UGX ${numericAmount.toLocaleString()}`}
+        </PrimaryButton>
+        {loading ? <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 12 }} /> : null}
+      </ScrollView>
+    </ScreenWrapper>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: theme.colors.black },
+  scroll: { paddingHorizontal: 20, paddingBottom: 40 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.input, justifyContent: 'center', alignItems: 'center' },
+  title: { color: theme.colors.white, fontSize: 18, fontWeight: '800' },
+  section: { color: theme.colors.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 10, marginTop: 4 },
+  methodCard: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: theme.colors.input, borderRadius: theme.radius.md, padding: 14, marginBottom: 10,
+    borderWidth: 2, borderColor: 'transparent',
+  },
+  methodOn: { borderColor: theme.colors.accent },
+  methodLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  logo: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
+  logoText: { fontWeight: '900', fontSize: 11, color: theme.colors.textDark },
+  methodName: { color: theme.colors.white, fontWeight: '700' },
+  radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.colors.mutedDark },
+  radioOn: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accent },
+  amountInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.input, borderRadius: theme.radius.md, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: theme.colors.border },
+  currency: { color: theme.colors.accent, fontWeight: '900', fontSize: 18, marginRight: 10 },
+  input: { color: theme.colors.white, fontSize: 18, fontWeight: '800', flex: 1 },
+  presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  presetBtn: { backgroundColor: theme.colors.input, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: theme.colors.border },
+  presetOn: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentDim },
+  presetText: { color: theme.colors.muted, fontWeight: '700', fontSize: 12 },
+  presetTextOn: { color: theme.colors.accent },
+  phoneInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.input, borderRadius: theme.radius.md, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: theme.colors.border },
+  phonePrefix: { color: theme.colors.mutedDark, fontWeight: '700', fontSize: 16, marginRight: 8 },
+  hint: { color: theme.colors.mutedDark, fontSize: 12, marginBottom: 24, marginTop: -4 },
+});
