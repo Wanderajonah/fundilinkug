@@ -1,0 +1,11 @@
+{
+  "name": "fundilink",
+  "private": true,
+  "description": "Run scripts from repo root — mobile app lives in ./mobile",
+  "scripts": {
+    "mobile:start": "npm --prefix mobile start",
+    "mobile:build": "npm --prefix mobile run build:android",
+    "mobile:update": "npm --prefix mobile run update:preview",
+    "backend:dev": "npm --prefix backend run dev"
+  }
+}

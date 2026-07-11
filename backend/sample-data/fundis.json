@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Peter Plumber",
+    "skills": ["plumbing"],
+    "location": { "lat": -1.292066, "lng": 36.821945 },
+    "rating": 4.7
+  },
+  {
+    "name": "Esther Electrician",
+    "skills": ["electrical"],
+    "location": { "lat": -1.2801, "lng": 36.8155 },
+    "rating": 4.5
+  },
+  {
+    "name": "Carlos Carpenter",
+    "skills": ["carpentry", "masonry"],
+    "location": { "lat": -1.3004, "lng": 36.8071 },
+    "rating": 4.8
+  }
+]
