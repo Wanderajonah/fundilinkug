@@ -1,5 +1,5 @@
-import React, { useRef } from 'react';
-import MapView, { Marker, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 import { DARK_MAP_STYLE, DEFAULT_REGION } from '../config/mapStyle';
 import theme from '../theme';
 
@@ -14,9 +14,36 @@ export default function MapViewWrapper({
   onRegionChange,
   onPressCoordinate,
 }) {
-  const mapRef = useRef(null);
+  const [MapComponents, setMapComponents] = useState(null);
+  const [mapError, setMapError] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const maps = await import('react-native-maps');
+        if (!cancelled) setMapComponents(() => maps);
+      } catch {
+        if (!cancelled) setMapError(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   const lat = currentLocation?.lat ?? DEFAULT_REGION.latitude;
   const lng = currentLocation?.lng ?? DEFAULT_REGION.longitude;
+
+  if (mapError || !MapComponents) {
+    return (
+      <View style={[styles.fallback, style]}>
+        <Text style={styles.fallbackText}>
+          {mapError ? 'Map unavailable' : 'Loading map…'}
+        </Text>
+      </View>
+    );
+  }
+
+  const { default: MapView, Marker, Circle } = MapComponents;
 
   const mapRegion = region || {
     latitude: lat,
@@ -27,9 +54,8 @@ export default function MapViewWrapper({
 
   return (
     <MapView
-      ref={mapRef}
+      ref={useRef(null)}
       style={style}
-      provider={PROVIDER_GOOGLE}
       customMapStyle={DARK_MAP_STYLE}
       initialRegion={mapRegion}
       region={mapRegion}
@@ -86,3 +112,13 @@ export default function MapViewWrapper({
     </MapView>
   );
 }
+
+const styles = StyleSheet.create({
+  fallback: {
+    backgroundColor: theme.colors.panel,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: theme.radius.lg,
+  },
+  fallbackText: { color: theme.colors.muted },
+});

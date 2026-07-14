@@ -30,7 +30,7 @@ export default function SignInScreen({
   const [googleLoading, setGoogleLoading] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
 
-  const { promptAsync } = useGoogleSignIn();
+  const { promptAsync, disabled: googleDisabled } = useGoogleSignIn();
 
   const isFundi = role === 'fundi';
 
@@ -128,9 +128,10 @@ export default function SignInScreen({
 
       <AuthButton
         variant="google"
-        label="Google"
+        label={googleDisabled ? "Google (not configured)" : "Google"}
         onPress={handleGoogle}
         loading={googleLoading}
+        disabled={googleDisabled}
       />
 
       <TouchableOpacity onPress={onCreateAccount} style={styles.createRow}>

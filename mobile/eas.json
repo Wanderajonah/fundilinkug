@@ -18,7 +18,10 @@
       "distribution": "internal",
       "channel": "preview",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://fundilinkug.onrender.com/api"
+        "EXPO_PUBLIC_API_URL": "https://fundilinkug.onrender.com/api",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "262755496158-ccdhg30l74oqooqquno7mgrura4nqvir.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "407744675346-h5a8l4v9k2j5j5j5j5j5j5j5j5j5j5j5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "262755496158-c2ra2s391b4rivm6p4eq3d0jpbugeo0k.apps.googleusercontent.com"
       },
       "android": {
         "buildType": "apk"
@@ -30,7 +33,10 @@
     "production": {
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://fundilinkug.onrender.com/api"
+        "EXPO_PUBLIC_API_URL": "https://fundilinkug.onrender.com/api",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "262755496158-ccdhg30l74oqooqquno7mgrura4nqvir.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "407744675346-h5a8l4v9k2j5j5j5j5j5j5j5j5j5j5j5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "262755496158-c2ra2s391b4rivm6p4eq3d0jpbugeo0k.apps.googleusercontent.com"
       },
       "android": {
         "buildType": "app-bundle"

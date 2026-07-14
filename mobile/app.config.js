@@ -56,6 +56,7 @@ module.exports = {
         },
       ],
       'expo-web-browser',
+      'expo-video',
     ],
     extra: {
       eas: {

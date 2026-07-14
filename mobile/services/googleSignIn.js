@@ -11,26 +11,24 @@ export function useGoogleSignIn() {
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
-  const missing = [];
-  if (!androidClientId) missing.push('EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID');
-  if (!iosClientId) missing.push('EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID');
-  if (!webClientId) missing.push('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID');
-
-  if (missing.length) {
-    throw new Error(
-      `Google sign-in client IDs are not configured. Missing: ${missing.join(
-        ', '
-      )}. Check your EAS/Expo environment variables (EXPO_PUBLIC_*) and rebuild.`
-    );
-  }
+  const disabled = !androidClientId || !iosClientId || !webClientId;
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId,
-    iosClientId,
-    webClientId,
+    androidClientId: androidClientId || '',
+    iosClientId: iosClientId || '',
+    webClientId: webClientId || '',
   });
 
-  return { request, response, promptAsync };
+  const safePromptAsync = async () => {
+    if (disabled) {
+      throw new Error(
+        'Google sign-in is not configured. Missing client IDs. Check your environment variables.'
+      );
+    }
+    return promptAsync();
+  };
+
+  return { request, response, promptAsync: safePromptAsync, disabled };
 }
 
 
