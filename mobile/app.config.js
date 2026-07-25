@@ -39,6 +39,7 @@ const config = {
             'FundiLink uses your location to find artisans near you.',
         },
       ],
+      'expo-font',
       'expo-web-browser',
       'expo-video',
       '@maplibre/maplibre-react-native',
