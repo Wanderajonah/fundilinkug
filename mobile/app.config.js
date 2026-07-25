@@ -13,6 +13,7 @@ const config = {
     scheme: 'fundilink',
     assetBundlePatterns: ['**/*'],
     runtimeVersion: '1.0.1',
+    newArchEnabled: false,
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.fundilink.uganda',
@@ -30,17 +31,7 @@ const config = {
       ],
     },
     plugins: [
-      [
-        'expo-build-properties',
-        {
-          android: {
-            newArchEnabled: false,
-          },
-          ios: {
-            newArchEnabled: false,
-          },
-        },
-      ],
+      'expo-build-properties',
       [
         'expo-location',
         {
