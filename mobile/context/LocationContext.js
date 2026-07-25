@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { Platform } from 'react-native';
 import * as Location from 'expo-location';
 import { reverseGeocode, updateUserLocation } from '../services/mapsApi';
 import { DEFAULT_REGION } from '../app/config/mapStyle';
