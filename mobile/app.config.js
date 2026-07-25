@@ -46,13 +46,13 @@ const config = {
     ],
     extra: {
       eas: {
-        projectId: '601438ac-0971-4343-811c-4a91c11febfe',
+        projectId: 'b75918f7-f03a-4f72-8367-2c014bec8215',
       },
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
     },
-    owner: 'fundilink2026',
+    owner: 'finalyear2026',
     updates: {
-      url: 'https://u.expo.dev/601438ac-0971-4343-811c-4a91c11febfe',
+      url: 'https://u.expo.dev/b75918f7-f03a-4f72-8367-2c014bec8215',
     },
   },
 };
