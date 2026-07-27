@@ -21,7 +21,18 @@ const walletRoutes = require("./routes/walletRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
-connectDB();
+connectDB().then(() => {
+  const bcrypt = require("bcryptjs");
+  const User = require("./models/User");
+  const name = process.env.ADMIN_NAME || "FundiLink Admin";
+  const email = (process.env.ADMIN_EMAIL || "admin@fundilink.ug").toLowerCase();
+  const password = process.env.ADMIN_PASSWORD || "password123";
+  User.findOneAndUpdate(
+    { email },
+    { name, email, password: bcrypt.hashSync(password, 10), role: "admin", phoneVerified: true, onboardingComplete: true },
+    { upsert: true, new: true, setDefaultsOnInsert: true },
+  ).then(() => console.log("Admin user ready")).catch((err) => console.error("Admin creation error:", err));
+});
 
 app.use(cors());
 app.use(express.json({ limit: "5mb" }));
