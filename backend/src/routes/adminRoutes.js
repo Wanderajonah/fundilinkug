@@ -58,6 +58,15 @@ router.get("/notifications", getNotifications);
 router.patch("/notifications/read-all", markAllNotificationsRead);
 router.patch("/notifications/:id/read", markNotificationRead);
 router.post("/users", createUser);
+router.post("/seed", async (req, res, next) => {
+  try {
+    const seedData = require("../utils/seed-data");
+    await seedData();
+    res.json({ message: "Database seeded successfully" });
+  } catch (error) {
+    next(error);
+  }
+});
 router.get("/settings", getSettings);
 router.put("/settings", updateSettings);
 
