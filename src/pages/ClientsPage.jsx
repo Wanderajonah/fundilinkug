@@ -17,7 +17,8 @@ const ClientsPage = () => {
     setLoading(true);
     try {
       const res = await getClients({ search });
-      setClients(readList(res.data, ['clients', 'data']));
+      const items = readList(res.data, ['users', 'data']);
+      setClients(items.map((c) => ({ ...c, location: c.district || c.locationLabel || 'N/A' })));
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to load clients.');

@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
-import { RiDeleteBinLine, RiEyeLine, RiShieldCheckLine, RiCloseCircleLine } from 'react-icons/ri';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { RiDeleteBinLine, RiEyeLine, RiShieldCheckLine, RiCloseCircleLine, RiFileLine, RiImageLine } from 'react-icons/ri';
 import Badge from '../components/Badge';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import { deleteFundi, getFundis, rejectFundi, verifyFundi } from '../services/api';
 import { formatDate, getInitials, readList, toastMessage } from '../utils/format';
+
+const API_BASE = 'http://localhost:5000';
 
 const FundisPage = () => {
   const [fundis, setFundis] = useState([]);
@@ -13,44 +15,79 @@ const FundisPage = () => {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All');
   const [selected, setSelected] = useState(null);
+  const [verdictLoading, setVerdictLoading] = useState(false);
 
-  const loadFundis = async () => {
+  const loadFundis = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
       const res = await getFundis({ search, status: status === 'All' ? undefined : status.toLowerCase() });
-      setFundis(readList(res.data, ['fundis', 'data']));
+      const items = readList(res.data, ['fundis', 'data']);
+      setFundis(items.map(normalizeFundi));
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to load fundis.');
     } finally {
       setLoading(false);
     }
+  }, [search, status]);
+
+  const normalizeFundi = (f) => {
+    const profile = f.fundiProfile || {};
+    return {
+      ...f,
+      verificationStatus: profile.verificationStatus || 'unverified',
+      verified: profile.verified || false,
+      rating: profile.rating || 0,
+      skills: profile.skills || [],
+      experience: profile.experience || 0,
+      completedJobs: f.completedJobs || 0,
+      trade: (profile.skills || [])[0] || 'Skilled Artisan',
+      category: (profile.skills || [])[0] || 'Skilled Artisan',
+      location: f.district || f.locationLabel || 'N/A',
+      district: f.district || f.locationLabel || 'N/A',
+      verificationDocs: profile.verificationDocs || [],
+      verificationNotes: profile.verificationNotes || '',
+      verificationRequestedAt: profile.requestedAt || null,
+    };
   };
 
   useEffect(() => {
     loadFundis();
-  }, [status]);
+  }, [status, loadFundis]);
 
   const q = search.toLowerCase();
-  const filteredFundis = fundis.filter((fundi) => `${fundi.name || fundi.user?.name || ''} ${fundi.trade || fundi.category || ''}`.toLowerCase().includes(q));
+  const filteredFundis = fundis.filter((fundi) => `${fundi.name || ''} ${fundi.trade || ''}`.toLowerCase().includes(q));
 
-  const handleAction = async (action, fundi, message) => {
-    const id = fundi.id || fundi._id;
-    if (action === deleteFundi && !window.confirm('Delete this fundi permanently?')) return;
-    if (action === rejectFundi && !window.confirm('Reject this fundi verification?')) return;
+  const handleVerdict = async (id, action, notes) => {
+    setVerdictLoading(true);
     try {
-      await action(id);
-      toastMessage(message);
+      const fn = action === 'verify' ? verifyFundi : rejectFundi;
+      await fn(id, notes);
+      toastMessage(action === 'verify' ? 'Fundi verified.' : 'Fundi rejected.');
+      setSelected(null);
       loadFundis();
     } catch (err) {
       toastMessage(err.response?.data?.message || 'Action failed.');
+    } finally {
+      setVerdictLoading(false);
+    }
+  };
+
+  const handleDelete = async (fundi) => {
+    if (!window.confirm('Delete this fundi permanently?')) return;
+    try {
+      await deleteFundi(fundi._id);
+      toastMessage('Fundi deleted.');
+      loadFundis();
+    } catch (err) {
+      toastMessage(err.response?.data?.message || 'Unable to delete fundi.');
     }
   };
 
   const stats = {
-    verified: fundis.filter((f) => f.status === 'verified' || f.verified).length,
-    pending: fundis.filter((f) => f.status === 'pending' || f.verificationStatus === 'pending').length,
-    rejected: fundis.filter((f) => f.status === 'rejected' || f.verificationStatus === 'rejected').length,
+    verified: fundis.filter((f) => f.verificationStatus === 'verified').length,
+    pending: fundis.filter((f) => f.verificationStatus === 'pending').length,
+    rejected: fundis.filter((f) => f.verificationStatus === 'rejected').length,
   };
 
   const columns = [
@@ -60,32 +97,85 @@ const FundisPage = () => {
       header: 'Fundi',
       render: (fundi) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary font-bold text-xs flex items-center justify-center">{getInitials(fundi.name || fundi.user?.name)}</div>
+          <div className="w-8 h-8 rounded-full bg-primary/20 text-primary font-bold text-xs flex items-center justify-center">{getInitials(fundi.name)}</div>
           <div>
-            <div className="font-semibold text-white">{fundi.name || fundi.user?.name || 'Unnamed Fundi'}</div>
-            <div className="text-muted text-xs">{fundi.trade || fundi.category || 'Skilled Artisan'}</div>
+            <div className="font-semibold text-white">{fundi.name}</div>
+            <div className="text-muted text-xs">{fundi.trade}</div>
           </div>
         </div>
       ),
     },
-    { key: 'phone', header: 'Phone', render: (fundi) => fundi.phone || fundi.user?.phone || 'N/A' },
-    { key: 'location', header: 'Location', render: (fundi) => fundi.location || fundi.district || 'N/A' },
+    { key: 'phone', header: 'Phone', render: (fundi) => fundi.phone || 'N/A' },
+    { key: 'location', header: 'Location', render: (fundi) => fundi.location },
     { key: 'rating', header: 'Rating', render: (fundi) => fundi.rating || '0.0' },
     { key: 'joined', header: 'Joined', render: (fundi) => formatDate(fundi.createdAt) },
-    { key: 'status', header: 'Status', render: (fundi) => <Badge label={fundi.status || fundi.verificationStatus || (fundi.verified ? 'verified' : 'pending')} type={fundi.verified || fundi.status === 'verified' ? 'success' : fundi.status === 'rejected' ? 'danger' : 'warning'} /> },
+    {
+      key: 'status',
+      header: 'Status',
+      render: (fundi) => (
+        <Badge
+          label={fundi.verificationStatus}
+          type={fundi.verificationStatus === 'verified' ? 'success' : fundi.verificationStatus === 'rejected' ? 'danger' : 'warning'}
+        />
+      ),
+    },
     {
       key: 'actions',
       header: 'Actions',
       render: (fundi) => (
         <div className="flex items-center gap-1">
           <button onClick={() => setSelected(fundi)} className="p-1.5 text-muted hover:text-info transition-colors" aria-label="View fundi"><RiEyeLine /></button>
-          <button onClick={() => handleAction(verifyFundi, fundi, 'Fundi verified.')} className="p-1.5 text-muted hover:text-success transition-colors" aria-label="Verify fundi"><RiShieldCheckLine /></button>
-          <button onClick={() => handleAction(rejectFundi, fundi, 'Fundi rejected.')} className="p-1.5 text-muted hover:text-danger transition-colors" aria-label="Reject fundi"><RiCloseCircleLine /></button>
-          <button onClick={() => handleAction(deleteFundi, fundi, 'Fundi deleted.')} className="p-1.5 text-muted hover:text-danger transition-colors" aria-label="Delete fundi"><RiDeleteBinLine /></button>
+          <button onClick={() => handleDelete(fundi)} className="p-1.5 text-muted hover:text-danger transition-colors" aria-label="Delete fundi"><RiDeleteBinLine /></button>
         </div>
       ),
     },
   ];
+
+  const isImage = (url) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url);
+
+  const VerdictSection = ({ fundi }) => {
+    const [notes, setNotes] = useState(fundi.verificationNotes || '');
+    const isPending = fundi.verificationStatus === 'pending' || fundi.verificationStatus === 'unverified';
+
+    return (
+      <div className="bg-bg-raised rounded-input p-4 space-y-3">
+        <h3 className="text-white font-bold">Verification Decision</h3>
+        {fundi.verificationNotes && fundi.verificationStatus !== 'pending' && (
+          <p className="text-muted text-sm">Previous notes: {fundi.verificationNotes}</p>
+        )}
+        <textarea
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Add notes or remarks (optional)"
+          rows={2}
+          className="w-full bg-bg-primary border border-border rounded-input px-3 py-2 text-white text-sm outline-none focus:border-primary placeholder:text-muted resize-none"
+        />
+        {isPending && (
+          <div className="flex gap-2">
+            <button
+              onClick={() => handleVerdict(fundi._id, 'verify', notes)}
+              disabled={verdictLoading}
+              className="flex items-center gap-1.5 px-4 py-2 bg-success text-white text-sm font-bold rounded-pill hover:bg-green-500 disabled:opacity-50 transition-colors"
+            >
+              <RiShieldCheckLine /> {verdictLoading ? 'Processing...' : 'Approve'}
+            </button>
+            <button
+              onClick={() => handleVerdict(fundi._id, 'reject', notes)}
+              disabled={verdictLoading}
+              className="flex items-center gap-1.5 px-4 py-2 bg-danger text-white text-sm font-bold rounded-pill hover:bg-red-500 disabled:opacity-50 transition-colors"
+            >
+              <RiCloseCircleLine /> {verdictLoading ? 'Processing...' : 'Reject'}
+            </button>
+          </div>
+        )}
+        {!isPending && (
+          <p className="text-muted text-xs">
+            {fundi.verificationStatus === 'verified' ? 'Fundi is verified.' : 'Fundi verification was rejected.'}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div>
@@ -114,17 +204,51 @@ const FundisPage = () => {
         {selected && (
           <div className="space-y-5">
             <div className="bg-gradient-to-r from-primary/20 to-bg-raised rounded-card p-5 flex items-end gap-4">
-              <div className="w-20 h-20 rounded-full border-2 border-primary bg-primary/20 text-primary font-black text-2xl flex items-center justify-center">{getInitials(selected.name || selected.user?.name)}</div>
-              <div><h2 className="text-white text-xl font-black">{selected.name || selected.user?.name}</h2><p className="text-muted text-sm">{selected.trade || selected.category} · {selected.location || selected.district}</p></div>
+              <div className="w-20 h-20 rounded-full border-2 border-primary bg-primary/20 text-primary font-black text-2xl flex items-center justify-center">{getInitials(selected.name)}</div>
+              <div>
+                <h2 className="text-white text-xl font-black">{selected.name}</h2>
+                <p className="text-muted text-sm">{selected.trade} · {selected.location}</p>
+                <Badge label={selected.verificationStatus} type={selected.verificationStatus === 'verified' ? 'success' : selected.verificationStatus === 'rejected' ? 'danger' : 'warning'} />
+              </div>
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <div className="bg-bg-raised rounded-input p-4"><div className="text-white font-black">{selected.rating || '0.0'}</div><div className="text-muted text-xs">Rating</div></div>
+              <div className="bg-bg-raised rounded-input p-4"><div className="text-white font-black">{selected.rating}</div><div className="text-muted text-xs">Rating</div></div>
               <div className="bg-bg-raised rounded-input p-4"><div className="text-white font-black">{selected.completedJobs || 0}</div><div className="text-muted text-xs">Jobs</div></div>
               <div className="bg-bg-raised rounded-input p-4"><div className="text-white font-black">{selected.experience || 0}</div><div className="text-muted text-xs">Years</div></div>
             </div>
             <div className="bg-bg-raised rounded-input p-4"><h3 className="text-white font-bold mb-2">About</h3><p className="text-muted text-sm">{selected.about || selected.bio || 'No profile description provided.'}</p></div>
-            <div className="flex flex-wrap gap-2">{(selected.skills || [selected.trade || 'General service']).map((skill) => <span key={skill} className="bg-primary/20 text-primary text-xs font-bold px-3 py-1 rounded-pill">{skill}</span>)}</div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="bg-bg-raised rounded-input h-24 flex items-center justify-center text-muted text-xs">Portfolio</div>)}</div>
+            <div className="flex flex-wrap gap-2">{(selected.skills || []).map((skill) => <span key={skill} className="bg-primary/20 text-primary text-xs font-bold px-3 py-1 rounded-pill">{skill}</span>)}</div>
+            {selected.verificationDocs.length > 0 && (
+              <div className="bg-bg-raised rounded-input p-4">
+                <h3 className="text-white font-bold mb-3">Verification Documents</h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {selected.verificationDocs.map((doc, i) => (
+                    <a
+                      key={i}
+                      href={`${API_BASE}${doc}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block bg-bg-primary border border-border rounded-input overflow-hidden hover:border-primary transition-colors group"
+                    >
+                      {isImage(doc) ? (
+                        <div className="relative">
+                          <img src={`${API_BASE}${doc}`} alt={`Document ${i + 1}`} className="w-full h-32 object-cover" />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-colors">
+                            <RiEyeLine className="text-white opacity-0 group-hover:opacity-100 text-lg transition-opacity" />
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-3 p-3">
+                          <RiFileLine className="text-primary text-xl shrink-0" />
+                          <span className="text-muted text-xs truncate">{doc.split('/').pop()}</span>
+                        </div>
+                      )}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+            <VerdictSection fundi={selected} />
           </div>
         )}
       </Modal>

@@ -270,6 +270,22 @@ const verifyFundi = async (req, res, next) => {
       return res.status(404).json({ message: "Fundi profile not found" });
     }
 
+    const AdminNotification = require("../models/AdminNotification");
+    const fundi = await User.findById(id);
+    const fundiName = fundi ? fundi.name : "A fundi";
+    const notificationMessage = status === "verified"
+      ? `${fundiName} has been verified.`
+      : `${fundiName} verification was rejected.${notes ? ` Reason: ${notes}` : ""}`;
+    await AdminNotification.create({
+      type: status === "verified" ? "verification_approved" : "verification_rejected",
+      message: notificationMessage,
+      relatedId: id,
+    });
+
+    const { notifyFundi } = require("../services/notificationService");
+    const event = status === "verified" ? "verification_approved" : "verification_rejected";
+    await notifyFundi(id, event, { notes });
+
     return res.json({ fundiProfile: profile });
   } catch (error) {
     return next(error);
@@ -647,6 +663,154 @@ const updateSettings = async (req, res, next) => {
   }
 };
 
+const deleteFundi = async (req, res, next) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "Fundi not found" });
+    }
+    await FundiProfile.findOneAndDelete({ userId: user._id });
+    return res.json({ message: "Fundi deleted successfully" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const updateBookingStatusAdmin = async (req, res, next) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ["PENDING", "ACCEPTED", "ON_THE_WAY", "ARRIVED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "DISPUTED"];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ message: `Status must be one of: ${validStatuses.join(", ")}` });
+    }
+    const booking = await Booking.findByIdAndUpdate(req.params.id, { status }, { new: true })
+      .populate("clientId", "name email phone")
+      .populate("fundiId", "name email phone");
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    return res.json({ booking });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getNotifications = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 50 } = req.query;
+    const notifications = await AdminNotification.find()
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit));
+    const total = await AdminNotification.countDocuments();
+    const unread = await AdminNotification.countDocuments({ read: false });
+    return res.json({ notifications, total, unread, page: Number(page), totalPages: Math.ceil(total / limit) });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const markNotificationRead = async (req, res, next) => {
+  try {
+    const notification = await AdminNotification.findByIdAndUpdate(
+      req.params.id,
+      { read: true },
+      { new: true }
+    );
+    if (!notification) {
+      return res.status(404).json({ message: "Notification not found" });
+    }
+    return res.json({ notification });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const markAllNotificationsRead = async (req, res, next) => {
+  try {
+    await AdminNotification.updateMany({ read: false }, { read: true });
+    return res.json({ message: "All notifications marked as read" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const deleteReviewAdmin = async (req, res, next) => {
+  try {
+    const review = await Review.findByIdAndDelete(req.params.id);
+    if (!review) {
+      return res.status(404).json({ message: "Review not found" });
+    }
+    return res.json({ message: "Review deleted successfully" });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const getPayments = async (req, res, next) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+
+    const transactions = await Transaction.find()
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(Number(limit))
+      .populate("userId", "name email");
+
+    const total = await Transaction.countDocuments();
+
+    const revenueAgg = await Transaction.aggregate([
+      { $match: { status: "completed" } },
+      { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } },
+    ]);
+
+    const totalRevenue = revenueAgg.length > 0 ? revenueAgg[0].total : 0;
+
+    return res.json({
+      payments: transactions,
+      total,
+      page: Number(page),
+      totalPages: Math.ceil(total / limit),
+      totalRevenue,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const releaseEscrow = async (req, res, next) => {
+  try {
+    const bookingId = req.params.id;
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    if (booking.paymentStatus !== "held") {
+      return res.status(400).json({ message: "Escrow is not currently held" });
+    }
+
+    booking.paymentStatus = "released";
+    booking.escrowReleasedAt = new Date();
+    await booking.save();
+
+    await Transaction.create({
+      walletId: booking.clientId,
+      userId: booking.fundiId,
+      type: "escrow_release",
+      amount: booking.agreedPrice || booking.proposedPrice || 0,
+      status: "completed",
+      relatedBooking: booking._id,
+      description: "Escrow released by admin",
+    });
+
+    return res.json({ message: "Escrow released successfully", booking });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   login,
   getStats,
@@ -655,13 +819,21 @@ module.exports = {
   updateUserStatus,
   getFundis,
   verifyFundi,
+  deleteFundi,
   getJobs,
   getBookings,
+  updateBookingStatusAdmin,
   getDisputes,
   resolveDispute,
   getReviews,
+  deleteReviewAdmin,
   getTransactions,
+  getPayments,
+  releaseEscrow,
   getAnalytics,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
   getHealth,
   getSettings,
   updateSettings,

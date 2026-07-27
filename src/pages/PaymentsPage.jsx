@@ -6,6 +6,8 @@ import StatCard from '../components/StatCard';
 import { getPayments, releaseEscrow } from '../services/api';
 import { formatDate, formatUGX, readList, toastMessage } from '../utils/format';
 
+const RELEVANT_TYPES = ['escrow_hold', 'escrow_release', 'escrow_refund', 'payment_received', 'platform_fee'];
+
 const PaymentsPage = () => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -15,7 +17,8 @@ const PaymentsPage = () => {
     setLoading(true);
     try {
       const res = await getPayments();
-      setPayments(readList(res.data, ['payments', 'data']));
+      const all = readList(res.data, ['payments', 'data']);
+      setPayments(all.filter((t) => RELEVANT_TYPES.includes(t.type)).map(normalizePayment));
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to load payments.');
@@ -24,18 +27,48 @@ const PaymentsPage = () => {
     }
   };
 
+  const normalizePayment = (t) => {
+    const isEscrow = t.type === 'escrow_hold' || t.type === 'escrow_release' || t.type === 'escrow_refund';
+    const escrowStatus = t.type === 'escrow_release' ? 'released' : t.type === 'escrow_refund' ? 'refunded' : isEscrow ? 'held' : 'none';
+    const fundiName = t.type === 'payment_received' ? t.userId?.name || t.relatedUser?.name || 'Fundi' : '—';
+    return {
+      ...t,
+      payId: t._id?.slice(-8),
+      bookingId: t.relatedBooking || 'N/A',
+      fundi: { name: fundiName },
+      method: t.paymentMethod || (isEscrow ? 'Escrow' : 'Wallet'),
+      escrow: escrowStatus,
+      label: t.type === 'escrow_release' ? 'Released to fundi'
+        : t.type === 'escrow_hold' ? 'Escrow hold'
+        : t.type === 'escrow_refund' ? 'Refunded to client'
+        : t.type === 'payment_received' ? 'Paid to fundi'
+        : t.type === 'platform_fee' ? 'Platform commission'
+        : t.type,
+    };
+  };
+
   useEffect(() => {
     loadPayments();
   }, []);
 
-  const total = payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  const held = payments.filter((p) => p.escrow === 'held').reduce((sum, p) => sum + Number(p.amount || 0), 0);
-  const released = payments.filter((p) => p.escrow === 'released').reduce((sum, p) => sum + Number(p.amount || 0), 0);
+  const paidToFundis = payments
+    .filter((p) => p.type === 'escrow_release' || p.type === 'payment_received')
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+  const escrowHeld = payments
+    .filter((p) => p.type === 'escrow_hold')
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0)
+    - payments.filter((p) => p.type === 'escrow_release').reduce((sum, p) => sum + Number(p.amount || 0), 0)
+    - payments.filter((p) => p.type === 'escrow_refund').reduce((sum, p) => sum + Number(p.amount || 0), 0);
+
+  const commissionEarned = payments
+    .filter((p) => p.type === 'platform_fee')
+    .reduce((sum, p) => sum + Number(p.amount || 0), 0);
 
   const handleRelease = async (payment) => {
     if (!window.confirm('Release escrow for this payment?')) return;
     try {
-      await releaseEscrow(payment.id || payment._id);
+      await releaseEscrow(payment.relatedBooking || payment._id);
       toastMessage('Escrow released.');
       loadPayments();
     } catch (err) {
@@ -44,29 +77,25 @@ const PaymentsPage = () => {
   };
 
   const columns = [
-    { key: 'payId', header: 'Pay ID', render: (p) => p.payId || p.id || p._id },
-    { key: 'bookingId', header: 'Booking ID', render: (p) => p.bookingId || p.booking?._id || 'N/A' },
-    { key: 'client', header: 'Client', render: (p) => p.client?.name || p.clientName || 'N/A' },
-    { key: 'fundi', header: 'Fundi', render: (p) => p.fundi?.name || p.fundiName || 'N/A' },
+    { key: 'label', header: 'Type', render: (p) => <span className="text-white text-sm">{p.label}</span> },
+    { key: 'bookingId', header: 'Booking', render: (p) => <span className="text-muted text-xs">{p.bookingId}</span> },
+    { key: 'fundi', header: 'Fundi', render: (p) => p.fundi?.name || '—' },
     { key: 'amount', header: 'Amount', render: (p) => formatUGX(p.amount) },
-    { key: 'method', header: 'Method', render: (p) => <span className={p.method === 'Airtel' ? 'bg-red-500/20 text-red-400 text-xs font-bold px-2 py-0.5 rounded-pill' : 'bg-yellow-500/20 text-yellow-400 text-xs font-bold px-2 py-0.5 rounded-pill'}>{p.method || 'MTN'}</span> },
-    { key: 'status', header: 'Status', render: (p) => <Badge label={p.status || 'paid'} type={p.status === 'failed' ? 'danger' : 'success'} /> },
-    { key: 'escrow', header: 'Escrow', render: (p) => <Badge label={p.escrow || 'held'} type={p.escrow === 'released' ? 'success' : p.escrow === 'refunded' ? 'info' : 'warning'} /> },
-    { key: 'date', header: 'Date', render: (p) => formatDate(p.createdAt || p.date) },
-    { key: 'actions', header: 'Actions', render: (p) => <div className="flex items-center gap-2"><button className="p-1.5 text-muted hover:text-info transition-colors" aria-label="View payment"><RiEyeLine /></button>{(p.escrow || 'held') === 'held' && <button onClick={() => handleRelease(p)} className="px-3 py-1 bg-success/20 text-success text-xs font-bold rounded-pill hover:bg-success/30 transition-colors">Release</button>}</div> },
+    { key: 'escrow', header: 'Escrow', render: (p) => p.escrow !== 'none' ? <Badge label={p.escrow} type={p.escrow === 'released' ? 'success' : p.escrow === 'refunded' ? 'info' : 'warning'} /> : <span className="text-muted text-xs">—</span> },
+    { key: 'date', header: 'Date', render: (p) => formatDate(p.createdAt) },
+    { key: 'actions', header: 'Actions', render: (p) => <div className="flex items-center gap-2">{p.escrow === 'held' && <button onClick={() => handleRelease(p)} className="px-3 py-1 bg-success/20 text-success text-xs font-bold rounded-pill hover:bg-success/30 transition-colors">Release</button>}</div> },
   ];
 
   return (
     <div className="space-y-6">
       <h1 className="text-white text-xl font-black">Payments</h1>
       {error && <div className="bg-red-500/10 border border-danger text-danger text-sm rounded-input px-4 py-3">{error}</div>}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        <StatCard title="Total Collected" value={formatUGX(total)} icon={<span />} />
-        <StatCard title="In Escrow" value={formatUGX(held)} icon={<span />} iconBg="bg-warning/20" iconColor="text-warning" />
-        <StatCard title="Released" value={formatUGX(released)} icon={<span />} iconBg="bg-success/20" iconColor="text-success" />
-        <StatCard title="Platform Revenue" value={formatUGX(total * 0.1)} icon={<span />} valueClass="text-primary" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <StatCard title="Paid to Fundis" value={formatUGX(paidToFundis)} icon={<span />} iconBg="bg-success/20" iconColor="text-success" />
+        <StatCard title="Held in Escrow" value={formatUGX(Math.max(0, escrowHeld))} icon={<span />} iconBg="bg-warning/20" iconColor="text-warning" />
+        <StatCard title="Commission Earned" value={formatUGX(commissionEarned)} icon={<span />} iconBg="bg-primary/20" iconColor="text-primary" valueClass="text-primary" />
       </div>
-      <DataTable columns={columns} data={payments} loading={loading} emptyMessage="No payments found" />
+      <DataTable columns={columns} data={payments} loading={loading} emptyMessage="No payment transactions found" />
     </div>
   );
 };

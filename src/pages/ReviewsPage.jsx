@@ -16,8 +16,20 @@ const ReviewsPage = () => {
   const loadReviews = async () => {
     setLoading(true);
     try {
-      const res = await getReviews({ rating: rating === 'All' ? undefined : rating, sort });
-      setReviews(readList(res.data, ['reviews', 'data']));
+      const params = {};
+      if (rating !== 'All') params.rating = rating;
+      if (sort === 'Highest') params.sort = '-rating';
+      else if (sort === 'Lowest') params.sort = 'rating';
+      else if (sort === 'Oldest') params.sort = 'createdAt';
+      else params.sort = '-createdAt';
+      const res = await getReviews(params);
+      const items = readList(res.data, ['reviews', 'data']);
+      setReviews(items.map((r) => ({
+        ...r,
+        client: r.customerId || { name: r.clientName || 'N/A' },
+        fundi: r.fundiId || { name: r.fundiName || 'N/A' },
+        stars: r.rating,
+      })));
       setError('');
     } catch (err) {
       setError(err.response?.data?.message || 'Unable to load reviews.');
@@ -30,7 +42,7 @@ const ReviewsPage = () => {
     loadReviews();
   }, [rating, sort]);
 
-  const filtered = reviews.filter((review) => rating === 'All' || Number(review.rating || review.stars) === Number(rating));
+  const filtered = reviews.filter((review) => rating === 'All' || Number(review.rating) === Number(rating));
   const stars = (value) => <div className="text-primary text-sm flex gap-0.5">{Array.from({ length: 5 }).map((_, index) => (index < Number(value || 0) ? <RiStarFill key={index} /> : <RiStarLine key={index} />))}</div>;
 
   const handleDelete = async (review) => {

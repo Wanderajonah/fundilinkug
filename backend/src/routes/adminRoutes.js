@@ -8,13 +8,21 @@ const {
   updateUserStatus,
   getFundis,
   verifyFundi,
+  deleteFundi,
   getJobs,
   getBookings,
+  updateBookingStatusAdmin,
   getDisputes,
   resolveDispute,
   getReviews,
+  deleteReviewAdmin,
   getTransactions,
+  getPayments,
+  releaseEscrow,
   getAnalytics,
+  getNotifications,
+  markNotificationRead,
+  markAllNotificationsRead,
   getSettings,
   updateSettings,
   createUser,
@@ -34,13 +42,21 @@ router.get("/users/:id", getUserById);
 router.patch("/users/:id/status", updateUserStatus);
 router.get("/fundis", getFundis);
 router.patch("/fundis/:id/verify", verifyFundi);
+router.delete("/fundis/:id", deleteFundi);
 router.get("/jobs", getJobs);
 router.get("/bookings", getBookings);
+router.patch("/bookings/:id/status", updateBookingStatusAdmin);
 router.get("/disputes", getDisputes);
 router.patch("/disputes/:id/resolve", resolveDispute);
 router.get("/reviews", getReviews);
+router.delete("/reviews/:id", deleteReviewAdmin);
 router.get("/transactions", getTransactions);
+router.get("/payments", getPayments);
+router.patch("/payments/:id/release", releaseEscrow);
 router.get("/analytics", getAnalytics);
+router.get("/notifications", getNotifications);
+router.patch("/notifications/read-all", markAllNotificationsRead);
+router.patch("/notifications/:id/read", markNotificationRead);
 router.post("/users", createUser);
 router.get("/settings", getSettings);
 router.put("/settings", updateSettings);

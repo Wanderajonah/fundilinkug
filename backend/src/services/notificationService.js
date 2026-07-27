@@ -149,6 +149,12 @@ function formatSmsMessage(event, data, recipient) {
       }
       return "";
 
+    case "verification_approved":
+      return "Congratulations! Your FundiLink profile has been verified. You can now receive job requests and start earning. Welcome to the platform!";
+
+    case "verification_rejected":
+      return `Your FundiLink profile verification was not approved.${data.notes ? ` Reason: ${data.notes}.` : ""} Please review your documents and re-submit for verification in the app.`;
+
     case "price_update":
       if (recipient === "client") {
         return data.priceAgreed

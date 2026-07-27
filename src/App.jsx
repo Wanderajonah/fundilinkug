@@ -7,6 +7,7 @@ import ClientsPage from './pages/ClientsPage';
 import DashboardPage from './pages/DashboardPage';
 import FundisPage from './pages/FundisPage';
 import LoginPage from './pages/LoginPage';
+import NotificationsPage from './pages/NotificationsPage';
 import PaymentsPage from './pages/PaymentsPage';
 import ReviewsPage from './pages/ReviewsPage';
 import SettingsPage from './pages/SettingsPage';
@@ -34,6 +35,7 @@ const App = () => (
           <Route path="fundis" element={<FundisPage />} />
           <Route path="clients" element={<ClientsPage />} />
           <Route path="bookings" element={<BookingsPage />} />
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="payments" element={<PaymentsPage />} />
           <Route path="reviews" element={<ReviewsPage />} />
           <Route path="settings" element={<SettingsPage />} />

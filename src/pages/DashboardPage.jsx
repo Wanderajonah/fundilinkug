@@ -4,39 +4,46 @@ import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContaine
 import { RiCalendarLine, RiGroupLine, RiMoneyDollarCircleLine, RiUserStarLine } from 'react-icons/ri';
 import StatCard from '../components/StatCard';
 import Badge from '../components/Badge';
-import { getAnalytics } from '../services/api';
+import { getAnalytics, getFundis, getStats } from '../services/api';
 import { formatDate, formatUGX, getInitials } from '../utils/format';
 
 const pieColors = ['#F5A623', '#3B82F6', '#22C55E', '#E11D48', '#8B5CF6'];
 
 const DashboardPage = () => {
   const [analytics, setAnalytics] = useState(null);
+  const [statsData, setStatsData] = useState(null);
+  const [pendingFundis, setPendingFundis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   useEffect(() => {
-    const loadAnalytics = async () => {
+    const loadData = async () => {
       try {
-        const res = await getAnalytics();
-        setAnalytics(res.data);
+        const [statsRes, analyticsRes, fundisRes] = await Promise.all([
+          getStats(),
+          getAnalytics(),
+          getFundis({ status: 'pending', limit: 5 }),
+        ]);
+        setStatsData(statsRes.data);
+        setAnalytics(analyticsRes.data);
+        setPendingFundis(fundisRes.data.fundis || []);
       } catch (err) {
-        setError(err.response?.data?.message || 'Unable to load analytics.');
+        setError(err.response?.data?.message || 'Unable to load dashboard data.');
       } finally {
         setLoading(false);
       }
     };
-    loadAnalytics();
+    loadData();
   }, []);
 
-  const bookingsChart = analytics?.bookingsChart || analytics?.bookingsByMonth || [];
-  const servicesChart = analytics?.servicesChart || analytics?.topServices || [];
-  const recentBookings = analytics?.recentBookings || [];
-  const pendingFundis = analytics?.pendingVerifications || analytics?.pendingFundis || [];
+  const bookingsChart = (analytics?.weeklyData || []).map((d) => ({ month: d.name, bookings: d.jobs }));
+  const servicesChart = (analytics?.serviceDistribution || []).map((d) => ({ name: d.name, value: d.count }));
+  const recentBookings = statsData?.recentBookings || [];
   const stats = {
-    fundis: analytics?.totalFundis || analytics?.fundis || 0,
-    clients: analytics?.totalClients || analytics?.clients || 0,
-    bookings: analytics?.totalBookings || analytics?.bookings || 0,
-    revenue: analytics?.revenue || analytics?.totalRevenue || 0,
+    fundis: statsData?.totalFundis || 0,
+    clients: statsData?.totalUsers || 0,
+    bookings: statsData?.totalJobs || 0,
+    revenue: statsData?.totalRevenue || 0,
   };
 
   if (loading) {

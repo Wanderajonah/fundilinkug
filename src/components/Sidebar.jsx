@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   RiBankCardLine,
@@ -7,6 +7,7 @@ import {
   RiGroupLine,
   RiLogoutBoxRLine,
   RiMenuLine,
+  RiNotification3Line,
   RiSettings4Line,
   RiShieldStarLine,
   RiStarLine,
@@ -22,13 +23,30 @@ const navItems = [
   { icon: RiCalendarCheckLine, label: 'Bookings', to: '/bookings' },
   { icon: RiBankCardLine, label: 'Payments', to: '/payments' },
   { icon: RiStarLine, label: 'Reviews', to: '/reviews' },
+  { icon: RiNotification3Line, label: 'Notifications', to: '/notifications' },
   { icon: RiSettings4Line, label: 'Settings', to: '/settings' },
 ];
 
 const Sidebar = () => {
   const [open, setOpen] = useState(false);
+  const [unread, setUnread] = useState(0);
   const { admin, logout } = useAuth();
   const navigate = useNavigate();
+
+  const fetchUnread = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/admin/notifications?limit=1');
+      const data = await res.json();
+      setUnread(data.unread || 0);
+    } catch {
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 30000);
+    return () => clearInterval(interval);
+  }, [fetchUnread]);
 
   const handleLogout = () => {
     logout();
@@ -69,7 +87,10 @@ const Sidebar = () => {
                 }
               >
                 <Icon className="text-lg" />
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.to === '/notifications' && unread > 0 && (
+                  <span className="bg-primary text-primary-text text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{unread}</span>
+                )}
               </NavLink>
             );
           })}
