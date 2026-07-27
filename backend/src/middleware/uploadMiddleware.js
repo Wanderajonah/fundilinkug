@@ -14,7 +14,7 @@ function ensureDir(subdir) {
 }
 
 // Create a multer instance for a given subdirectory
-function createUpload(subdir) {
+function createUpload(subdir, allowPdf = false) {
   const dest = ensureDir(subdir);
   const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, dest),
@@ -25,13 +25,17 @@ function createUpload(subdir) {
     }
   });
   const fileFilter = (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-    if (extname && mimetype) {
+    const ext = path.extname(file.originalname).toLowerCase();
+    const allowedImageTypes = /jpeg|jpg|png|gif|webp/;
+    const isImage = allowedImageTypes.test(ext) && file.mimetype.startsWith("image/");
+    const isPdf = allowPdf && ext === ".pdf" && file.mimetype === "application/pdf";
+    if (isImage || isPdf) {
       cb(null, true);
     } else {
-      cb(new Error("Only image files are allowed (jpeg, jpg, png, gif, webp)"));
+      const msg = allowPdf
+        ? "Only image and PDF files are allowed"
+        : "Only image files are allowed (jpeg, jpg, png, gif, webp)";
+      cb(new Error(msg));
     }
   };
   return multer({
@@ -45,5 +49,7 @@ function createUpload(subdir) {
 const uploadProfile = createUpload("profiles");
 const uploadChat = createUpload("chat");
 const uploadBooking = createUpload("bookings");
+const uploadPortfolio = createUpload("portfolio");
+const uploadVerification = createUpload("verification", true);
 
-module.exports = { uploadProfile, uploadChat, uploadBooking, createUpload };
+module.exports = { uploadProfile, uploadChat, uploadBooking, uploadPortfolio, uploadVerification, createUpload };

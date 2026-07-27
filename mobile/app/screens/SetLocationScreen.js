@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenWrapper from '../components/ScreenWrapper';
 import PrimaryButton from '../components/PrimaryButton';
@@ -21,6 +22,7 @@ import theme from '../theme';
 const RADII = ['5 km', '10 km', '20 km'];
 
 export default function SetLocationScreen({ onBack, onConfirm, authToken }) {
+  const insets = useSafeAreaInsets();
   const { coords, address, radiusKm, setRadiusKm, setManualLocation, region, saveToBackend, captureCurrentLocation } =
     useLocation();
   const [search, setSearch] = useState('');
@@ -77,7 +79,7 @@ export default function SetLocationScreen({ onBack, onConfirm, authToken }) {
     <ScreenWrapper style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.black} />
       <ScrollView
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 28 }]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >

@@ -5,6 +5,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ScreenWrapper from "./ScreenWrapper";
 
 /**
@@ -17,12 +18,13 @@ export default function ScrollScreen({
   keyboard = false,
   bottomPad = 24,
 }) {
+  const insets = useSafeAreaInsets();
   const body = (
     <ScrollView
       style={styles.scroll}
       contentContainerStyle={[
         styles.content,
-        { paddingBottom: bottomPad },
+        { paddingBottom: bottomPad + insets.bottom },
         contentStyle,
       ]}
       showsVerticalScrollIndicator={false}
@@ -37,7 +39,7 @@ export default function ScrollScreen({
       {keyboard ? (
         <KeyboardAvoidingView
           style={styles.flex}
-          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
           keyboardVerticalOffset={0}
         >
           {body}

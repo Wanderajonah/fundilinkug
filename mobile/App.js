@@ -56,13 +56,18 @@ import {
   getErrorMessage as reviewError,
 } from "./services/reviewsApi";
 import { updateJobStatus } from "./services/jobsApi";
+import { holdPayment, getWallet, deposit } from "./services/walletApi";
 import { defaultActiveJob, buildBookingFromRequest } from "./app/utils/ratings";
 import BookingSubmittedScreen from "./app/screens/BookingSubmittedScreen";
 import BookingWaitingScreen from "./app/screens/BookingWaitingScreen";
 import FundiBookingDetailScreen from "./app/screens/FundiBookingDetailScreen";
+import SkillsPortfolioScreen from "./app/screens/SkillsPortfolioScreen";
+import VerificationScreen from "./app/screens/VerificationScreen";
+
 import { LocationProvider, useLocation } from "./context/LocationContext";
 import { BookingProvider } from "./context/BookingContext";
 import { ChatProvider } from "./context/ChatContext";
+import FloatingSupportChat from "./app/components/FloatingSupportChat";
 
 /** Screens only clients should use (browse, book, pay). */
 
@@ -99,6 +104,7 @@ function AppContent() {
   const [otpPurpose, setOtpPurpose] = useState("register");
   const [otpPhone, setOtpPhone] = useState("");
   const [otpExpiresIn, setOtpExpiresIn] = useState(600);
+  const [otpDevCode, setOtpDevCode] = useState("");
   const [signupSubmitting, setSignupSubmitting] = useState(false);
   const [authToken, setAuthToken] = useState("");
   const [browseCategory, setBrowseCategory] = useState("all");
@@ -114,6 +120,9 @@ function AppContent() {
   const [selectedBookingId, setSelectedBookingId] = useState(null);
   const [clientBookingDraft, setClientBookingDraft] = useState(null);
   const [chatTargetUserId, setChatTargetUserId] = useState(null);
+  const [payLoading, setPayLoading] = useState(false);
+  const [payError, setPayError] = useState("");
+  const [walletBalance, setWalletBalance] = useState(null);
 
   // push current screen into history and navigate
   const pushAndNavigate = (next) => {
@@ -201,6 +210,7 @@ function AppContent() {
 
     if (key === "home") return goHome();
     if (key === "fundiDashboard") return pushAndNavigate("fundiDashboard");
+
     if (key === "browse") {
       if (params?.category) setBrowseCategory(params.category);
       return pushAndNavigate("browse");
@@ -289,6 +299,8 @@ function AppContent() {
       }
       return pushAndNavigate("bookingWaiting");
     }
+    if (key === "skillsPortfolio") return setScreen("skillsPortfolio");
+    if (key === "verification") return setScreen("verification");
     if (key === "fundiBookingDetail") {
       if (params?.bookingId) setSelectedBookingId(params.bookingId);
       return pushAndNavigate("fundiBookingDetail");
@@ -305,6 +317,17 @@ function AppContent() {
     >
       {el}
     </BookingProvider>
+  );
+
+  const loggedInWrap = (el, { showSupportChat = true } = {}) => (
+    <ChatProvider userId={userId} authToken={authToken}>
+      <View style={{ flex: 1 }}>
+        {el}
+        {showSupportChat && authToken && userId ? (
+          <FloatingSupportChat userId={userId} />
+        ) : null}
+      </View>
+    </ChatProvider>
   );
 
   // Clear chat target when leaving chat screen
@@ -343,6 +366,13 @@ function AppContent() {
       // use the subscription remove() method which is the supported API
       if (sub && typeof sub.remove === "function") sub.remove();
     };
+  }, [screen]);
+
+  useEffect(() => {
+    if (screen === "payment") {
+      setWalletBalance(null);
+      getWallet().then(({ data }) => setWalletBalance(data.wallet?.balance ?? 0)).catch(() => setWalletBalance(0));
+    }
   }, [screen]);
 
   const handleJobComplete = async (job) => {
@@ -602,8 +632,7 @@ function AppContent() {
             setOtpPhone(normalized);
             const { data: otpRes } = await sendOtp(normalized, "register");
             setOtpExpiresIn(otpRes.expiresIn || 600);
-            if (otpRes.devCode)
-              Alert.alert("Dev OTP", `Your code is: ${otpRes.devCode}`);
+            setOtpDevCode(otpRes.devCode || "");
             setScreen("otp");
           } catch (error) {
             Alert.alert("Could not send OTP", getErrorMessage(error));
@@ -664,8 +693,7 @@ function AppContent() {
             setOtpPhone(normalized);
             const { data } = await sendOtp(normalized, "login");
             setOtpExpiresIn(data.expiresIn || 600);
-            if (data.devCode)
-              Alert.alert("Dev OTP", `Your code is: ${data.devCode}`);
+            setOtpDevCode(data.devCode || "");
             setScreen("otp");
           } catch (error) {
             Alert.alert("Could not send OTP", getErrorMessage(error));
@@ -710,10 +738,14 @@ function AppContent() {
         phoneRaw={otpPhone}
         purpose={otpPurpose}
         expiresIn={otpExpiresIn}
+        devCode={otpDevCode}
         onBack={() =>
           setScreen(otpPurpose === "login" ? "signIn" : "phoneRegister")
         }
-        onResent={(data) => setOtpExpiresIn(data.expiresIn || 600)}
+        onResent={(data) => {
+          setOtpExpiresIn(data.expiresIn || 600);
+          setOtpDevCode(data.devCode || "");
+        }}
         onVerify={async (code) => {
           if (otpPurpose === "register") {
             const { data } = await verifyOtpRegister({
@@ -769,21 +801,21 @@ function AppContent() {
 
   if (screen === "home") {
     if (userRole === "fundi") {
-      return bookingWrap(<FundiDashboardScreen userName={userName} {...tabProps} />);
+      return loggedInWrap(bookingWrap(<FundiDashboardScreen userName={userName} {...tabProps} />));
     }
-    return bookingWrap(<HomeScreen userName={userName} {...tabProps} />);
+    return loggedInWrap(bookingWrap(<HomeScreen userName={userName} {...tabProps} />));
   }
 
   if (screen === "fundiDashboard") {
-    return bookingWrap(<FundiDashboardScreen userName={userName} {...tabProps} />);
+    return loggedInWrap(bookingWrap(<FundiDashboardScreen userName={userName} {...tabProps} />));
   }
 
   if (screen === "browse") {
-    return bookingWrap(<BrowseArtisansScreen {...tabProps} />);
+    return loggedInWrap(bookingWrap(<BrowseArtisansScreen {...tabProps} />));
   }
 
   if (screen === "bookings") {
-    return bookingWrap(
+    return loggedInWrap(bookingWrap(
       <BookingsScreen
         {...tabProps}
         reviewHistory={reviewHistory}
@@ -795,63 +827,62 @@ function AppContent() {
         }}
         onViewHistory={() => pushAndNavigate("bookingHistory")}
       />
-    );
+    ));
   }
 
   if (screen === "profile") {
-    return <ProfileScreen {...tabPropsWithLogout} />;
+    return loggedInWrap(<ProfileScreen {...tabPropsWithLogout} />);
   }
 
   if (screen === "chat") {
-    return (
-      <ChatProvider userId={userId} authToken={authToken}>
-        <ChatScreen onNavigate={handleNavigate} userRole={userRole} userId={userId} targetUserId={chatTargetUserId} />
-      </ChatProvider>
+    return loggedInWrap(
+      <ChatScreen onNavigate={handleNavigate} userRole={userRole} userId={userId} targetUserId={chatTargetUserId} />,
+      { showSupportChat: false }
     );
   }
 
   if (screen === "notifications") {
-    return bookingWrap(<NotificationsScreen onNavigate={handleNavigate} />);
+    return loggedInWrap(bookingWrap(<NotificationsScreen onNavigate={handleNavigate} />));
   }
 
   if (screen === "editProfile") {
-    return <EditProfileScreen onNavigate={handleNavigate} />;
+    return loggedInWrap(<EditProfileScreen onNavigate={handleNavigate} />);
   }
 
   if (screen === "settings") {
-    return <SettingsScreen onNavigate={handleNavigate} />;
+    return loggedInWrap(<SettingsScreen onNavigate={handleNavigate} />);
   }
 
   if (screen === "payments") {
-    return <PaymentMethodsScreen onNavigate={handleNavigate} />;
+    return loggedInWrap(<PaymentMethodsScreen onNavigate={handleNavigate} />);
   }
 
   if (screen === "help") {
-    return <HelpSupportScreen onNavigate={handleNavigate} />;
+    return loggedInWrap(<HelpSupportScreen onNavigate={handleNavigate} />);
   }
 
   if (screen === "wallet") {
-    return <WalletHomeScreen onNavigate={handleNavigate} />;
+    return loggedInWrap(<WalletHomeScreen onNavigate={handleNavigate} />);
   }
 
   if (screen === "deposit") {
-    return <DepositScreen onNavigate={handleNavigate} />;
+    return loggedInWrap(<DepositScreen onNavigate={handleNavigate} />);
   }
 
   if (screen === "withdraw") {
-    return <WithdrawScreen onNavigate={handleNavigate} />;
+    return loggedInWrap(<WithdrawScreen onNavigate={handleNavigate} />);
   }
 
   if (screen === "transactionHistory") {
-    return <TransactionHistoryScreen onNavigate={handleNavigate} />;
+    return loggedInWrap(<TransactionHistoryScreen onNavigate={handleNavigate} />);
   }
 
   if (screen === "transfer") {
-    return <TransferScreen onNavigate={handleNavigate} />;
+    return loggedInWrap(<TransferScreen onNavigate={handleNavigate} />);
   }
 
   if (screen === "artisan") {
-    return (
+    return loggedInWrap(
       <ArtisanProfileScreen
         artisan={selectedArtisan || {}}
         onNavigate={handleNavigate}
@@ -860,42 +891,50 @@ function AppContent() {
   }
 
   if (screen === "request") {
-    return bookingWrap(
+    return loggedInWrap(bookingWrap(
       <RequestServiceScreen
         artisan={selectedArtisan || {}}
         authToken={authToken}
         onNavigate={handleNavigate}
         onSessionRestored={(session) => applySession(session)}
       />
-    );
+    ));
   }
 
   if (screen === "bookingSubmitted") {
-    return bookingWrap(
+    return loggedInWrap(bookingWrap(
       <BookingSubmittedScreen
         booking={clientBookingDraft || pendingBooking}
         onNavigate={handleNavigate}
       />
-    );
+    ));
   }
 
   if (screen === "bookingWaiting") {
-    return bookingWrap(
+    return loggedInWrap(bookingWrap(
       <BookingWaitingScreen
         booking={clientBookingDraft || pendingBooking}
         onNavigate={handleNavigate}
         onBack={() => setScreen("home")}
       />
-    );
+    ));
+  }
+
+  if (screen === "skillsPortfolio") {
+    return loggedInWrap(<SkillsPortfolioScreen onNavigate={handleNavigate} />);
+  }
+
+  if (screen === "verification") {
+    return loggedInWrap(<VerificationScreen onNavigate={handleNavigate} />);
   }
 
   if (screen === "fundiBookingDetail") {
-    return bookingWrap(
+    return loggedInWrap(bookingWrap(
       <FundiBookingDetailScreen
         bookingId={selectedBookingId}
         onBack={() => setScreen("fundiDashboard")}
       />
-    );
+    ));
   }
 
   if (screen === "payment") {
@@ -906,20 +945,45 @@ function AppContent() {
             pendingBooking,
             selectedArtisan || pendingBooking?.artisan || {},
           );
-    return bookingWrap(
+    const bookingId = booking._id || booking.id;
+    const total = booking.total || booking.amount || 17600;
+    return loggedInWrap(bookingWrap(
       <PaymentScreen
         booking={booking}
-        onBack={() => setScreen("bookingWaiting")}
-        onPay={() => {
-          const paidBooking = { ...booking, paid: true };
-          setPendingBooking(paidBooking);
-          setActiveJob(
-            defaultActiveJob(paidBooking, selectedArtisan || paidBooking.artisan || {}),
-          );
-          setScreen("confirm");
+        walletBalance={walletBalance}
+        onBack={() => { setPayError(""); setWalletBalance(null); setScreen("bookingWaiting"); }}
+        onPay={async (method, mobileMethod, phone) => {
+          setPayLoading(true);
+          setPayError("");
+          try {
+            if (!bookingId) throw new Error("Booking ID not found");
+            if (method === 'mobile_money') {
+              await deposit(total, mobileMethod || 'mtn', phone || '');
+            }
+            const res = await holdPayment(bookingId);
+            const paidBooking = {
+              ...booking,
+              paid: true,
+              paymentStatus: "held",
+              escrowHeldAt: new Date().toISOString(),
+            };
+            setPendingBooking(paidBooking);
+            setActiveJob(
+              defaultActiveJob(paidBooking, selectedArtisan || paidBooking.artisan || {}),
+            );
+            setPayLoading(false);
+            setWalletBalance(null);
+            setScreen("confirm");
+          } catch (err) {
+            setPayLoading(false);
+            const msg = err?.response?.data?.message || err?.message || "Payment failed";
+            setPayError(msg);
+          }
         }}
+        loading={payLoading}
+        error={payError}
       />
-    );
+    ));
   }
 
   if (screen === "confirm") {
@@ -930,17 +994,17 @@ function AppContent() {
             pendingBooking,
             selectedArtisan || pendingBooking?.artisan || {},
           );
-    return bookingWrap(
+    return loggedInWrap(bookingWrap(
       <BookingConfirmationScreen
         booking={booking}
         onNavigate={handleNavigate}
       />
-    );
+    ));
   }
 
   if (screen === "tracking") {
     const job = activeJob || defaultActiveJob(pendingBooking, selectedArtisan);
-    return bookingWrap(
+    return loggedInWrap(bookingWrap(
       <LiveTrackingScreen
         job={job}
         onBack={() => setScreen("confirm")}
@@ -954,23 +1018,23 @@ function AppContent() {
           pushAndNavigate("jobInProgress");
         }}
       />
-    );
+    ));
   }
 
   if (screen === "jobInProgress") {
     const job = activeJob || defaultActiveJob(pendingBooking, selectedArtisan);
-    return bookingWrap(
+    return loggedInWrap(bookingWrap(
       <JobInProgressScreen
         job={job}
         onNavigate={handleNavigate}
         onComplete={handleJobComplete}
       />
-    );
+    ));
   }
 
   if (screen === "rateExperience") {
     const job = activeJob || defaultActiveJob(pendingBooking, selectedArtisan);
-    return (
+    return loggedInWrap(
       <RateExperienceScreen
         job={job}
         existingReview={editingReview}
@@ -983,7 +1047,7 @@ function AppContent() {
   }
 
   if (screen === "bookingHistory") {
-    return (
+    return loggedInWrap(
       <BookingHistoryScreen
         bookings={reviewHistory}
         successMessage={reviewSuccessMessage}

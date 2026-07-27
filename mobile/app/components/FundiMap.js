@@ -1,12 +1,15 @@
 import React from 'react';
-import { StyleSheet, View, Text } from 'react-native';
-import MapViewWrapper from './MapViewWrapper';
+import { StyleSheet, View, Text, Platform } from 'react-native';
+import Constants from 'expo-constants';
 import theme from '../theme';
 
-/**
- * Unified map for customer browse, set location, live tracking.
- * Metro resolves MapViewWrapper.web.js on web and MapViewWrapper.native.js on native.
- */
+let isExpoGo = false;
+try {
+  isExpoGo =
+    Platform.OS !== 'web' &&
+    (Constants.appOwnership === 'expo' || Constants.executionEnvironment === 'storeClient');
+} catch {}
+
 export default function FundiMap({
   style,
   region,
@@ -27,6 +30,10 @@ export default function FundiMap({
       </View>
     );
   }
+
+  const MapViewWrapper = isExpoGo
+    ? require('./MapViewWrapper.web').default
+    : require('./MapViewWrapper').default;
 
   return (
     <MapViewWrapper

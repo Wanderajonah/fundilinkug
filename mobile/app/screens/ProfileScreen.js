@@ -72,6 +72,7 @@ export default function ProfileScreen({
         { key: 'wallet', label: 'Wallet', icon: 'wallet-outline' },
         { key: 'edit', label: 'Edit Fundi Profile', icon: 'person-outline' },
         { key: 'skills', label: 'Skills & Portfolio', icon: 'construct-outline' },
+        { key: 'verification', label: 'Verification', icon: 'shield-checkmark-outline' },
         { key: 'earnings', label: 'Earnings History', icon: 'cash-outline' },
         { key: 'notifications', label: 'Notifications', icon: 'notifications-outline' },
         { key: 'support', label: 'Help & Support', icon: 'help-circle-outline' },
@@ -87,7 +88,7 @@ export default function ProfileScreen({
       ];
 
   return (
-    <ScreenWrapper style={styles.safe}>
+    <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
       <ScrollView
         style={styles.container}
         contentContainerStyle={{ paddingBottom: tabBarHeight + 16 }}
@@ -173,6 +174,8 @@ export default function ProfileScreen({
                 if (item.key === 'settings') return onNavigate?.('settings');
                 if (item.key === 'support') return onNavigate?.('help');
                 if (item.key === 'earnings') return onNavigate?.('bookings');
+                if (item.key === 'skills') return onNavigate?.('skillsPortfolio');
+                if (item.key === 'verification') return onNavigate?.('verification');
                 return Alert.alert(item.label, 'Coming soon.');
               }}
             >

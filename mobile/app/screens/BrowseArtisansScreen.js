@@ -100,7 +100,7 @@ export default function BrowseArtisansScreen({
   });
 
   return (
-    <ScreenWrapper style={styles.safe}>
+    <ScreenWrapper style={styles.safe} edges={["top", "left", "right"]}>
       <StatusBar
         barStyle="light-content"
         backgroundColor={theme.colors.black}

@@ -2,7 +2,6 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import theme from '../theme';
 
-/** Web fallback — react-native-maps is native-only */
 export default function MapViewWrapper({
   style,
   currentLocation,
@@ -36,7 +35,6 @@ export default function MapViewWrapper({
         </Text>
       ) : null}
       <Text style={styles.meta}>{fundis.length} fundis shown</Text>
-      <Text style={styles.hint}>Use Expo Go on Android/iOS for live Google Maps.</Text>
     </TouchableOpacity>
   );
 }
@@ -52,5 +50,4 @@ const styles = StyleSheet.create({
   },
   title: { color: theme.colors.white, fontWeight: '800', marginBottom: 8 },
   meta: { color: theme.colors.muted, fontSize: 12, marginBottom: 4 },
-  hint: { color: theme.colors.accent, fontSize: 11, marginTop: 8 },
 });

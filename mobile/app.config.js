@@ -13,7 +13,7 @@ const config = {
     scheme: 'fundilink',
     assetBundlePatterns: ['**/*'],
     runtimeVersion: '1.0.1',
-    newArchEnabled: false,
+    newArchEnabled: true,
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.fundilink.uganda',
@@ -30,6 +30,10 @@ const config = {
         },
       ],
     },
+    web: {
+      bundler: 'metro',
+      output: 'single',
+    },
     plugins: [
       'expo-build-properties',
       [
@@ -42,7 +46,8 @@ const config = {
       'expo-font',
       'expo-web-browser',
       'expo-video',
-      '@maplibre/maplibre-react-native',
+      // Uncomment for production builds (EAS Build) — not compatible with Expo Go
+      // '@maplibre/maplibre-react-native',
     ],
     extra: {
       eas: {

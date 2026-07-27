@@ -9,6 +9,7 @@ const walletSchema = new mongoose.Schema(
       unique: true,
     },
     balance: { type: Number, default: 0, min: 0 },
+    heldBalance: { type: Number, default: 0, min: 0 },
     currency: { type: String, default: "UGX" },
     status: { type: String, enum: ["active", "frozen"], default: "active" },
   },

@@ -49,8 +49,8 @@ export default function OnboardingScreen({ onSelectRole, onSignIn, onSkip }) {
         />
         <View style={styles.heroOverlay} />
         <View style={[styles.heroContent, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.logoRing}>
-            <AppLogo size={56} />
+          <View style={{ marginBottom: -40 }}>
+            <AppLogo size={150} />
           </View>
           <Text style={styles.brand}>FundiLink</Text>
           <Text style={styles.tagline}>Trusted Fundis. On Demand.</Text>
@@ -80,15 +80,6 @@ export default function OnboardingScreen({ onSelectRole, onSignIn, onSkip }) {
             onPress={() => onSelectRole?.('fundi')}
           />
         </View>
-
-        <View style={styles.footer}>
-          <TouchableOpacity onPress={onSkip} hitSlop={12}>
-            <Text style={styles.footerLink}>Skip</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onSignIn} hitSlop={12}>
-            <Text style={styles.footerLinkBold}>Sign In</Text>
-          </TouchableOpacity>
-        </View>
       </Animated.View>
     </View>
   );
@@ -106,28 +97,16 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingHorizontal: 24,
   },
-  logoRing: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
   brand: {
     color: theme.colors.white,
     fontSize: 34,
     fontWeight: '800',
-    marginTop: 12,
     letterSpacing: -0.5,
   },
   tagline: {
     color: theme.colors.white,
     fontSize: 17,
     fontWeight: '600',
-    marginTop: 6,
     textAlign: 'center',
     opacity: 0.9,
   },
@@ -152,12 +131,4 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   cardsRow: { flexDirection: 'row', marginBottom: 20 },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingTop: 4,
-  },
-  footerLink: { color: theme.colors.muted, fontSize: 15, fontWeight: '600' },
-  footerLinkBold: { color: theme.colors.accent, fontSize: 15, fontWeight: '800' },
 });

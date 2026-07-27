@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -34,16 +34,72 @@ const CATEGORIES = [
   { key: "painter", label: "Painter", icon: "color-palette-outline" },
 ];
 
+const HERO_SLIDES = [
+  {
+    key: "verified",
+    title: "Get a qualified verified fundi near you",
+    action: "Find a Fundi",
+    image: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=900",
+  },
+  {
+    key: "urgent",
+    title: "Book urgent home repairs without the back and forth",
+    action: "Request Service",
+    image: "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?w=900",
+  },
+  {
+    key: "trusted",
+    title: "Compare skilled artisans by rating, distance, and availability",
+    action: "Browse Fundis",
+    image: "https://images.unsplash.com/photo-1504917595217-d4dc5ebe6122?w=900",
+  },
+];
+
+const FEATURED_FUNDI_LIMIT = 3;
+
+const rankFeaturedFundis = (fundis) =>
+  [...fundis].sort((a, b) => {
+    const availableDelta = Number(b.isAvailable !== false) - Number(a.isAvailable !== false);
+    if (availableDelta) return availableDelta;
+
+    const ratingDelta = (b.rating || 0) - (a.rating || 0);
+    if (ratingDelta) return ratingDelta;
+
+    const reviewDelta = (b.reviews || 0) - (a.reviews || 0);
+    if (reviewDelta) return reviewDelta;
+
+    return (a.distanceKm ?? Number.MAX_SAFE_INTEGER) - (b.distanceKm ?? Number.MAX_SAFE_INTEGER);
+  });
+
 function ListHeader({ userName, onNavigate, locationLabel, activeJob, loading, walletBalance }) {
   const [showBalance, setShowBalance] = useState(true);
+  const [heroWidth, setHeroWidth] = useState(0);
+  const [activeHero, setActiveHero] = useState(0);
+  const heroRef = useRef(null);
+
+  useEffect(() => {
+    if (!heroWidth) return undefined;
+    const timer = setInterval(() => {
+      setActiveHero((current) => {
+        const next = (current + 1) % HERO_SLIDES.length;
+        heroRef.current?.scrollTo({ x: next * heroWidth, animated: true });
+        return next;
+      });
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [heroWidth]);
+
+  const handleHeroScrollEnd = (event) => {
+    if (!heroWidth) return;
+    const next = Math.round(event.nativeEvent.contentOffset.x / heroWidth);
+    setActiveHero(Math.max(0, Math.min(next, HERO_SLIDES.length - 1)));
+  };
+
   return (
     <View>
       {/* 1. Header Row — logo + bell + balance below bell */}
       <View style={styles.headerRow}>
         <View style={styles.brandWrap}>
-          <View style={styles.logoIcon}>
-            <Ionicons name="flash" size={20} color={theme.colors.textDark} />
-          </View>
           <Text style={styles.brandName}>FundiLink</Text>
         </View>
         <View style={styles.headerRight}>
@@ -125,34 +181,57 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, loading, w
         />
       </View>
 
-      {/* 3. Hero Banner */}
-      <TouchableOpacity
+      {/* 3. Hero Slider */}
+      <View
         style={styles.heroBanner}
-        activeOpacity={0.95}
-        onPress={() => onNavigate?.("browse")}
+        onLayout={(event) => setHeroWidth(event.nativeEvent.layout.width)}
       >
-        <ImageBackground
-          source={{ uri: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800" }}
-          style={styles.heroImage}
-          resizeMode="cover"
+        <ScrollView
+          ref={heroRef}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          onMomentumScrollEnd={handleHeroScrollEnd}
+          scrollEventThrottle={16}
         >
-          <LinearGradient
-            colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0.75)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.heroOverlay}
-          >
-            <View style={styles.heroContent}>
-              <Text style={styles.heroTitle}>
-                Get a qualified verified fundi near you
-              </Text>
-              <TouchableOpacity style={styles.heroBtn} activeOpacity={0.85}>
-                <Text style={styles.heroBtnText}>Find a Fundi</Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </ImageBackground>
-      </TouchableOpacity>
+          {HERO_SLIDES.map((slide) => (
+            <TouchableOpacity
+              key={slide.key}
+              style={[styles.heroSlide, { width: heroWidth || 1 }]}
+              activeOpacity={0.95}
+              onPress={() => onNavigate?.("browse")}
+            >
+              <ImageBackground
+                source={{ uri: slide.image }}
+                style={styles.heroImage}
+                resizeMode="cover"
+              >
+                <LinearGradient
+                  colors={["rgba(0,0,0,0.08)", "rgba(0,0,0,0.78)"]}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={styles.heroOverlay}
+                >
+                  <View style={styles.heroContent}>
+                    <Text style={styles.heroTitle}>{slide.title}</Text>
+                    <View style={styles.heroBtn}>
+                      <Text style={styles.heroBtnText}>{slide.action}</Text>
+                    </View>
+                  </View>
+                </LinearGradient>
+              </ImageBackground>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <View style={styles.heroDots}>
+          {HERO_SLIDES.map((slide, index) => (
+            <View
+              key={`${slide.key}-dot`}
+              style={[styles.heroDot, index === activeHero && styles.heroDotActive]}
+            />
+          ))}
+        </View>
+      </View>
 
       {/* 4. Services Section */}
       <HomeSection title="Services" style={styles.sectionGap}>
@@ -272,7 +351,10 @@ export default function HomeScreen({
           lng: coords.lng,
           radiusKm,
         });
-        const list = (data.fundis || data || []).slice(0, 5).map(mapFundiItem);
+        const list = rankFeaturedFundis((data.fundis || data || []).map(mapFundiItem)).slice(
+          0,
+          FEATURED_FUNDI_LIMIT,
+        );
         if (!cancelled) setFeatured(list);
       } catch {
         if (!cancelled) {
@@ -289,7 +371,7 @@ export default function HomeScreen({
   }, [coords.lat, coords.lng, radiusKm, locationRevision]);
 
   return (
-    <ScreenWrapper style={styles.safe}>
+    <ScreenWrapper style={styles.safe} edges={["top", "left", "right"]}>
       <StatusBar
         barStyle="light-content"
         backgroundColor={theme.colors.black}
@@ -358,15 +440,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   brandWrap: { flexDirection: "row", alignItems: "center", gap: 10 },
-  logoIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: theme.colors.accent,
-    justifyContent: "center",
-    alignItems: "center",
-    ...theme.elevation.md,
-  },
   brandName: {
     color: theme.colors.white,
     fontSize: 20,
@@ -458,21 +531,26 @@ const styles = StyleSheet.create({
   },
   searchInput: { flex: 1, color: theme.colors.white, fontSize: 15 },
 
-  /* Hero Banner */
+  /* Hero Slider */
   heroBanner: {
     height: 120,
     borderRadius: 14,
     overflow: "hidden",
     marginBottom: 24,
+    backgroundColor: theme.colors.panel,
     ...theme.elevation.lg,
+  },
+  heroSlide: {
+    height: "100%",
   },
   heroImage: { flex: 1 },
   heroOverlay: { flex: 1, justifyContent: "flex-end", padding: 20 },
-  heroContent: { gap: 14 },
+  heroContent: { gap: 12, paddingRight: 42 },
   heroTitle: {
     color: theme.colors.white,
     fontSize: 15,
     fontWeight: "800",
+    lineHeight: 20,
   },
   heroBtn: {
     alignSelf: "flex-start",
@@ -483,6 +561,23 @@ const styles = StyleSheet.create({
     ...theme.elevation.md,
   },
   heroBtnText: { color: theme.colors.textDark, fontWeight: "800", fontSize: 14 },
+  heroDots: {
+    position: "absolute",
+    right: 14,
+    bottom: 14,
+    flexDirection: "row",
+    gap: 5,
+  },
+  heroDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.45)",
+  },
+  heroDotActive: {
+    width: 18,
+    backgroundColor: theme.colors.accent,
+  },
 
   /* Services */
   sectionGap: { marginBottom: 20 },

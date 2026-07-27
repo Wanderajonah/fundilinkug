@@ -18,14 +18,15 @@ import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
 import EmptyState from '../components/EmptyState';
+import BottomTabBar from '../components/BottomTabBar';
 import { useChatOptional } from '../../context/ChatContext';
 import { formatShortTime } from '../utils/ratings';
 import { compressImage, resolveMediaUrl } from '../../utils/image';
 import { getOrCreateConversation } from '../../services/chatApi';
+import { useTabBarHeight } from '../hooks/useTabBarHeight';
 
-const WHATSAPP_GREEN = '#25D366';
-const SENT_BUBBLE = '#005C4B';
-const RECEIVED_BUBBLE = '#1F2C33';
+const SENT_BUBBLE = theme.colors.accentDim;
+const RECEIVED_BUBBLE = theme.colors.panel;
 
 function formatDateSeparator(date) {
   if (!date) return '';
@@ -199,7 +200,7 @@ function ConversationView({ conversationId, userId, onBack }) {
       </View>
 
       {loading && messages.length === 0 ? (
-        <ActivityIndicator color={WHATSAPP_GREEN} style={{ marginTop: 40 }} />
+        <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           ref={flatRef}
@@ -220,13 +221,13 @@ function ConversationView({ conversationId, userId, onBack }) {
       {typingUserId && typingUserId !== userId ? <TypingDots /> : null}
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 80}
       >
         <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 4) }]}>
           <TouchableOpacity style={styles.attachBtn} onPress={handlePickImage} disabled={uploading}>
             {uploading ? (
-              <ActivityIndicator size="small" color={WHATSAPP_GREEN} />
+              <ActivityIndicator size="small" color={theme.colors.accent} />
             ) : (
               <Ionicons name="add-circle-outline" size={26} color={theme.colors.mutedDark} />
             )}
@@ -253,7 +254,7 @@ function ConversationView({ conversationId, userId, onBack }) {
   );
 }
 
-function SupportChat({ userId }) {
+export function SupportChat({ userId }) {
   const insets = useSafeAreaInsets();
   const { sendSupportQuery } = useChatOptional();
   const [messages, setMessages] = useState([
@@ -308,14 +309,14 @@ function SupportChat({ userId }) {
 
       {loading ? (
         <View style={styles.supportLoading}>
-          <ActivityIndicator size="small" color={WHATSAPP_GREEN} />
+          <ActivityIndicator size="small" color={theme.colors.accent} />
           <Text style={styles.supportLoadingText}>Thinking...</Text>
         </View>
       ) : null}
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 60}
       >
         <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 4) }]}>
           <TextInput
@@ -338,9 +339,9 @@ function SupportChat({ userId }) {
 
 export default function ChatScreen({ onNavigate, userRole, userId, targetUserId }) {
   const chatCtx = useChatOptional();
-  const [tab, setTab] = useState('messages');
   const [view, setView] = useState('list');
   const [activeConvId, setActiveConvId] = useState(null);
+  const tabBarHeight = useTabBarHeight();
 
   const conversations = chatCtx?.conversations || [];
   const refreshConversations = chatCtx?.refreshConversations;
@@ -397,64 +398,49 @@ export default function ChatScreen({ onNavigate, userRole, userId, targetUserId 
     <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>Messages</Text>
-        <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => setTab(tab === 'messages' ? 'support' : 'messages')}
-        >
-          <Ionicons
-            name={tab === 'support' ? 'chatbubbles' : 'headset-outline'}
-            size={22}
-            color={WHATSAPP_GREEN}
-          />
-        </TouchableOpacity>
+        <View style={styles.headerBtn} />
       </View>
 
-      {tab === 'messages' ? (
-        conversations.length === 0 ? (
+      {conversations.length === 0 ? (
+        <View style={[styles.emptyWrap, { paddingBottom: tabBarHeight }]}>
           <EmptyState
             icon="chatbubbles-outline"
             title="No messages yet"
             message="Start a conversation from an active booking."
           />
-        ) : (
-          <FlatList
-            data={conversations}
-            keyExtractor={(item) => item._id}
-            contentContainerStyle={{ paddingBottom: 100 }}
-            renderItem={({ item }) => (
-              <ConversationItem
-                item={item}
-                userId={userId}
-                onPress={() => handleOpenConversation(item._id)}
-              />
-            )}
-          />
-        )
-      ) : (
-        <View style={{ flex: 1 }}>
-          <View style={styles.supportHeader}>
-            <Ionicons name="headset" size={20} color={WHATSAPP_GREEN} />
-            <Text style={styles.supportHeaderText}>FundiLink Support</Text>
-          </View>
-          <SupportChat userId={userId} />
         </View>
+      ) : (
+        <FlatList
+          data={conversations}
+          keyExtractor={(item) => item._id}
+          contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
+          renderItem={({ item }) => (
+            <ConversationItem
+              item={item}
+              userId={userId}
+              onPress={() => handleOpenConversation(item._id)}
+            />
+          )}
+        />
       )}
+      <BottomTabBar active="chat" onTab={onNavigate} role={userRole} />
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0B141A' },
+  safe: { flex: 1, backgroundColor: theme.colors.bg },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1F2C33',
+    backgroundColor: theme.colors.panel,
   },
   headerTitle: { color: theme.colors.white, fontWeight: '700', fontSize: 18 },
   headerBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  emptyWrap: { flex: 1 },
   convItem: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -467,7 +453,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: WHATSAPP_GREEN,
+    backgroundColor: theme.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -478,19 +464,19 @@ const styles = StyleSheet.create({
   convTime: { color: theme.colors.mutedDark, fontSize: 11, marginLeft: 8 },
   convBottom: { flexDirection: 'row', alignItems: 'center' },
   convLast: { color: theme.colors.muted, fontSize: 13, flex: 1 },
-  conversationContainer: { flex: 1, backgroundColor: '#0B141A' },
+  conversationContainer: { flex: 1, backgroundColor: theme.colors.bg },
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 10,
-    backgroundColor: '#1F2C33',
+    backgroundColor: theme.colors.panel,
   },
   chatHeaderInfo: { flex: 1, marginLeft: 8 },
   chatHeaderTitle: { color: theme.colors.white, fontWeight: '600', fontSize: 16 },
   messageList: { paddingHorizontal: 8, paddingVertical: 8, flexGrow: 1 },
   dateSepRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 12, marginHorizontal: 40 },
-  dateSepLine: { flex: 1, height: 1, backgroundColor: '#313D45' },
+  dateSepLine: { flex: 1, height: 1, backgroundColor: theme.colors.border },
   dateSepText: { color: theme.colors.mutedDark, fontSize: 11, marginHorizontal: 10, fontWeight: '500' },
   bubbleRow: { marginBottom: 2, flexDirection: 'row', paddingHorizontal: 4 },
   bubbleRowOwn: { justifyContent: 'flex-end' },
@@ -557,12 +543,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 8,
-    backgroundColor: '#1F2C33',
+    backgroundColor: theme.colors.panel,
   },
   attachBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginRight: 4 },
   input: {
     flex: 1,
-    backgroundColor: '#2A3942',
+    backgroundColor: theme.colors.input,
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 9,
@@ -573,7 +559,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: WHATSAPP_GREEN,
+    backgroundColor: theme.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 6,
@@ -595,7 +581,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#1F2C33',
   },
-  supportHeaderText: { color: WHATSAPP_GREEN, fontWeight: '600', fontSize: 14 },
+  supportHeaderText: { color: theme.colors.accent, fontWeight: '600', fontSize: 14 },
   supportLoading: {
     flexDirection: 'row',
     alignItems: 'center',

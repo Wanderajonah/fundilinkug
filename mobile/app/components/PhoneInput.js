@@ -16,7 +16,6 @@ export default function PhoneInput({
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={[styles.row, focused && styles.rowFocused]}>
         <View style={styles.codeWrap}>
-          <Text style={styles.code}>UG</Text>
           <Text style={styles.codeNum}>+256</Text>
         </View>
         <View style={styles.divider} />
@@ -58,12 +57,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-  },
-  code: {
-    color: theme.colors.muted,
-    fontWeight: '700',
-    fontSize: 12,
-    letterSpacing: 0.5,
   },
   codeNum: {
     color: theme.colors.white,

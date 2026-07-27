@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Switch,
   Alert,
   ActivityIndicator,
   RefreshControl,
@@ -17,25 +16,22 @@ import FundiMap from '../components/FundiMap';
 import PrimaryButton from '../components/PrimaryButton';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
-import CountdownTimer from '../components/CountdownTimer';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { useLocation } from '../../context/LocationContext';
 import { useBooking } from '../../context/BookingContext';
 import {
   acceptBooking,
   declineBooking,
-  updateFundiAvailability,
   getErrorMessage,
 } from '../../services/bookingsApi';
 import { emitSocket } from '../../services/socketService';
-import { getGreeting, computeEarnings } from '../utils/jobs';
-import { getTimeLeftSeconds } from '../utils/bookings';
+import { computeEarnings } from '../utils/jobs';
+import { getTimeLeftSeconds, formatCountdown } from '../utils/bookings';
 import { formatUgx, initials } from '../utils/ratings';
 import theme from '../theme';
 
 export default function FundiDashboardScreen({
   userName = 'User',
-  userFullName,
   userRole = 'fundi',
   userId,
   onNavigate,
@@ -53,19 +49,33 @@ export default function FundiDashboardScreen({
     clearNotification,
   } = useBooking();
 
-  const [online, setOnline] = useState(true);
-  const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [acceptLoading, setAcceptLoading] = useState(false);
   const [declineLoading, setDeclineLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  useEffect(() => {
+    if (!hasIncomingRequest) return;
+    const initial = getTimeLeftSeconds(pendingRequest);
+    setTimeLeft(Math.max(0, initial));
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        const next = getTimeLeftSeconds(pendingRequest);
+        if (next <= 0) {
+          clearInterval(interval);
+          setPendingRequest(null);
+          return 0;
+        }
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [hasIncomingRequest]);
 
   useEffect(() => {
     refreshBookings();
   }, [refreshBookings]);
-
-  const greeting = useMemo(() => getGreeting(), []);
-  const displayName = userFullName || userName;
 
   const activeBookings = useMemo(
     () =>
@@ -89,19 +99,6 @@ export default function FundiDashboardScreen({
     }))),
     [completedBookings]
   );
-
-  const handleToggleOnline = async (value) => {
-    setOnline(value);
-    setAvailabilityLoading(true);
-    try {
-      await updateFundiAvailability(value);
-    } catch (e) {
-      setOnline(!value);
-      Alert.alert('Could not update availability', getErrorMessage(e));
-    } finally {
-      setAvailabilityLoading(false);
-    }
-  };
 
   const handleAccept = async () => {
     const id = pendingRequest?.bookingId;
@@ -149,10 +146,10 @@ export default function FundiDashboardScreen({
     setRefreshing(false);
   }, [refreshBookings]);
 
-  const hasIncomingRequest = Boolean(pendingRequest?.bookingId && online);
+  const hasIncomingRequest = Boolean(pendingRequest?.bookingId);
 
   return (
-    <ScreenWrapper style={styles.safe}>
+    <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
       <ScrollView
         contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight + 16 }]}
         showsVerticalScrollIndicator={false}
@@ -160,163 +157,127 @@ export default function FundiDashboardScreen({
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
         }
       >
-        {/* Header */}
-        <View style={styles.header}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(displayName)}</Text>
+        {/* ── Header ── */}
+        <View style={styles.headerRow}>
+          <View style={styles.brandWrap}>
+            <Text style={styles.brandName}>FundiLink</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.greet}>
-              {greeting}, {userName}
-            </Text>
-            <Text style={styles.role}>Fundi · {online ? 'Available' : 'Offline'}</Text>
-          </View>
-          <View style={styles.onlineWrap}>
-            {availabilityLoading ? (
-              <ActivityIndicator color={theme.colors.accent} size="small" />
-            ) : (
-              <Switch value={online} onValueChange={handleToggleOnline} trackColor={{ true: theme.colors.green }} />
-            )}
-            <Text style={[styles.onlineText, online && styles.onlineOn]}>
-              {online ? 'ONLINE' : 'OFFLINE'}
-            </Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.notifBtn}
+              onPress={() => onNavigate?.('notifications')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="notifications-outline" size={20} color={theme.colors.accent} />
+            </TouchableOpacity>
           </View>
         </View>
 
+        <View style={styles.locBalanceRow}>
+          <TouchableOpacity
+            style={styles.locationPill}
+            activeOpacity={0.85}
+            onPress={() => onNavigate?.('setLocation')}
+          >
+            <Ionicons name="location-outline" size={14} color={theme.colors.green} />
+            <Text style={styles.locationText} numberOfLines={1}>
+              {address || 'Set your location'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Notification Banner ── */}
         {notification ? (
           <View style={styles.notifBanner}>
-            <Text style={styles.notifTitle}>{notification.title}</Text>
-            <Text style={styles.notifMsg}>{notification.message}</Text>
-            <TouchableOpacity onPress={clearNotification}>
-              <Text style={styles.notifDismiss}>Dismiss</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.notifTitle}>{notification.title}</Text>
+              <Text style={styles.notifMsg}>{notification.message}</Text>
+            </View>
+            <TouchableOpacity onPress={clearNotification} style={styles.notifDismissBtn}>
+              <Ionicons name="close" size={18} color={theme.colors.muted} />
             </TouchableOpacity>
           </View>
         ) : null}
 
-        {/* Quick Stats */}
-        <View style={styles.earningsRow}>
-          <View style={styles.earnCard}>
-            <Text style={styles.earnLabel}>Today's Earnings</Text>
-            <Text style={styles.earnVal}>{formatUgx(earnings.today)}</Text>
+        {/* ── Stats Grid ── */}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: 'rgba(34,197,94,0.12)' }]}>
+              <Ionicons name="trending-up" size={18} color={theme.colors.green} />
+            </View>
+            <Text style={styles.statLabel}>Today</Text>
+            <Text style={styles.statValue}>{formatUgx(earnings.today)}</Text>
           </View>
-          <View style={styles.earnCard}>
-            <Text style={styles.earnLabel}>This Week</Text>
-            <Text style={styles.earnVal}>{formatUgx(earnings.week)}</Text>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: 'rgba(255,184,0,0.12)' }]}>
+              <Ionicons name="calendar" size={18} color={theme.colors.accent} />
+            </View>
+            <Text style={styles.statLabel}>This Week</Text>
+            <Text style={styles.statValue}>{formatUgx(earnings.week)}</Text>
           </View>
-          <View style={styles.earnCard}>
-            <Text style={styles.earnLabel}>Completed</Text>
-            <Text style={styles.earnVal}>{completedBookings.length}</Text>
+          <View style={styles.statCard}>
+            <View style={[styles.statIconWrap, { backgroundColor: 'rgba(59,130,246,0.12)' }]}>
+              <Ionicons name="checkmark-done" size={18} color={theme.colors.blue} />
+            </View>
+            <Text style={styles.statLabel}>Completed</Text>
+            <Text style={styles.statValue}>{completedBookings.length}</Text>
           </View>
         </View>
 
-        {/* Quick Actions */}
-        <View style={styles.quickRow}>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => onNavigate?.('bookings')}>
-            <Ionicons name="briefcase-outline" size={20} color={theme.colors.accent} />
-            <Text style={styles.quickText}>My Jobs</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => onNavigate?.('chat')}>
-            <Ionicons name="chatbubble-outline" size={20} color={theme.colors.accent} />
-            <Text style={styles.quickText}>Messages</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.quickBtn} onPress={() => onNavigate?.('profile')}>
-            <Ionicons name="person-outline" size={20} color={theme.colors.accent} />
-            <Text style={styles.quickText}>Profile</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Active Bookings */}
-        <Text style={styles.section}>Active Bookings</Text>
-        {bookingsLoading ? (
-          <LoadingSkeleton count={2} />
-        ) : activeBookings.length === 0 ? (
-          <EmptyState
-            icon="calendar-outline"
-            title="No active bookings"
-            message="Accepted jobs will appear here."
-          />
-        ) : (
-          activeBookings.map((b) => (
-            <TouchableOpacity
-              key={b.id}
-              style={styles.scheduleRow}
-              onPress={() => onNavigate?.('fundiBookingDetail', { bookingId: b.id })}
-            >
-              <View style={styles.scheduleRowLeft}>
-                <View style={styles.scheduleAvatar}>
-                  <Text style={styles.scheduleAvatarText}>{initials(b.clientName)}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.scheduleTitle}>{b.clientName}</Text>
-                  <Text style={styles.scheduleSub}>{b.service}</Text>
-                  <Text style={styles.scheduleSub}>{b.address}</Text>
-                </View>
-              </View>
-              <View style={styles.scheduleRowRight}>
-                <View style={styles.statusPill}>
-                  <Text style={styles.statusText}>{b.statusLabel}</Text>
-                </View>
-                {b.agreedPrice ? (
-                  <Text style={styles.schedulePrice}>{formatUgx(b.agreedPrice)}</Text>
-                ) : null}
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-
-        {/* Incoming Booking Requests (below Active Bookings) */}
+        {/* ── Incoming Booking Request ── */}
         {hasIncomingRequest ? (
           <View style={styles.incomingSection}>
-            <View style={styles.incomingHeader}>
-              <Ionicons name="notifications" size={18} color={theme.colors.accent} />
-              <Text style={styles.section}>Incoming Booking Request</Text>
+            <View style={styles.incomingHeaderRow}>
+              <View style={styles.incomingPulse} />
+              <Text style={styles.incomingTitle}>New Booking Request</Text>
             </View>
             <View style={styles.jobRequest}>
               <View style={styles.requestTop}>
                 <View style={styles.requestAvatar}>
                   <Text style={styles.requestAvatarText}>{initials(pendingRequest.clientName)}</Text>
+                  <View style={styles.requestOnlineDot} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.jobTitle}>{pendingRequest.clientName}</Text>
                   <Text style={styles.jobCategory}>{pendingRequest.category || pendingRequest.service}</Text>
                 </View>
+                {timeLeft > 0 && (
+                  <View style={styles.compactTimer}>
+                    <Text style={[styles.compactTimerText, timeLeft <= 60 && { color: theme.colors.red }]}>
+                      {formatCountdown(timeLeft)}
+                    </Text>
+                  </View>
+                )}
               </View>
 
               <View style={styles.requestDetails}>
+                {pendingRequest.description ? (
+                  <View style={styles.requestDetailRow}>
+                    <Ionicons name="chatbox-ellipses-outline" size={15} color={theme.colors.mutedDark} />
+                    <Text style={styles.jobDesc} numberOfLines={2}>{pendingRequest.description}</Text>
+                  </View>
+                ) : null}
                 <View style={styles.requestDetailRow}>
-                  <Ionicons name="construct-outline" size={16} color={theme.colors.muted} />
-                  <Text style={styles.jobDesc} numberOfLines={2}>
-                    {pendingRequest.description || 'No description provided'}
-                  </Text>
-                </View>
-                <View style={styles.requestDetailRow}>
-                  <Ionicons name="location-outline" size={16} color={theme.colors.muted} />
+                  <Ionicons name="location-outline" size={15} color={theme.colors.mutedDark} />
                   <Text style={styles.jobMeta}>{pendingRequest.address || 'Client location'}</Text>
                 </View>
-                {pendingRequest.distanceKm != null ? (
-                  <View style={styles.requestDetailRow}>
-                    <Ionicons name="navigate-outline" size={16} color={theme.colors.muted} />
-                    <Text style={styles.jobMeta}>{pendingRequest.distanceKm} km away</Text>
-                  </View>
-                ) : null}
-                {pendingRequest.estimatedPrice ? (
-                  <View style={styles.requestDetailRow}>
-                    <Ionicons name="cash-outline" size={16} color={theme.colors.muted} />
-                    <Text style={styles.jobMeta}>Est. {formatUgx(pendingRequest.estimatedPrice)}</Text>
-                  </View>
-                ) : null}
+                <View style={styles.requestDetailRow}>
+                  <Ionicons name="cash-outline" size={15} color={theme.colors.mutedDark} />
+                  <Text style={styles.jobMeta}>Est. {formatUgx(pendingRequest.estimatedPrice || 0)}</Text>
+                </View>
+                <View style={styles.requestDetailRow}>
+                  <Ionicons name="navigate-outline" size={15} color={theme.colors.mutedDark} />
+                  <Text style={styles.jobMeta}>{pendingRequest.distanceKm || 0} km away</Text>
+                </View>
               </View>
 
-              <CountdownTimer
-                expiresAt={pendingRequest.expiresAt}
-                initialSeconds={getTimeLeftSeconds(pendingRequest)}
-                label="Respond within"
-                onExpire={() => setPendingRequest(null)}
-              />
-
               <View style={styles.jobActions}>
-                <PrimaryButton style={{ flex: 1 }} onPress={handleAccept} disabled={acceptLoading}>
-                  {acceptLoading ? 'Accepting…' : 'Accept Booking'}
+                <PrimaryButton
+                  style={{ flex: 1 }}
+                  onPress={handleAccept}
+                  disabled={acceptLoading}
+                >
+                  {acceptLoading ? 'Accepting…' : 'Accept'}
                 </PrimaryButton>
                 <TouchableOpacity
                   style={styles.declineBtn}
@@ -326,7 +287,7 @@ export default function FundiDashboardScreen({
                   {declineLoading ? (
                     <ActivityIndicator color={theme.colors.muted} size="small" />
                   ) : (
-                    <Text style={styles.declineText}>Cancel</Text>
+                    <Text style={styles.declineText}>Decline</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -334,25 +295,80 @@ export default function FundiDashboardScreen({
           </View>
         ) : null}
 
-        {/* Error display */}
-        {error || bookingsError ? (
-          <View style={styles.errorBox}>
-            <Ionicons name="alert-circle-outline" size={18} color={theme.colors.red} />
-            <Text style={styles.errorText}>{error || bookingsError}</Text>
-          </View>
-        ) : null}
+        {/* ── Active Bookings ── */}
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>Active Jobs</Text>
+          {activeBookings.length > 0 && (
+            <TouchableOpacity onPress={() => onNavigate?.('bookings')}>
+              <Text style={styles.sectionAction}>See all</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {bookingsLoading ? (
+          <LoadingSkeleton count={2} />
+        ) : activeBookings.length === 0 ? (
+          <EmptyState
+            icon="calendar-outline"
+            title="No active jobs"
+            message="Accepted bookings will appear here. Make sure you're online to receive requests."
+          />
+        ) : (
+          activeBookings.map((b) => (
+            <TouchableOpacity
+              key={b.id}
+              style={styles.bookingCard}
+              onPress={() => onNavigate?.('fundiBookingDetail', { bookingId: b.id })}
+              activeOpacity={0.85}
+            >
+              <View style={styles.bookingCardTop}>
+                <View style={styles.bookingAvatar}>
+                  <Text style={styles.bookingAvatarText}>{initials(b.clientName)}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.bookingName}>{b.clientName}</Text>
+                  <Text style={styles.bookingService}>{b.service}</Text>
+                </View>
+                <View style={styles.bookingStatusPill}>
+                  <Text style={styles.bookingStatusText}>{b.statusLabel}</Text>
+                </View>
+              </View>
+              {b.address && (
+                <View style={styles.bookingMetaRow}>
+                  <Ionicons name="location-outline" size={12} color={theme.colors.mutedDark} />
+                  <Text style={styles.bookingMetaText} numberOfLines={1}>{b.address}</Text>
+                </View>
+              )}
+              {b.agreedPrice ? (
+                <View style={styles.bookingMetaRow}>
+                  <Ionicons name="cash-outline" size={12} color={theme.colors.mutedDark} />
+                  <Text style={styles.bookingMetaText}>{formatUgx(b.agreedPrice)}</Text>
+                </View>
+              ) : null}
+              {b.agreedPrice ? (
+                <View style={styles.bookingMetaRow}>
+                  <Ionicons name="wallet-outline" size={12} color={theme.colors.green} />
+                  <Text style={[styles.bookingMetaText, { color: theme.colors.green }]}>Payout: {formatUgx(Math.round(b.agreedPrice * 0.875))}</Text>
+                </View>
+              ) : null}
+            </TouchableOpacity>
+          ))
+        )}
 
-        {/* Completed / Recent Jobs */}
-        {completedBookings.length > 0 ? (
+        {/* ── Completed Jobs ── */}
+        {completedBookings.length > 0 && (
           <>
-            <Text style={styles.section}>Completed Jobs</Text>
+            <View style={styles.sectionRow}>
+              <Text style={styles.sectionTitle}>Completed Jobs</Text>
+            </View>
             {completedBookings.slice(0, 5).map((b) => (
-              <View key={b.id} style={styles.completedRow}>
+              <View key={b.id} style={styles.completedCard}>
                 <View style={styles.completedLeft}>
-                  <Ionicons name="checkmark-circle" size={20} color={theme.colors.green} />
+                  <View style={styles.completedIconWrap}>
+                    <Ionicons name="checkmark-circle" size={22} color={theme.colors.green} />
+                  </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.completedTitle}>{b.clientName}</Text>
-                    <Text style={styles.completedSub}>{b.service}</Text>
+                    <Text style={styles.completedName}>{b.clientName}</Text>
+                    <Text style={styles.completedService}>{b.service}</Text>
                   </View>
                 </View>
                 {b.amount ? (
@@ -361,10 +377,20 @@ export default function FundiDashboardScreen({
               </View>
             ))}
           </>
+        )}
+
+        {/* ── Error ── */}
+        {error || bookingsError ? (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle" size={18} color={theme.colors.red} />
+            <Text style={styles.errorText}>{error || bookingsError}</Text>
+          </View>
         ) : null}
 
-        {/* My Location */}
-        <Text style={styles.section}>My Location</Text>
+        {/* ── Location ── */}
+        <View style={styles.sectionRow}>
+          <Text style={styles.sectionTitle}>My Location</Text>
+        </View>
         <FundiMap
           style={styles.map}
           region={region}
@@ -372,9 +398,10 @@ export default function FundiDashboardScreen({
           showRadiusCircle
           radiusKm={5}
         />
-        <Text style={styles.locText}>
-          {address || 'Set your location'} · {online ? 'Sharing location' : 'Location hidden'}
-        </Text>
+        <View style={styles.locationFooter}>
+          <Ionicons name="location" size={14} color={theme.colors.green} />
+          <Text style={styles.locText}>{address || 'Set your location'}</Text>
+        </View>
       </ScrollView>
       <BottomTabBar active="fundiDashboard" onTab={onNavigate} role={userRole} />
     </ScreenWrapper>
@@ -383,89 +410,115 @@ export default function FundiDashboardScreen({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.black },
-  scroll: { paddingHorizontal: 20, paddingTop: 8 },
-  header: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, gap: 12 },
-  avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,184,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: { color: theme.colors.white, fontWeight: '800' },
-  greet: { color: theme.colors.white, fontSize: 18, fontWeight: '800' },
-  role: { color: theme.colors.muted, fontSize: 13, marginTop: 2 },
-  onlineWrap: { alignItems: 'center' },
-  onlineText: { color: theme.colors.muted, fontSize: 10, fontWeight: '800', marginTop: 4 },
-  onlineOn: { color: theme.colors.green },
-  notifBanner: {
-    backgroundColor: 'rgba(255,184,0,0.12)',
-    borderRadius: theme.radius.md,
-    padding: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,184,0,0.25)',
-  },
-  notifTitle: { color: theme.colors.white, fontWeight: '800' },
-  notifMsg: { color: theme.colors.muted, fontSize: 13, marginTop: 4 },
-  notifDismiss: { color: theme.colors.accent, fontWeight: '700', marginTop: 8, fontSize: 12 },
-  earningsRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  earnCard: {
-    flex: 1,
-    backgroundColor: theme.colors.input,
-    borderRadius: theme.radius.lg,
-    padding: 14,
-    minHeight: 80,
-  },
-  earnLabel: { color: theme.colors.muted, fontSize: 11 },
-  earnVal: { color: theme.colors.white, fontWeight: '900', fontSize: 16, marginTop: 4 },
-  quickRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  quickBtn: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: theme.radius.md,
-    backgroundColor: theme.colors.input,
-  },
-  quickText: { color: theme.colors.white, fontSize: 11, fontWeight: '700' },
-  section: { color: theme.colors.white, fontWeight: '800', fontSize: 16, marginBottom: 12 },
-  scheduleRow: {
-    backgroundColor: theme.colors.input,
-    borderRadius: theme.radius.md,
-    padding: 14,
-    marginBottom: 8,
+  scroll: { paddingHorizontal: 20, paddingTop: 12 },
+
+  /* ── Header ── */
+  headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    marginBottom: 12,
   },
-  scheduleRowLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
-  scheduleAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,184,0,0.2)',
+  brandWrap: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  brandName: {
+    color: theme.colors.white,
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  notifBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: theme.colors.glass,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
-  scheduleAvatarText: { color: theme.colors.white, fontWeight: '800', fontSize: 12 },
-  scheduleRowRight: { alignItems: 'flex-end', gap: 4 },
-  scheduleTitle: { color: theme.colors.white, fontWeight: '800' },
-  scheduleSub: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
-  schedulePrice: { color: theme.colors.accent, fontWeight: '800', fontSize: 12 },
-  statusPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,184,0,0.15)',
+  /* ── Location ── */
+  locBalanceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 20,
   },
-  statusText: { fontSize: 10, fontWeight: '800', color: theme.colors.accent },
-  incomingSection: { marginBottom: 16 },
-  incomingHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  locationPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: theme.colors.input,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  locationText: {
+    color: theme.colors.muted,
+    fontSize: 13,
+    fontWeight: '600',
+    maxWidth: 240,
+  },
+
+  /* ── Notification ── */
+  notifBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.accentDim,
+    borderRadius: theme.radius.md,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,184,0,0.2)',
+  },
+  notifTitle: { color: theme.colors.white, fontWeight: '800', fontSize: 14 },
+  notifMsg: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
+  notifDismissBtn: { padding: 4, marginLeft: 8 },
+
+  /* ── Stats ── */
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  statCard: {
+    flex: 1,
+    backgroundColor: theme.colors.panel,
+    borderRadius: theme.radius.lg,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  statIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  statLabel: { color: theme.colors.muted, fontSize: 11, fontWeight: '600' },
+  statValue: { color: theme.colors.white, fontWeight: '900', fontSize: 18, marginTop: 4 },
+
+  /* ── Incoming Request ── */
+  incomingSection: { marginBottom: 20 },
+  incomingHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 12,
+  },
+  incomingPulse: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: theme.colors.accent,
+  },
+  incomingTitle: {
+    color: theme.colors.white,
+    fontWeight: '800',
+    fontSize: 16,
+  },
   jobRequest: {
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: theme.colors.accent,
     borderRadius: theme.radius.lg,
     padding: 16,
@@ -477,21 +530,32 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255,184,0,0.3)',
+    backgroundColor: theme.colors.accentDim,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
-  requestAvatarText: { color: theme.colors.white, fontWeight: '900', fontSize: 14 },
-  requestDetails: { gap: 6 },
+  requestAvatarText: { color: theme.colors.accent, fontWeight: '900', fontSize: 14 },
+  requestOnlineDot: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: theme.colors.green,
+    borderWidth: 2,
+    borderColor: theme.colors.panel,
+  },
+  requestDetails: { gap: 8 },
   requestDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  jobAlert: { color: theme.colors.accent, fontWeight: '800' },
   jobTitle: { color: theme.colors.white, fontWeight: '900', fontSize: 16 },
   jobCategory: { color: theme.colors.accent, fontWeight: '700', fontSize: 13 },
   jobDesc: { color: theme.colors.muted, fontSize: 13, lineHeight: 18, flex: 1 },
   jobMeta: { color: theme.colors.muted, fontSize: 13, flex: 1 },
-  jobActions: { flexDirection: 'row', gap: 10 },
+  jobActions: { flexDirection: 'row', gap: 10, marginTop: 4 },
   declineBtn: {
-    width: 80,
+    width: 90,
     height: 52,
     borderRadius: theme.radius.pill,
     borderWidth: 1,
@@ -499,7 +563,87 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  declineText: { color: theme.colors.muted, fontWeight: '700' },
+  declineText: { color: theme.colors.muted, fontWeight: '700', fontSize: 15 },
+  compactTimer: {
+    backgroundColor: 'rgba(255,184,0,0.08)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  compactTimerText: {
+    color: theme.colors.accent,
+    fontWeight: '900',
+    fontSize: 13,
+    letterSpacing: 1,
+    fontVariant: ['tabular-nums'],
+  },
+
+  /* ── Sections ── */
+  sectionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  sectionTitle: { color: theme.colors.white, fontWeight: '800', fontSize: 16 },
+  sectionAction: { color: theme.colors.accent, fontWeight: '700', fontSize: 13 },
+
+  /* ── Booking Card ── */
+  bookingCard: {
+    backgroundColor: theme.colors.panel,
+    borderRadius: theme.radius.md,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  bookingCardTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  bookingAvatar: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: theme.colors.accentDim,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  bookingAvatarText: { color: theme.colors.accent, fontWeight: '800', fontSize: 12 },
+  bookingName: { color: theme.colors.white, fontWeight: '800', fontSize: 14 },
+  bookingService: { color: theme.colors.muted, fontSize: 12, marginTop: 1 },
+  bookingStatusPill: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: theme.colors.accentDim,
+  },
+  bookingStatusText: { fontSize: 10, fontWeight: '800', color: theme.colors.accent },
+  bookingMetaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  bookingMetaText: { color: theme.colors.mutedDark, fontSize: 12, flex: 1 },
+
+  /* ── Completed Card ── */
+  completedCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    backgroundColor: theme.colors.panel,
+    borderRadius: theme.radius.md,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  completedLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  completedIconWrap: { width: 30, alignItems: 'center' },
+  completedName: { color: theme.colors.white, fontWeight: '800', fontSize: 13 },
+  completedService: { color: theme.colors.muted, fontSize: 11, marginTop: 1 },
+  completedAmount: { color: theme.colors.green, fontWeight: '900', fontSize: 14 },
+
+  /* ── Error ── */
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -508,22 +652,19 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.md,
     backgroundColor: 'rgba(239,68,68,0.1)',
     marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.2)',
   },
   errorText: { color: theme.colors.red, fontSize: 13, flex: 1 },
-  completedRow: {
+
+  /* ── Location ── */
+  map: { width: '100%', height: 130, borderRadius: theme.radius.lg },
+  locationFooter: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    backgroundColor: theme.colors.input,
-    borderRadius: theme.radius.md,
-    marginBottom: 8,
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 16,
   },
-  completedLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  completedTitle: { color: theme.colors.white, fontWeight: '800', fontSize: 13 },
-  completedSub: { color: theme.colors.muted, fontSize: 11, marginTop: 2 },
-  completedAmount: { color: theme.colors.accent, fontWeight: '800', fontSize: 13 },
-  map: { width: '100%', height: 120, borderRadius: theme.radius.lg },
-  locText: { color: theme.colors.muted, fontSize: 12, marginTop: 8, marginBottom: 16 },
+  locText: { color: theme.colors.muted, fontSize: 12 },
 });

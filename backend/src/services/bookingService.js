@@ -416,6 +416,21 @@ async function completeBooking(bookingId, clientId) {
     
     await booking.save();
     
+    // Release escrow if funds are held
+    if (booking.paymentStatus === "held") {
+      try {
+        const { releasePayment } = require("../controllers/walletController");
+        await releasePayment(
+          { body: { bookingId: booking._id.toString() }, user: { _id: booking.clientId } },
+          { json: () => {}, status: () => ({ json: () => {} }) },
+          (err) => { if (err) console.error("Escrow release error:", err); }
+        );
+        console.log(`Escrow released for booking ${bookingId}`);
+      } catch (escrowErr) {
+        console.error("Failed to release escrow:", escrowErr);
+      }
+    }
+    
     // Notify fundi
     await notifyFundi(booking.fundiId, "status_completed", {
       bookingId: booking._id
@@ -460,6 +475,21 @@ async function cancelBooking(bookingId, userId, role, reason) {
     
     clearExpiryTimer(booking._id);
     await booking.save();
+
+    // Refund escrow if funds are held
+    if (booking.paymentStatus === "held") {
+      try {
+        const { refundPayment } = require("../controllers/walletController");
+        await refundPayment(
+          { body: { bookingId: booking._id.toString() }, user: { _id: booking.clientId } },
+          { json: () => {}, status: () => ({ json: () => {} }) },
+          (err) => { if (err) console.error("Escrow refund error:", err); }
+        );
+        console.log(`Escrow refunded for cancelled booking ${bookingId}`);
+      } catch (escrowErr) {
+        console.error("Failed to refund escrow:", escrowErr);
+      }
+    }
     
     // Notify the other party
     if (role === "customer") {

@@ -18,6 +18,7 @@ const mapsRoutes = require("./routes/mapsRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const walletRoutes = require("./routes/walletRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
 connectDB();
@@ -56,6 +57,7 @@ app.use("/api/maps", mapsRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/wallet", walletRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(errorHandler);
 

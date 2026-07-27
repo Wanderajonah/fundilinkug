@@ -73,8 +73,8 @@ const getStats = async (req, res, next) => {
         { $match: { status: "completed" } },
         { $group: { _id: null, total: { $sum: "$amount" } } },
       ]),
-      FundiProfile.countDocuments({ verified: false }),
-      FundiProfile.countDocuments({ verified: true }),
+      FundiProfile.countDocuments({ verificationStatus: "pending" }),
+      FundiProfile.countDocuments({ verificationStatus: "verified" }),
     ]);
 
     const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
@@ -195,7 +195,7 @@ const updateUserStatus = async (req, res, next) => {
 
 const getFundis = async (req, res, next) => {
   try {
-    const { page = 1, limit = 20, search, verified } = req.query;
+    const { page = 1, limit = 20, search, status } = req.query;
     const query = { role: "fundi" };
 
     if (search) {
@@ -213,25 +213,31 @@ const getFundis = async (req, res, next) => {
 
     const total = await User.countDocuments(query);
 
-    const fundiProfiles = await FundiProfile.find({
+    let fundiProfiles = await FundiProfile.find({
       userId: { $in: users.map((u) => u._id) },
     });
+
+    if (status) {
+      fundiProfiles = fundiProfiles.filter((p) => p.verificationStatus === status);
+    }
 
     const profileMap = {};
     fundiProfiles.forEach((p) => {
       profileMap[p.userId.toString()] = p;
     });
 
-    const fundis = users.map((user) => ({
-      ...user.toObject(),
-      fundiProfile: profileMap[user._id.toString()] || null,
-    }));
+    const fundis = users
+      .filter((user) => !status || profileMap[user._id.toString()])
+      .map((user) => ({
+        ...user.toObject(),
+        fundiProfile: profileMap[user._id.toString()] || null,
+      }));
 
     return res.json({
       fundis,
-      total,
+      total: status ? fundis.length : total,
       page: Number(page),
-      totalPages: Math.ceil(total / limit),
+      totalPages: Math.ceil((status ? fundis.length : total) / limit),
     });
   } catch (error) {
     return next(error);
@@ -241,11 +247,22 @@ const getFundis = async (req, res, next) => {
 const verifyFundi = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { verified } = req.body;
+    const { status, notes } = req.body;
+
+    if (!["pending", "verified", "rejected", "unverified"].includes(status)) {
+      return res.status(400).json({ message: "Invalid status" });
+    }
+
+    const update = {
+      verificationStatus: status,
+      verified: status === "verified",
+      reviewedAt: new Date(),
+      ...(notes !== undefined && { verificationNotes: notes }),
+    };
 
     const profile = await FundiProfile.findOneAndUpdate(
       { userId: id },
-      { verified: Boolean(verified) },
+      update,
       { new: true }
     );
 
@@ -346,15 +363,37 @@ const resolveDispute = async (req, res, next) => {
       });
     }
 
-    const booking = await Booking.findByIdAndUpdate(
-      id,
-      { status: resolution === "cancelled" ? "CANCELLED" : "COMPLETED", disputeReason: null },
-      { new: true }
-    );
-
+    const booking = await Booking.findById(id);
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
+
+    if (booking.paymentStatus === "held") {
+      const { refundPayment, releasePayment } = require("./walletController");
+      const mockRes = { json: () => {}, status: () => ({ json: () => {} }) };
+
+      if (resolution === "refund_client") {
+        await refundPayment(
+          { body: { bookingId: id }, user: { _id: booking.clientId } },
+          mockRes,
+          (err) => { if (err) throw err; }
+        );
+      } else if (resolution === "release_fundi") {
+        await releasePayment(
+          { body: { bookingId: id }, user: { _id: booking.clientId } },
+          mockRes,
+          (err) => { if (err) throw err; }
+        );
+      }
+    }
+
+    booking.disputeReason = null;
+    if (resolution === "cancelled") {
+      booking.status = "CANCELLED";
+    } else {
+      booking.status = "COMPLETED";
+    }
+    await booking.save();
 
     return res.json({ booking });
   } catch (error) {

@@ -58,7 +58,14 @@ const bookingSchema = new mongoose.Schema(
     clientPriceAgreed: { type: Boolean, default: false },
     fundiPriceAgreed: { type: Boolean, default: false },
     agreedPrice: { type: Number, default: null },
-    priceAgreed: { type: Boolean, default: false }
+    priceAgreed: { type: Boolean, default: false },
+    paymentStatus: {
+      type: String,
+      enum: ["unpaid", "held", "released", "refunded"],
+      default: "unpaid"
+    },
+    escrowHeldAt: { type: Date, default: null },
+    escrowReleasedAt: { type: Date, default: null }
   },
   { timestamps: true }
 );

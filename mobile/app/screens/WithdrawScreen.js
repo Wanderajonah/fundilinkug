@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -9,6 +10,7 @@ import { getWallet, withdraw } from '../../services/walletApi';
 const PRESETS = [10000, 20000, 50000, 100000, 200000];
 
 export default function WithdrawScreen({ onNavigate }) {
+  const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState('');
   const [phone, setPhone] = useState('');
   const [method, setMethod] = useState('mtn');
@@ -46,7 +48,7 @@ export default function WithdrawScreen({ onNavigate }) {
 
   return (
     <ScreenWrapper style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => onNavigate?.('wallet')}>
             <Ionicons name="chevron-back" size={22} color={theme.colors.white} />

@@ -31,3 +31,18 @@ export const updateFundiLocation = (lat, lng) =>
 // Update fundi availability status
 export const updateFundiAvailability = (isAvailable) =>
   api.put("/bookings/fundi/availability", { isAvailable });
+
+export const uploadPortfolioImages = (formData) => {
+  return api.post("/users/portfolio/upload", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};
+
+export const deletePortfolioImage = (imageUrl) =>
+  api.delete("/users/portfolio/image", { data: { imageUrl } });
+
+export const requestVerification = (formData) => {
+  return api.post("/users/verification-request", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+};

@@ -43,7 +43,8 @@ export function formatBookingDate(date) {
 
 export const DEMO_PAST_BOOKINGS = [];
 
-export function buildBookingFromRequest(request = {}, artisan = {}) {
+export function buildBookingFromRequest(request, artisan = {}) {
+  if (!request) request = {};
   const serviceFee = 16000;
   const platformFee = 1600;
   const total = serviceFee + platformFee;

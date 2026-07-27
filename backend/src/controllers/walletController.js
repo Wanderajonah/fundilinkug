@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const Wallet = require("../models/Wallet");
 const Transaction = require("../models/Transaction");
 const Booking = require("../models/Booking");
+const PlatformSettings = require("../models/PlatformSettings");
 
 const generateRef = (prefix) =>
   `${prefix}-${crypto.randomBytes(4).toString("hex").toUpperCase()}`;
@@ -314,6 +315,271 @@ const transfer = async (req, res, next) => {
   }
 };
 
+const getPlatformFee = async (amount) => {
+  try {
+    const settings = await PlatformSettings.findOne();
+    const rate = settings?.commissionRate != null ? settings.commissionRate : 12.5;
+    return Math.round(amount * (rate / 100));
+  } catch {
+    return Math.round(amount * 0.125);
+  }
+};
+
+const holdPayment = async (req, res, next) => {
+  try {
+    const { bookingId } = req.body;
+
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: "Booking ID required" });
+    }
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    if (booking.clientId.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ success: false, message: "Not your booking" });
+    }
+
+    if (booking.status !== "ACCEPTED") {
+      return res.status(400).json({ success: false, message: "Booking must be accepted before payment" });
+    }
+
+    if (!booking.priceAgreed || !booking.agreedPrice) {
+      return res.status(400).json({ success: false, message: "No agreed price set" });
+    }
+
+    if (booking.paymentStatus !== "unpaid") {
+      return res.status(400).json({ success: false, message: `Payment already ${booking.paymentStatus}` });
+    }
+
+    const amount = booking.agreedPrice;
+
+    const wallet = await getOrCreateWallet(req.user._id);
+    if (wallet.status === "frozen") {
+      return res.status(403).json({ success: false, message: "Wallet is frozen" });
+    }
+
+    if (wallet.balance < amount) {
+      return res.status(400).json({
+        success: false,
+        message: `Insufficient balance. Need UGX ${amount.toLocaleString()}. Please deposit first.`,
+      });
+    }
+
+    const reference = generateRef("ESC");
+
+    const transaction = await Transaction.create({
+      walletId: wallet._id,
+      userId: req.user._id,
+      type: "escrow_hold",
+      amount,
+      currency: wallet.currency,
+      reference,
+      description: `Escrow hold for booking #${bookingId}`,
+      status: "completed",
+      relatedBooking: bookingId,
+      relatedUser: booking.fundiId,
+      balanceBefore: wallet.balance,
+      balanceAfter: wallet.balance - amount,
+      metadata: { heldBalanceBefore: wallet.heldBalance, heldBalanceAfter: wallet.heldBalance + amount },
+    });
+
+    wallet.balance -= amount;
+    wallet.heldBalance += amount;
+    await wallet.save();
+
+    booking.paymentStatus = "held";
+    booking.escrowHeldAt = new Date();
+    await booking.save();
+
+    return res.json({
+      success: true,
+      transaction,
+      balance: wallet.balance,
+      heldBalance: wallet.heldBalance,
+      message: "Payment held in escrow",
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const releasePayment = async (req, res, next) => {
+  try {
+    const { bookingId } = req.body;
+
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: "Booking ID required" });
+    }
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    if (booking.paymentStatus !== "held") {
+      return res.status(400).json({ success: false, message: "No escrow funds to release" });
+    }
+
+    const amount = booking.agreedPrice;
+
+    const platformFee = await getPlatformFee(amount);
+    const fundiPayout = amount - platformFee;
+
+    const clientWallet = await getOrCreateWallet(booking.clientId);
+    const fundiWallet = await getOrCreateWallet(booking.fundiId);
+
+    if (clientWallet.heldBalance < amount) {
+      return res.status(400).json({ success: false, message: "Insufficient held balance" });
+    }
+
+    // Release to fundi
+    const releaseRef = generateRef("REL");
+    await Transaction.create({
+      walletId: clientWallet._id,
+      userId: booking.clientId,
+      type: "escrow_release",
+      amount,
+      currency: clientWallet.currency,
+      reference: releaseRef,
+      description: `Escrow released for booking #${bookingId}`,
+      status: "completed",
+      relatedBooking: bookingId,
+      relatedUser: booking.fundiId,
+      balanceBefore: clientWallet.balance,
+      balanceAfter: clientWallet.balance,
+      metadata: {
+        heldBalanceBefore: clientWallet.heldBalance,
+        heldBalanceAfter: clientWallet.heldBalance - amount,
+        fundiPayout,
+        platformFee,
+      },
+    });
+
+    // Payment received by fundi
+    const receiveRef = generateRef("REC");
+    await Transaction.create({
+      walletId: fundiWallet._id,
+      userId: booking.fundiId,
+      type: "payment_received",
+      amount: fundiPayout,
+      currency: fundiWallet.currency,
+      reference: receiveRef,
+      description: `Payment received for booking #${bookingId}`,
+      status: "completed",
+      relatedBooking: bookingId,
+      relatedUser: booking.clientId,
+      balanceBefore: fundiWallet.balance,
+      balanceAfter: fundiWallet.balance + fundiPayout,
+      metadata: { platformFee },
+    });
+
+    // Platform fee transaction
+    if (platformFee > 0) {
+      const feeRef = generateRef("FEE");
+      await Transaction.create({
+        walletId: clientWallet._id,
+        userId: booking.clientId,
+        type: "platform_fee",
+        amount: platformFee,
+        currency: clientWallet.currency,
+        reference: feeRef,
+        description: `Platform fee for booking #${bookingId}`,
+        status: "completed",
+        relatedBooking: bookingId,
+        balanceBefore: clientWallet.balance,
+        balanceAfter: clientWallet.balance,
+        metadata: {
+          heldBalanceBefore: clientWallet.heldBalance,
+          heldBalanceAfter: clientWallet.heldBalance - amount,
+        },
+      });
+    }
+
+    clientWallet.heldBalance -= amount;
+    fundiWallet.balance += fundiPayout;
+
+    await Promise.all([clientWallet.save(), fundiWallet.save()]);
+
+    booking.paymentStatus = "released";
+    booking.escrowReleasedAt = new Date();
+    await booking.save();
+
+    return res.json({
+      success: true,
+      message: `Payment released to fundi. UGX ${fundiPayout.toLocaleString()} sent, UGX ${platformFee.toLocaleString()} platform fee.`,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const refundPayment = async (req, res, next) => {
+  try {
+    const { bookingId } = req.body;
+
+    if (!bookingId) {
+      return res.status(400).json({ success: false, message: "Booking ID required" });
+    }
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    if (booking.paymentStatus !== "held") {
+      return res.status(400).json({ success: false, message: "No escrow funds to refund" });
+    }
+
+    const amount = booking.agreedPrice;
+    const clientWallet = await getOrCreateWallet(booking.clientId);
+
+    if (clientWallet.heldBalance < amount) {
+      return res.status(400).json({ success: false, message: "Insufficient held balance" });
+    }
+
+    const reference = generateRef("RFD");
+
+    const transaction = await Transaction.create({
+      walletId: clientWallet._id,
+      userId: booking.clientId,
+      type: "escrow_refund",
+      amount,
+      currency: clientWallet.currency,
+      reference,
+      description: `Escrow refund for booking #${bookingId}`,
+      status: "completed",
+      relatedBooking: bookingId,
+      relatedUser: booking.fundiId,
+      balanceBefore: clientWallet.balance,
+      balanceAfter: clientWallet.balance + amount,
+      metadata: {
+        heldBalanceBefore: clientWallet.heldBalance,
+        heldBalanceAfter: clientWallet.heldBalance - amount,
+      },
+    });
+
+    clientWallet.heldBalance -= amount;
+    clientWallet.balance += amount;
+    await clientWallet.save();
+
+    booking.paymentStatus = "refunded";
+    await booking.save();
+
+    return res.json({
+      success: true,
+      transaction,
+      balance: clientWallet.balance,
+      heldBalance: clientWallet.heldBalance,
+      message: "Escrow funds refunded to your wallet",
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getWallet,
   getTransactions,
@@ -322,4 +588,8 @@ module.exports = {
   payBooking,
   transfer,
   getOrCreateWallet,
+  holdPayment,
+  releasePayment,
+  refundPayment,
+  getPlatformFee,
 };

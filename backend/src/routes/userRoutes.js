@@ -5,9 +5,12 @@ const {
   updateLocation,
   uploadProfilePicture,
   uploadCoverPhoto,
+  uploadPortfolioImages,
+  deletePortfolioImage,
+  requestVerification,
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
-const { uploadProfile } = require("../middleware/uploadMiddleware");
+const { uploadProfile, uploadPortfolio, uploadVerification } = require("../middleware/uploadMiddleware");
 
 const router = express.Router();
 
@@ -25,6 +28,23 @@ router.post(
   protect,
   uploadProfile.single("coverPicture"),
   uploadCoverPhoto,
+);
+router.post(
+  "/portfolio/upload",
+  protect,
+  uploadPortfolio.array("images", 10),
+  uploadPortfolioImages,
+);
+router.delete(
+  "/portfolio/image",
+  protect,
+  deletePortfolioImage,
+);
+router.post(
+  "/verification-request",
+  protect,
+  uploadVerification.array("documents", 5),
+  requestVerification,
 );
 
 module.exports = router;

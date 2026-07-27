@@ -59,6 +59,7 @@ const seed = async () => {
       experience: 6,
       rating: 4.7,
       verified: true,
+      verificationStatus: "verified",
       portfolioImages: ["https://picsum.photos/300/200?1"]
     },
     {
@@ -67,6 +68,7 @@ const seed = async () => {
       experience: 5,
       rating: 4.5,
       verified: true,
+      verificationStatus: "verified",
       portfolioImages: ["https://picsum.photos/300/200?2"]
     },
     {
@@ -75,6 +77,7 @@ const seed = async () => {
       experience: 8,
       rating: 4.8,
       verified: true,
+      verificationStatus: "verified",
       portfolioImages: ["https://picsum.photos/300/200?3"]
     }
   ]);

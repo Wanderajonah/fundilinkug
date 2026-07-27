@@ -1,0 +1,97 @@
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import {
+  RiBankCardLine,
+  RiCalendarCheckLine,
+  RiDashboardLine,
+  RiGroupLine,
+  RiLogoutBoxRLine,
+  RiMenuLine,
+  RiSettings4Line,
+  RiShieldStarLine,
+  RiStarLine,
+  RiUserStarLine,
+} from 'react-icons/ri';
+import { useAuth } from '../context/AuthContext';
+import { getInitials } from '../utils/format';
+
+const navItems = [
+  { icon: RiDashboardLine, label: 'Dashboard', to: '/dashboard' },
+  { icon: RiUserStarLine, label: 'Fundis', to: '/fundis' },
+  { icon: RiGroupLine, label: 'Clients', to: '/clients' },
+  { icon: RiCalendarCheckLine, label: 'Bookings', to: '/bookings' },
+  { icon: RiBankCardLine, label: 'Payments', to: '/payments' },
+  { icon: RiStarLine, label: 'Reviews', to: '/reviews' },
+  { icon: RiSettings4Line, label: 'Settings', to: '/settings' },
+];
+
+const Sidebar = () => {
+  const [open, setOpen] = useState(false);
+  const { admin, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="md:hidden fixed left-4 top-4 z-50 p-2 bg-bg-raised border border-border rounded-input text-white hover:text-primary transition-colors duration-200"
+        aria-label="Open navigation"
+      >
+        <RiMenuLine />
+      </button>
+      {open && <button type="button" className="md:hidden fixed inset-0 bg-black/70 z-40" onClick={() => setOpen(false)} aria-label="Close navigation" />}
+      <aside className={`fixed left-0 top-0 h-screen w-60 bg-[#111111] border-r border-border flex flex-col z-50 transition-transform duration-200 ${open ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        <div className="px-6 py-5 border-b border-border">
+          <div className="text-primary font-black text-lg flex items-center gap-2">
+            <RiShieldStarLine />
+            <span>FundiLink UG</span>
+          </div>
+          <div className="text-muted text-xs mt-0.5">Admin Panel</div>
+        </div>
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={() => setOpen(false)}
+                className={({ isActive }) =>
+                  isActive
+                    ? 'flex items-center gap-3 px-4 py-3 rounded-input text-primary text-sm font-medium bg-primary/10 border-l-[3px] border-primary'
+                    : 'flex items-center gap-3 px-4 py-3 rounded-input text-muted text-sm font-medium hover:bg-white/5 hover:text-white transition-all duration-200'
+                }
+              >
+                <Icon className="text-lg" />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </nav>
+        <div className="px-4 py-4 border-t border-border">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center text-primary-text font-black text-sm">
+              {getInitials(admin?.name || admin?.email)}
+            </div>
+            <div className="min-w-0">
+              <div className="text-white text-sm font-semibold truncate">{admin?.name || 'Admin User'}</div>
+              <div className="text-muted text-xs truncate">{admin?.email || 'admin@fundilink.ug'}</div>
+            </div>
+          </div>
+          <button type="button" onClick={handleLogout} className="mt-3 w-full flex items-center gap-2 px-3 py-2 rounded-input text-danger text-sm hover:bg-danger/10 transition-colors duration-200">
+            <RiLogoutBoxRLine />
+            <span>Logout</span>
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+};
+
+export default Sidebar;

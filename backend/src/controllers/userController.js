@@ -191,10 +191,79 @@ const uploadCoverPhoto = async (req, res, next) => {
   }
 };
 
+const uploadPortfolioImages = async (req, res, next) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: "No files uploaded" });
+    }
+
+    const fileUrls = req.files.map((f) => `/uploads/portfolio/${f.filename}`);
+
+    const fundiProfile = await FundiProfile.findOneAndUpdate(
+      { userId: req.user._id },
+      { $push: { portfolioImages: { $each: fileUrls } } },
+      { upsert: true, new: true },
+    );
+
+    return res.json({
+      portfolioImages: fundiProfile.portfolioImages,
+      added: fileUrls,
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const deletePortfolioImage = async (req, res, next) => {
+  try {
+    const { imageUrl } = req.body;
+    if (!imageUrl) {
+      return res.status(400).json({ message: "imageUrl is required" });
+    }
+
+    const fundiProfile = await FundiProfile.findOneAndUpdate(
+      { userId: req.user._id },
+      { $pull: { portfolioImages: imageUrl } },
+      { new: true },
+    );
+
+    return res.json({ portfolioImages: fundiProfile.portfolioImages });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const requestVerification = async (req, res, next) => {
+  try {
+    const fileUrls = req.files?.length
+      ? req.files.map((f) => `/uploads/verification/${f.filename}`)
+      : [];
+
+    const update = {
+      verificationStatus: "pending",
+      requestedAt: new Date(),
+      ...(fileUrls.length && { verificationDocs: fileUrls }),
+    };
+
+    const fundiProfile = await FundiProfile.findOneAndUpdate(
+      { userId: req.user._id },
+      update,
+      { upsert: true, new: true },
+    );
+
+    return res.json({ fundiProfile });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   updateLocation,
   uploadProfilePicture,
   uploadCoverPhoto,
+  uploadPortfolioImages,
+  deletePortfolioImage,
+  requestVerification,
 };

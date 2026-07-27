@@ -107,9 +107,9 @@ export default function MapViewWrapper({
     <Map
       style={style}
       mapStyle={MAP_STYLE}
-      compassEnabled={false}
-      logoEnabled={false}
-      attributionEnabled
+      compass={false}
+      logo={false}
+      attribution
       onPress={(e) => {
         const [pressLng, pressLat] = e.nativeEvent.lngLat || [];
         if (typeof pressLat === 'number' && typeof pressLng === 'number') {
@@ -128,7 +128,7 @@ export default function MapViewWrapper({
         }
       }}
     >
-      <Camera centerCoordinate={center} zoomLevel={13} animationDuration={0} />
+      <Camera center={center} zoom={13} duration={0} />
 
       {showRadiusCircle ? (
         <GeoJSONSource id="search-radius-source" data={radiusFeature}>
@@ -148,14 +148,14 @@ export default function MapViewWrapper({
         </GeoJSONSource>
       ) : null}
 
-      <Marker id="current-location" coordinate={coordinateFromLatLng(lat, lng)}>
+      <Marker id="current-location" lngLat={coordinateFromLatLng(lat, lng)}>
         <Pin label="You" />
       </Marker>
 
       {destination ? (
         <Marker
           id="destination"
-          coordinate={coordinateFromLatLng(destination.lat, destination.lng)}
+          lngLat={coordinateFromLatLng(destination.lat, destination.lng)}
         >
           <Pin label="Job" color="#EF4444" />
         </Marker>
@@ -168,7 +168,7 @@ export default function MapViewWrapper({
           <Marker
             key={f._id || uid._id}
             id={String(f._id || uid._id)}
-            coordinate={coordinateFromLatLng(uid.location.lat, uid.location.lng)}
+            lngLat={coordinateFromLatLng(uid.location.lat, uid.location.lng)}
           >
             <Pin label={uid.name?.charAt(0)?.toUpperCase() || 'F'} color="#22C55E" />
           </Marker>
