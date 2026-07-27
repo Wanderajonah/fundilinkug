@@ -9,17 +9,15 @@ import MapPlaceholder from '../components/MapPlaceholder';
 import { formatUgx } from '../utils/ratings';
 
 /** Booking confirmed — post-payment success (client only) */
-export default function BookingConfirmationScreen({ booking: bk, onNavigate }) {
+export default function BookingConfirmationScreen({ booking = {}, onNavigate }) {
   const insets = useSafeAreaInsets();
-  const b = bk || {};
-  const artisanName = b.artisan?.name || b.artisanName || 'Fundi';
+  const artisanName = booking.artisan?.name || booking.artisanName || 'Fundi';
   const firstName = artisanName.split(' ')[0];
-  const service = b.service || 'Service';
-  const loc = b.address || b.location || '';
-  const address = typeof loc === 'string' ? loc : '';
-  const total = b.total || b.amount || 17600;
-  const eta = b.eta || 8;
-  const dateTime = [b.date, b.time].filter(Boolean).join(' · ') || 'Today · ASAP';
+  const service = booking.service || 'Service';
+  const address = booking.address || booking.location || '';
+  const total = booking.total || booking.amount || 17600;
+  const eta = booking.eta || 8;
+  const dateTime = [booking.date, booking.time].filter(Boolean).join(' · ') || 'Today · ASAP';
 
   return (
     <ScreenWrapper style={styles.safe}>
@@ -50,17 +48,9 @@ export default function BookingConfirmationScreen({ booking: bk, onNavigate }) {
               <Text style={styles.colVal}>{eta} mins</Text>
             </View>
           </View>
-          {b.paymentStatus === 'held' ? (
-            <View style={styles.heldBadge}>
-              <Ionicons name="lock-closed" size={12} color={theme.colors.green} />
-              <Text style={styles.heldText}>Held in escrow</Text>
-            </View>
-          ) : b.paymentStatus === 'released' ? (
-            <View style={[styles.heldBadge, { backgroundColor: 'rgba(0,122,255,0.15)' }]}>
-              <Ionicons name="checkmark-circle" size={12} color="#007AFF" />
-              <Text style={[styles.heldText, { color: '#007AFF' }]}>Payment released</Text>
-            </View>
-          ) : null}
+          <View style={styles.heldBadge}>
+            <Text style={styles.heldText}>Held in escrow</Text>
+          </View>
         </View>
 
         <View style={styles.shareBox}>
@@ -95,7 +85,7 @@ export default function BookingConfirmationScreen({ booking: bk, onNavigate }) {
             <Text style={styles.secondaryText}>My Bookings</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() =>
-            onNavigate?.('chat', { targetUserId: b.artisan?._id || b.artisan?.id || b.fundiId })
+            onNavigate?.('chat', { targetUserId: booking.artisan?._id || booking.artisan?.id || booking.fundiId })
           }>
             <Ionicons name="chatbubble-outline" size={18} color={theme.colors.accent} />
             <Text style={styles.secondaryText}>Message {firstName}</Text>

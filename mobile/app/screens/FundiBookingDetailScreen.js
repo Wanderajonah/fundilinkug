@@ -197,7 +197,6 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
           <DetailRow icon="document-text-outline" label="Description" value={booking.description} />
           <DetailRow icon="location-outline" label="Location" value={booking.address} />
           <DetailRow icon="cash-outline" label="Amount" value={booking.agreedPrice ? formatUgx(booking.agreedPrice) : null} />
-          {booking.agreedPrice ? <PayoutRow agreedPrice={booking.agreedPrice} /> : null}
           {booking.distanceKm != null ? (
             <DetailRow icon="navigate-outline" label="Distance" value={`${booking.distanceKm} km`} />
           ) : null}
@@ -272,31 +271,6 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
         ) : null}
       </ScrollView>
     </ScreenWrapper>
-  );
-}
-
-const PLATFORM_FEE_RATE = 0.125;
-
-function PayoutRow({ agreedPrice }) {
-  const fee = Math.round(agreedPrice * PLATFORM_FEE_RATE);
-  const payout = agreedPrice - fee;
-  return (
-    <View>
-      <View style={styles.detailRow}>
-        <Ionicons name="trending-down-outline" size={18} color={theme.colors.red} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.detailLabel}>Platform fee (12.5%)</Text>
-          <Text style={[styles.detailValue, { color: theme.colors.red }]}>- {formatUgx(fee)}</Text>
-        </View>
-      </View>
-      <View style={[styles.detailRow, { borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 8 }]}>
-        <Ionicons name="wallet-outline" size={18} color={theme.colors.green} />
-        <View style={{ flex: 1 }}>
-          <Text style={styles.detailLabel}>You receive</Text>
-          <Text style={[styles.detailValue, { color: theme.colors.green, fontWeight: '800' }]}>{formatUgx(payout)}</Text>
-        </View>
-      </View>
-    </View>
   );
 }
 

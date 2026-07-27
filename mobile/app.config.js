@@ -1,22 +1,34 @@
-const config = {
+/** Expo config — loads Google Maps API key from environment */
+
+function googleIosUrlScheme() {
+  if (process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME) {
+    return process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
+  }
+  const webClientId =
+    process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID || process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID;
+  if (!webClientId?.endsWith('.apps.googleusercontent.com')) return null;
+  const prefix = webClientId.replace('.apps.googleusercontent.com', '');
+  return `com.googleusercontent.apps.${prefix}`;
+}
+
+const iosUrlScheme = googleIosUrlScheme();
+
+module.exports = {
   expo: {
     name: 'FundiLink',
     slug: 'fundilink',
     version: '1.0.1',
     orientation: 'portrait',
-    icon: './assets/icon.png',
-    adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
-      backgroundColor: '#000000',
-    },
     userInterfaceStyle: 'dark',
     scheme: 'fundilink',
     assetBundlePatterns: ['**/*'],
     runtimeVersion: '1.0.1',
-    newArchEnabled: true,
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.fundilink.uganda',
+      config: {
+        googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+      },
     },
     android: {
       package: 'com.fundilink.uganda',
@@ -29,13 +41,13 @@ const config = {
           category: ['BROWSABLE', 'DEFAULT'],
         },
       ],
-    },
-    web: {
-      bundler: 'metro',
-      output: 'single',
+      config: {
+        googleMaps: {
+          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
+        },
+      },
     },
     plugins: [
-      'expo-build-properties',
       [
         'expo-location',
         {
@@ -43,23 +55,19 @@ const config = {
             'FundiLink uses your location to find artisans near you.',
         },
       ],
-      'expo-font',
       'expo-web-browser',
       'expo-video',
-      // Uncomment for production builds (EAS Build) — not compatible with Expo Go
-      // '@maplibre/maplibre-react-native',
     ],
     extra: {
       eas: {
-        projectId: 'b75918f7-f03a-4f72-8367-2c014bec8215',
+        projectId: 'a1bbe60a-a9d4-4dc8-95d1-92e8a6fe7cba',
       },
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
+      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
     },
-    owner: 'finalyear2026',
+    owner: '2300813409',
     updates: {
-      url: 'https://u.expo.dev/b75918f7-f03a-4f72-8367-2c014bec8215',
+      url: 'https://u.expo.dev/a1bbe60a-a9d4-4dc8-95d1-92e8a6fe7cba',
     },
   },
 };
-
-module.exports = config;

@@ -26,8 +26,8 @@ export default function SplashScreen({ onFinish }) {
     <ScreenWrapper style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.black} />
       <View style={styles.center}>
-        <Animated.View style={{ opacity: fade, transform: [{ scale }], marginBottom: -40 }}>
-          <AppLogo size={150} />
+        <Animated.View style={[styles.ring, { opacity: fade, transform: [{ scale }] }]}>
+          <AppLogo size={80} />
         </Animated.View>
         <Animated.Text style={[styles.brand, { opacity: fade }]}>FundiLink</Animated.Text>
         <Animated.Text style={[styles.tagline, { opacity: taglineFade }]}>Find. Book. Done.</Animated.Text>
@@ -39,6 +39,18 @@ export default function SplashScreen({ onFinish }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.black },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  ring: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: theme.colors.panel,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    ...theme.elevation.lg,
+  },
   brand: { color: theme.colors.white, fontSize: 32, fontWeight: '800', letterSpacing: -0.5 },
-  tagline: { color: theme.colors.muted, fontSize: 15, fontWeight: '600' },
+  tagline: { marginTop: 8, color: theme.colors.muted, fontSize: 15, fontWeight: '600' },
 });

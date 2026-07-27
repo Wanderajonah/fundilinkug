@@ -119,9 +119,6 @@ export function mapApiBooking(booking, role = 'customer') {
     platformFee,
     total,
     paid: booking.paid || false,
-    paymentStatus: booking.paymentStatus || 'unpaid',
-    escrowHeldAt: booking.escrowHeldAt || null,
-    escrowReleasedAt: booking.escrowReleasedAt || null,
     createdAt: booking.createdAt || null,
     images: booking.images || [],
   };
@@ -174,7 +171,7 @@ export function getBookingStepIndex(booking) {
   if (status === 'IN_PROGRESS') return 6;
   if (status === 'ARRIVED') return 5;
   if (status === 'ON_THE_WAY') return 4;
-  if (booking.paymentStatus === 'held' || booking.paid) return 3;
+  if (booking.paid) return 3;
   if (booking.priceAgreed) return 2;
   if (status === 'ACCEPTED') return 1;
   return 0;

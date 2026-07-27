@@ -3,17 +3,13 @@ import Constants from "expo-constants";
 import { Platform } from "react-native";
 
 const getBaseUrl = () => {
-  if (Platform.OS === "web") {
-    if (typeof window !== "undefined") {
-      const host = window.location.hostname;
-      return `http://${host}:5000/api`;
-    }
-    return "http://localhost:5000/api";
-  }
-
   const explicitUrl =
     process.env.EXPO_PUBLIC_API_URL || Constants.expoConfig?.extra?.apiUrl;
   if (explicitUrl) return explicitUrl;
+
+  if (Platform.OS === "web") {
+    return "http://localhost:5000/api";
+  }
 
   const hostUri = Constants.expoConfig?.hostUri || "";
   const host = hostUri.split(":")[0];

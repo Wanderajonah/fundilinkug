@@ -1,3 +1,4 @@
+/** Dark map style for Google Maps / Apple Maps custom styling */
 export const DARK_MAP_STYLE = [
   { elementType: 'geometry', stylers: [{ color: '#1a1a1a' }] },
   { elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },

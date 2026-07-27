@@ -9,7 +9,6 @@ const CUSTOMER_TABS = [
   { key: 'home', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
   { key: 'browse', label: 'Browse', icon: 'search-outline', activeIcon: 'search' },
   { key: 'bookings', label: 'Bookings', icon: 'calendar-outline', activeIcon: 'calendar' },
-  { key: 'chat', label: 'Messages', icon: 'chatbubble-outline', activeIcon: 'chatbubble' },
   { key: 'profile', label: 'Profile', icon: 'person-outline', activeIcon: 'person' },
 ];
 
@@ -36,11 +35,11 @@ export default function BottomTabBar({ active, onTab, role = 'customer' }) {
             onPress={() => onTab?.(t.key)}
             activeOpacity={0.85}
           >
-            <View style={styles.iconWrap}>
+            <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
               <Ionicons
                 name={isActive ? t.activeIcon : t.icon}
                 size={22}
-                color={isActive ? theme.colors.accent : theme.colors.mutedDark}
+                color={isActive ? theme.colors.textDark : theme.colors.mutedDark}
               />
             </View>
             <Text style={[styles.label, isActive && styles.labelActive]}>{t.label}</Text>
@@ -66,10 +65,9 @@ const styles = StyleSheet.create({
     borderTopColor: theme.colors.border,
   },
   item: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 0,
+    minWidth: 72,
     paddingTop: 4,
   },
   iconWrap: {
@@ -78,6 +76,9 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  iconWrapActive: {
+    backgroundColor: theme.colors.accent,
   },
   label: {
     marginTop: 4,

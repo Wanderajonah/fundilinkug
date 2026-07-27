@@ -95,7 +95,7 @@ export default function SignInScreen({
       </View>
 
       <View style={styles.header}>
-        <AppLogo size={150} />
+        <AppLogo size={64} />
         <Text style={styles.title}>Welcome back</Text>
         <Text style={styles.subtitle}>
           Sign in to continue as a {isFundi ? 'Fundi' : 'Client'}
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     color: theme.colors.white,
     fontSize: 24,
     fontWeight: '800',
-    marginTop: -28,
+    marginTop: 20,
     letterSpacing: -0.3,
   },
   subtitle: {

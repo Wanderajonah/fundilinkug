@@ -1,18 +1,21 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, StatusBar, Alert, Image, Platform } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocation } from '../../context/LocationContext';
 import theme from '../theme';
 import PrimaryButton from '../components/PrimaryButton';
 import FundiMap from '../components/FundiMap';
 import * as Linking from 'expo-linking';
 
+function getBrandPrimaryColor() {
+  // Use the existing brand primary across the app. Accent is amber.
+  return theme.colors.accent;
+}
+
 export default function LocationPermissionScreen({
   onAllow,
   onManual,
   visibleReason,
 }) {
-  const insets = useSafeAreaInsets();
   const { coords, captureCurrentLocation, loading } = useLocation();
   const [handling, setHandling] = useState(false);
 
@@ -53,10 +56,10 @@ export default function LocationPermissionScreen({
 
       <FundiMap style={styles.map} currentLocation={coords} showRadiusCircle={false} />
 
-      <View style={[styles.card, { bottom: Math.max(insets.bottom + 12, 18) }]}>
+      <View style={styles.card}>
         <View style={styles.artworkWrap}>
           <Image
-            source={require('../../assets/logo.png')}
+            source={require('../../assets/Gemini_Generated_Image_za5na1za5na1za5n (6).png')}
             style={styles.artwork}
             resizeMode="contain"
           />
@@ -67,15 +70,19 @@ export default function LocationPermissionScreen({
 
         <PrimaryButton
           onPress={handling || loading ? undefined : handleEnable}
-          style={styles.primaryCta}
+          style={[styles.primaryCta, { backgroundColor: getBrandPrimaryColor() }]}
           disabled={handling || loading}
         >
           {handling || loading ? 'Getting location…' : 'Enable Location'}
         </PrimaryButton>
 
-        <TouchableOpacity style={styles.cancelBtn} onPress={handleOpenSystemSettings} activeOpacity={0.7}>
-          <Text style={styles.cancelLabel}>Cancel</Text>
-        </TouchableOpacity>
+        <PrimaryButton
+          filled={false}
+          onPress={handleOpenSystemSettings}
+          style={styles.secondary}
+        >
+          Cancel
+        </PrimaryButton>
       </View>
     </View>
   );
@@ -106,7 +113,7 @@ const styles = StyleSheet.create({
   artwork: { width: 160, height: 120 },
   title: { fontSize: 20, fontWeight: '800', color: theme.colors.white, marginTop: 6 },
   sub: { color: theme.colors.muted, textAlign: 'center', marginTop: 8, marginBottom: 14, fontSize: 14, lineHeight: 20 },
-  primaryCta: { width: '100%', marginTop: 4 },
-  cancelBtn: { paddingVertical: 14, alignItems: 'center', marginTop: 8 },
-  cancelLabel: { color: theme.colors.muted, fontWeight: '700', fontSize: 15 },
+  primaryCta: { width: '100%', backgroundColor: theme.colors.accent, marginTop: 4 },
+  secondary: { width: '100%', marginTop: 10, borderColor: theme.colors.border },
 });
+

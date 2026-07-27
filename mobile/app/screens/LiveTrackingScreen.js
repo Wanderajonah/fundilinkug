@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FundiMap from '../components/FundiMap';
@@ -14,7 +13,6 @@ import theme from '../theme';
 const STEPS = ['Confirmed', 'Paid', 'On Way', 'Arrived', 'Done'];
 
 export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStarted }) {
-  const insets = useSafeAreaInsets();
   const fundiName = job.fundiName || 'Fundi';
   const firstName = fundiName.split(' ')[0];
   const { coords, region } = useLocation();
@@ -61,77 +59,71 @@ export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStar
 
   return (
     <ScreenWrapper style={styles.safe}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
-      >
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
-        </TouchableOpacity>
+      <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+        <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
+      </TouchableOpacity>
 
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Live Tracking</Text>
-          <View style={styles.etaBadge}>
-            <Text style={styles.etaText}>ETA {route.etaMinutes} mins</Text>
-          </View>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Live Tracking</Text>
+        <View style={styles.etaBadge}>
+          <Text style={styles.etaText}>ETA {route.etaMinutes} mins</Text>
         </View>
+      </View>
 
-        <FundiMap
-          style={styles.map}
-          region={region}
-          currentLocation={coords}
-          destination={fundiCoords}
-          fundis={
-            job.fundiId
-              ? [{ _id: job.fundiId, userId: { location: fundiCoords, name: fundiName } }]
-              : []
-          }
-        />
+      <FundiMap
+        style={styles.map}
+        region={region}
+        currentLocation={coords}
+        destination={fundiCoords}
+        fundis={
+          job.fundiId
+            ? [{ _id: job.fundiId, userId: { location: fundiCoords, name: fundiName } }]
+            : []
+        }
+      />
 
-        <Text style={styles.distance}>{route.distanceKm} km</Text>
-        <Text style={styles.status}>{statusMessage}</Text>
+      <Text style={styles.distance}>{route.distanceKm} km</Text>
+      <Text style={styles.status}>{statusMessage}</Text>
 
-        <View style={styles.stepper}>
-          {STEPS.map((s, i) => (
-            <View key={s} style={styles.stepItem}>
-              <View style={[styles.stepDot, i <= activeStep && styles.stepDotOn]} />
-              <Text style={[styles.stepLabel, i <= activeStep && styles.stepLabelOn]}>{s}</Text>
-            </View>
-          ))}
-        </View>
-
-        <View style={styles.fundiCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(fundiName)}</Text>
+      <View style={styles.stepper}>
+        {STEPS.map((s, i) => (
+          <View key={s} style={styles.stepItem}>
+            <View style={[styles.stepDot, i <= activeStep && styles.stepDotOn]} />
+            <Text style={[styles.stepLabel, i <= activeStep && styles.stepLabelOn]}>{s}</Text>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.name}>{fundiName}</Text>
-            <Text style={styles.meta}>{job.service || 'Service'} · Live location updating</Text>
-          </View>
-          <PrimaryButton style={styles.chatBtn} onPress={onChat}>
-            Chat
-          </PrimaryButton>
-        </View>
+        ))}
+      </View>
 
-        <PrimaryButton style={{ marginBottom: 12 }} onPress={onJobStarted}>
-          Fundi arrived - job started
+      <View style={styles.fundiCard}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{initials(fundiName)}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.name}>{fundiName}</Text>
+          <Text style={styles.meta}>{job.service || 'Service'} · Live location updating</Text>
+        </View>
+        <PrimaryButton style={styles.chatBtn} onPress={onChat}>
+          💬 Chat
         </PrimaryButton>
+      </View>
 
-        <TouchableOpacity style={styles.shareLink}>
-          <Text style={styles.shareText}>Share trip with a contact for safety</Text>
-        </TouchableOpacity>
+      <PrimaryButton style={{ marginBottom: 12 }} onPress={onJobStarted}>
+        Fundi arrived — job started →
+      </PrimaryButton>
 
-        <TouchableOpacity style={styles.sosBtn}>
-          <Text style={styles.sosText}>SOS Emergency</Text>
-        </TouchableOpacity>
-      </ScrollView>
+      <TouchableOpacity style={styles.shareLink}>
+        <Text style={styles.shareText}>🔗 Share trip with a contact for safety</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.sosBtn}>
+        <Text style={styles.sosText}>🚨 SOS Emergency SOS</Text>
+      </TouchableOpacity>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: theme.colors.black },
-  scrollContent: { paddingHorizontal: 20 },
+  safe: { flex: 1, backgroundColor: theme.colors.black, paddingHorizontal: 20 },
   backBtn: {
     width: 40,
     height: 40,

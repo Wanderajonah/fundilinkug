@@ -17,10 +17,10 @@ import PrimaryButton from '../components/PrimaryButton';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import { useTabBarHeight } from '../hooks/useTabBarHeight';
-import { getErrorMessage } from '../../services/bookingsApi';
+import { getJobsForUser, updateJobStatus, getErrorMessage } from '../../services/jobsApi';
 import { useBookingOptional } from '../../context/BookingContext';
+import { partitionJobs } from '../utils/jobs';
 import { formatUgx, formatBookingDate, ratingLabel, initials } from '../utils/ratings';
-import { BOOKING_STATUS_LABELS } from '../utils/bookings';
 
 function FundiBookingsView({ bookings, tab, setTab, tabBarHeight, onNavigate, loading, onRefresh, refreshing }) {
   const active = bookings.filter((b) =>
@@ -99,11 +99,6 @@ function FundiBookingsView({ bookings, tab, setTab, tabBarHeight, onNavigate, lo
               </View>
               {item.agreedPrice ? (
                 <Text style={styles.amount}>{formatUgx(item.agreedPrice)}</Text>
-              ) : null}
-              {item.agreedPrice ? (
-                <Text style={[styles.meta, { color: theme.colors.green, marginTop: 6 }]}>
-                  Payout: {formatUgx(Math.round(item.agreedPrice * 0.875))}
-                </Text>
               ) : null}
             </TouchableOpacity>
           )}
@@ -215,24 +210,6 @@ function FundiJobsView({ jobs, completed, cancelled, tab, setTab, tabBarHeight, 
   );
 }
 
-function mapBookingToCardItem(b) {
-  if (!b || !b.id) return null;
-  return {
-    id: b.id,
-    name: b.fundiName || 'Fundi',
-    service: b.service || b.category || 'Service',
-    address: b.address || '',
-    amount: b.total || b.agreedPrice || 0,
-    status: (b.status || 'PENDING').toLowerCase(),
-    statusLabel: b.statusLabel || BOOKING_STATUS_LABELS[b.status] || b.status || 'Pending',
-    time: b.createdAt
-      ? new Date(b.createdAt).toLocaleString('en-UG', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
-      : '',
-    raw: b,
-    fundiId: b.fundiId,
-  };
-}
-
 export default function BookingsScreen({
   userRole = 'customer',
   userId,
@@ -244,49 +221,56 @@ export default function BookingsScreen({
   const tabBarHeight = useTabBarHeight();
   const [activeTab, setActiveTab] = useState('active');
   const [fundiTab, setFundiTab] = useState('active');
+  const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
 
   const bookingCtx = useBookingOptional();
-  const allBookings = bookingCtx?.bookings || [];
 
-  const customerBookings = useMemo(
-    () => allBookings.map(mapBookingToCardItem).filter(Boolean),
-    [allBookings]
-  );
-
-  const active = customerBookings.filter((b) =>
-    !['COMPLETED', 'CANCELLED', 'DISPUTED'].includes(b.raw?.status)
-  );
-  const cancelled = customerBookings.filter((b) =>
-    ['CANCELLED', 'DISPUTED'].includes(b.raw?.status)
-  );
-
-  useEffect(() => {
-    setLoading(true);
-    bookingCtx?.refreshBookings?.().finally(() => {
+  const loadJobs = useCallback(async () => {
+    if (!userId) {
+      setJobs([]);
+      setLoading(false);
+      return;
+    }
+    try {
+      const { data } = await getJobsForUser(userId);
+      setJobs(Array.isArray(data) ? data : []);
+      setError('');
+    } catch (e) {
+      setJobs([]);
+      setError(getErrorMessage(e));
+    } finally {
       setLoading(false);
       setRefreshing(false);
-    });
-  }, [bookingCtx?.refreshBookings]);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    loadJobs();
+    bookingCtx?.refreshBookings?.();
+  }, [loadJobs, bookingCtx?.refreshBookings]);
+
+  const partitioned = useMemo(() => partitionJobs(jobs, userRole), [jobs, userRole]);
+  const fundiBookings = bookingCtx?.bookings || [];
 
   const customerTabs = useMemo(
     () => [
-      { key: 'active', label: `Active (${active.length})` },
+      { key: 'active', label: `Active (${partitioned.active.length})` },
       { key: 'completed', label: `Completed (${reviewHistory.length})` },
-      { key: 'cancelled', label: `Cancelled (${cancelled.length})` },
+      { key: 'cancelled', label: `Cancelled (${partitioned.cancelled.length})` },
     ],
-    [active.length, cancelled.length, reviewHistory.length]
+    [partitioned.active.length, partitioned.cancelled.length, reviewHistory.length]
   );
 
   if (userRole === 'fundi') {
     return (
-      <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
+      <ScreenWrapper style={styles.safe}>
         <View style={styles.container}>
           <Text style={styles.title}>My Jobs</Text>
           <FundiBookingsView
-            bookings={allBookings}
+            bookings={fundiBookings}
             tab={fundiTab}
             setTab={setFundiTab}
             tabBarHeight={tabBarHeight}
@@ -295,7 +279,8 @@ export default function BookingsScreen({
             refreshing={refreshing}
             onRefresh={() => {
               setRefreshing(true);
-              bookingCtx?.refreshBookings?.().finally(() => setRefreshing(false));
+              bookingCtx?.refreshBookings?.();
+              loadJobs().finally(() => setRefreshing(false));
             }}
           />
           {error || bookingCtx?.error ? (
@@ -315,11 +300,13 @@ export default function BookingsScreen({
     activeTab === 'completed'
       ? reviewHistory
       : activeTab === 'active'
-        ? active
-        : cancelled;
+        ? partitioned.active
+        : activeTab === 'cancelled'
+          ? partitioned.cancelled
+          : [];
 
   return (
-    <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
+    <ScreenWrapper style={styles.safe}>
       <View style={styles.container}>
         <Text style={styles.title}>My Bookings</Text>
 
@@ -356,10 +343,7 @@ export default function BookingsScreen({
                 refreshing={refreshing}
                 onRefresh={() => {
                   setRefreshing(true);
-                  bookingCtx?.refreshBookings?.().finally(() => {
-                    setRefreshing(false);
-                    setLoading(false);
-                  });
+                  loadJobs();
                 }}
                 tintColor={theme.colors.accent}
               />
@@ -408,30 +392,17 @@ export default function BookingsScreen({
                 );
               }
 
-              const bkStatus = item.raw?.status || 'PENDING';
               return (
-                <TouchableOpacity
-                  style={styles.card}
-                  onPress={() => {
-                    if (bkStatus === 'COMPLETED') {
-                      onStartRatingFlow?.();
-                    } else if (bkStatus === 'IN_PROGRESS') {
-                      onNavigate?.('jobInProgress');
-                    } else {
-                      onNavigate?.('bookingWaiting', { booking: item.raw });
-                    }
-                  }}
-                >
+                <View style={styles.card}>
                   <View style={styles.cardRow}>
                     <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{initials(item.name || 'FD')}</Text>
+                      <Text style={styles.avatarText}>{initials(item.name)}</Text>
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>
                       <Text style={styles.name}>{item.name}</Text>
                       <Text style={styles.service}>{item.service}</Text>
-                      {item.address ? <Text style={styles.meta}>{item.address}</Text> : null}
                     </View>
-                    <View style={[styles.statusPill, { backgroundColor: bkStatus === 'ACCEPTED' ? 'rgba(34,197,94,0.15)' : 'rgba(255,184,0,0.18)' }]}>
+                    <View style={[styles.statusPill, styles[`status_${item.status}`]]}>
                       <Text style={styles.statusText}>{item.statusLabel}</Text>
                     </View>
                   </View>
@@ -444,19 +415,17 @@ export default function BookingsScreen({
                   <View style={styles.actionsRow}>
                     <TouchableOpacity
                       style={styles.actionBtn}
-                      onPress={() => {
-                        if (bkStatus === 'IN_PROGRESS') {
-                          onStartRatingFlow?.();
-                        } else {
-                          onNavigate?.('chat', { targetUserId: item.fundiId });
-                        }
-                      }}
+                      onPress={() =>
+                        item.status === 'in_progress'
+                          ? onStartRatingFlow?.()
+                          : onNavigate?.('chat', { targetUserId: item.raw?.fundiId?._id || item.raw?.fundiId })
+                      }
                     >
                       <Text style={styles.actionText}>
-                        {bkStatus === 'IN_PROGRESS' ? 'Open job' : 'Message'}
+                        {item.status === 'in_progress' ? 'Open job' : 'Message'}
                       </Text>
                     </TouchableOpacity>
-                    {bkStatus === 'IN_PROGRESS' ? (
+                    {item.status === 'in_progress' ? (
                       <TouchableOpacity
                         style={styles.secondaryBtn}
                         onPress={() => onNavigate?.('jobInProgress')}
@@ -465,7 +434,7 @@ export default function BookingsScreen({
                       </TouchableOpacity>
                     ) : null}
                   </View>
-                </TouchableOpacity>
+                </View>
               );
             }}
           />

@@ -9,7 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Dimensions,
+  ImageBackground,
 } from "react-native";
 
 import * as ImagePicker from "expo-image-picker";
@@ -21,6 +21,7 @@ import {
   updateProfile,
   updateUserLocation,
   uploadProfilePicture,
+  uploadCoverPicture,
 } from "../../services/usersApi";
 import { resolveMediaUrl } from "../../utils/image";
 import { initials } from "../utils/ratings";
@@ -36,8 +37,11 @@ export default function EditProfileScreen({ onNavigate }) {
   const fundiProfile = profile?.fundiProfile || {};
 
   const [profilePhotoUri, setProfilePhotoUri] = useState("");
+  const [coverPhotoUri, setCoverPhotoUri] = useState("");
   const [photoChanged, setPhotoChanged] = useState(false);
+  const [coverChanged, setCoverChanged] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -80,6 +84,14 @@ export default function EditProfileScreen({ onNavigate }) {
             : data?.user?.avatarUrl ||
                 data?.user?.avatar ||
                 data?.user?.imageUrl ||
+                "",
+        );
+        setCoverPhotoUri(
+          data?.user?.coverPhoto
+            ? resolveMediaUrl(data.user.coverPhoto)
+            : data?.user?.coverUrl ||
+                data?.user?.coverImage ||
+                data?.user?.backgroundImage ||
                 "",
         );
 
@@ -147,6 +159,37 @@ export default function EditProfileScreen({ onNavigate }) {
     }
   };
 
+  const pickCoverPhoto = async () => {
+    try {
+      const { status } =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission required",
+          "Please allow access to your photos.",
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.85,
+      });
+
+      if (result.canceled) return;
+
+      const uri = result.assets?.[0]?.uri;
+      if (!uri) return;
+
+      setCoverPhotoUri(uri);
+      setCoverChanged(true);
+    } catch (e) {
+      Alert.alert("Photo error", "Could not pick a cover photo.");
+    }
+  };
+
   const handleSave = async () => {
     const err = validate();
     if (err) {
@@ -180,6 +223,28 @@ export default function EditProfileScreen({ onNavigate }) {
         }
       }
 
+      if (coverChanged && coverPhotoUri) {
+        const formData = new FormData();
+        formData.append("coverPicture", {
+          uri: coverPhotoUri,
+          type: "image/jpeg",
+          name: "cover.jpg",
+        });
+
+        setUploadingCover(true);
+        try {
+          const { data: uploadData } = await uploadCoverPicture(formData);
+          const uploadedPath =
+            uploadData?.coverPhotoUrl || uploadData?.user?.coverPhoto;
+          if (uploadedPath) {
+            setCoverPhotoUri(resolveMediaUrl(uploadedPath, Date.now()));
+          }
+          setCoverChanged(false);
+        } finally {
+          setUploadingCover(false);
+        }
+      }
+
       const payload = {
         // Backend `updateProfile` updates arbitrary user fields from req.body.
         // Use fields that exist on backend `User` model.
@@ -202,6 +267,9 @@ export default function EditProfileScreen({ onNavigate }) {
       setProfile(data);
       if (data?.user?.profilePhoto) {
         setProfilePhotoUri(resolveMediaUrl(data.user.profilePhoto, Date.now()));
+      }
+      if (data?.user?.coverPhoto) {
+        setCoverPhotoUri(resolveMediaUrl(data.user.coverPhoto, Date.now()));
       }
 
       Alert.alert(
@@ -261,6 +329,34 @@ export default function EditProfileScreen({ onNavigate }) {
           </View>
         ) : (
           <>
+            <View style={styles.coverWrap}>
+              <ImageBackground
+                source={coverPhotoUri ? { uri: coverPhotoUri } : undefined}
+                style={styles.coverImage}
+                imageStyle={styles.coverImageStyle}
+              >
+                {!coverPhotoUri ? (
+                  <View style={styles.coverFallback}>
+                    <Text style={styles.coverFallbackText}>
+                      Add background image
+                    </Text>
+                  </View>
+                ) : null}
+                {uploadingCover ? (
+                  <View style={styles.coverLoading}>
+                    <ActivityIndicator color={theme.colors.accent} />
+                  </View>
+                ) : null}
+              </ImageBackground>
+              <TouchableOpacity
+                style={styles.coverBtn}
+                onPress={pickCoverPhoto}
+                disabled={uploadingCover || saving}
+              >
+                <Text style={styles.coverBtnText}>＋ Cover</Text>
+              </TouchableOpacity>
+            </View>
+
             <View style={styles.avatarWrap}>
               <View style={styles.avatar}>
                 {profilePhotoUri ? (
@@ -348,6 +444,39 @@ export default function EditProfileScreen({ onNavigate }) {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.bgDark },
   container: { paddingHorizontal: 16, paddingBottom: 80 },
+  coverWrap: { marginBottom: 18 },
+  coverImage: {
+    height: 140,
+    borderRadius: 22,
+    overflow: "hidden",
+    backgroundColor: theme.colors.black,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    justifyContent: "flex-end",
+  },
+  coverImageStyle: { resizeMode: "cover" },
+  coverFallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,184,0,0.12)",
+  },
+  coverFallbackText: { color: theme.colors.accent, fontWeight: "800" },
+  coverLoading: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coverBtn: {
+    alignSelf: "flex-end",
+    marginTop: 8,
+    backgroundColor: theme.colors.accent,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  coverBtnText: { color: "#0B0B0B", fontWeight: "900" },
 
   headerRow: {
     flexDirection: "row",

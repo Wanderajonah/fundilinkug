@@ -5,10 +5,9 @@ import theme from '../theme';
 
 /**
  * @param {import('react-native-safe-area-context').Edge[]} [edges]
- *   Default: all edges so fixed footers and final buttons stay above phone
- *   navigation bars. Screens with custom bottom chrome can override edges.
+ *   Default: top + sides. Omit bottom so tab bars can apply their own inset.
  */
-export default function ScreenWrapper({ children, style, edges = ['top', 'left', 'right', 'bottom'] }) {
+export default function ScreenWrapper({ children, style, edges = ['top', 'left', 'right'] }) {
   return (
     <SafeAreaView style={[styles.safe, style]} edges={edges}>
       {children}

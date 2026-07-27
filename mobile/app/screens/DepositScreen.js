@@ -1,44 +1,28 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
 import PrimaryButton from '../components/PrimaryButton';
 import { deposit } from '../../services/walletApi';
 
+const PRESETS = [10000, 20000, 50000, 100000, 200000, 500000];
+
 export default function DepositScreen({ onNavigate }) {
-  const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState('');
   const [phone, setPhone] = useState('');
   const [method, setMethod] = useState('mtn');
-  const [focusedField, setFocusedField] = useState('');
   const [loading, setLoading] = useState(false);
 
   const numericAmount = Number(amount.replace(/,/g, '')) || 0;
-  const phoneDigits = phone.replace(/\D/g, '');
-  const canSubmit = numericAmount > 0 && phoneDigits.length >= 9;
 
-  const handleAmountChange = (value) => {
-    const digits = value.replace(/\D/g, '');
-    setAmount(digits ? Number(digits).toLocaleString() : '');
-  };
-
-  const handlePhoneChange = (value) => {
-    const digits = value
-      .replace(/\D/g, '')
-      .replace(/^256/, '')
-      .replace(/^0/, '')
-      .slice(0, 9);
-    setPhone(digits);
-  };
+  const handlePreset = (val) => setAmount(val.toLocaleString());
 
   const handleDeposit = async () => {
     if (numericAmount <= 0) return Alert.alert('Error', 'Enter an amount');
-    if (phoneDigits.length < 9) return Alert.alert('Error', 'Enter a valid mobile money number');
     setLoading(true);
     try {
-      const { data } = await deposit(numericAmount, method === 'mtn' ? 'mtn_momo' : 'airtel_money', `256${phoneDigits}`);
+      const { data } = await deposit(numericAmount, method === 'mtn' ? 'mtn_momo' : 'airtel_money', phone);
       Alert.alert('Success', `UGX ${numericAmount.toLocaleString()} deposited successfully!`, [
         { text: 'OK', onPress: () => onNavigate?.('wallet') },
       ]);
@@ -51,7 +35,7 @@ export default function DepositScreen({ onNavigate }) {
 
   return (
     <ScreenWrapper style={styles.safe}>
-      <ScrollView contentContainerStyle={[styles.scroll, { paddingBottom: insets.bottom + 40 }]} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <TouchableOpacity style={styles.backBtn} onPress={() => onNavigate?.('wallet')}>
             <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
@@ -88,54 +72,41 @@ export default function DepositScreen({ onNavigate }) {
         </TouchableOpacity>
 
         <Text style={styles.section}>AMOUNT</Text>
-        <View style={[styles.field, focusedField === 'amount' && styles.fieldFocused]}>
-          <View style={styles.fieldIcon}>
-            <Ionicons name="cash-outline" size={18} color={theme.colors.accent} />
-          </View>
-          <View style={styles.fieldBody}>
-            <Text style={styles.fieldLabel}>Amount to deposit</Text>
-            <View style={styles.amountRow}>
-              <Text style={styles.currency}>UGX</Text>
-              <TextInput
-                style={styles.amountTextInput}
-                value={amount}
-                onChangeText={handleAmountChange}
-                onFocus={() => setFocusedField('amount')}
-                onBlur={() => setFocusedField('')}
-                keyboardType="number-pad"
-                placeholder="0"
-                placeholderTextColor={theme.colors.mutedDark}
-              />
-            </View>
-          </View>
+        <View style={styles.amountInput}>
+          <Text style={styles.currency}>UGX</Text>
+          <TextInput
+            style={styles.input}
+            value={amount}
+            onChangeText={setAmount}
+            keyboardType="number-pad"
+            placeholder="0"
+            placeholderTextColor={theme.colors.mutedDark}
+          />
+        </View>
+
+        <View style={styles.presets}>
+          {PRESETS.map((p) => (
+            <TouchableOpacity key={p} style={[styles.presetBtn, numericAmount === p && styles.presetOn]} onPress={() => handlePreset(p)}>
+              <Text style={[styles.presetText, numericAmount === p && styles.presetTextOn]}>UGX {p.toLocaleString()}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
 
         <Text style={styles.section}>MOMO NUMBER</Text>
-        <View style={[styles.field, focusedField === 'phone' && styles.fieldFocused]}>
-          <View style={styles.fieldIcon}>
-            <Ionicons name="phone-portrait-outline" size={18} color={theme.colors.accent} />
-          </View>
-          <View style={styles.fieldBody}>
-            <Text style={styles.fieldLabel}>{method === 'mtn' ? 'MTN' : 'Airtel'} mobile money number</Text>
-            <View style={styles.phoneRow}>
-              <Text style={styles.phonePrefix}>+256</Text>
-              <TextInput
-                style={styles.phoneTextInput}
-                value={phone}
-                onChangeText={handlePhoneChange}
-                onFocus={() => setFocusedField('phone')}
-                onBlur={() => setFocusedField('')}
-                keyboardType="phone-pad"
-                placeholder="7XX XXX XXX"
-                placeholderTextColor={theme.colors.mutedDark}
-                maxLength={9}
-              />
-            </View>
-          </View>
+        <View style={styles.phoneInput}>
+          <Text style={styles.phonePrefix}>+256</Text>
+          <TextInput
+            style={[styles.input, { flex: 1 }]}
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            placeholder="7XX XXX XXX"
+            placeholderTextColor={theme.colors.mutedDark}
+          />
         </View>
-        <Text style={styles.hint}>You will receive a STK push prompt to approve payment on your phone.</Text>
+        <Text style={styles.hint}>You'll receive a STK push prompt to approve payment on your phone.</Text>
 
-        <PrimaryButton onPress={handleDeposit} disabled={loading || !canSubmit}>
+        <PrimaryButton onPress={handleDeposit} disabled={loading || numericAmount <= 0}>
           {loading ? 'Processing...' : `Deposit UGX ${numericAmount.toLocaleString()}`}
         </PrimaryButton>
         {loading ? <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 12 }} /> : null}
@@ -150,7 +121,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.input, justifyContent: 'center', alignItems: 'center' },
   title: { color: theme.colors.white, fontSize: 18, fontWeight: '800' },
-  section: { color: theme.colors.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 10, marginTop: 8 },
+  section: { color: theme.colors.muted, fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 10, marginTop: 4 },
   methodCard: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     backgroundColor: theme.colors.input, borderRadius: theme.radius.md, padding: 14, marginBottom: 10,
@@ -163,46 +134,15 @@ const styles = StyleSheet.create({
   methodName: { color: theme.colors.white, fontWeight: '700' },
   radio: { width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: theme.colors.mutedDark },
   radioOn: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accent },
-  field: {
-    minHeight: 72,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.input,
-    borderRadius: theme.radius.lg,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  fieldFocused: {
-    borderColor: theme.colors.accent,
-    backgroundColor: theme.colors.surface,
-  },
-  fieldIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,184,0,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  fieldBody: { flex: 1 },
-  fieldLabel: { color: theme.colors.mutedDark, fontSize: 12, fontWeight: '700', marginBottom: 6 },
-  amountRow: { flexDirection: 'row', alignItems: 'center' },
-  currency: { color: theme.colors.accent, fontWeight: '900', fontSize: 15, marginRight: 8 },
-  amountTextInput: { color: theme.colors.white, fontSize: 24, fontWeight: '900', flex: 1, paddingVertical: 0 },
-  phoneRow: { flexDirection: 'row', alignItems: 'center' },
-  phonePrefix: {
-    color: theme.colors.white,
-    fontWeight: '900',
-    fontSize: 16,
-    marginRight: 8,
-    paddingRight: 10,
-    borderRightWidth: 1,
-    borderRightColor: theme.colors.borderLight,
-  },
-  phoneTextInput: { color: theme.colors.white, fontSize: 18, fontWeight: '800', flex: 1, paddingVertical: 0 },
-  hint: { color: theme.colors.mutedDark, fontSize: 12, lineHeight: 18, marginBottom: 24, marginTop: -6 },
+  amountInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.input, borderRadius: theme.radius.md, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: theme.colors.border },
+  currency: { color: theme.colors.accent, fontWeight: '900', fontSize: 18, marginRight: 10 },
+  input: { color: theme.colors.white, fontSize: 18, fontWeight: '800', flex: 1 },
+  presets: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 20 },
+  presetBtn: { backgroundColor: theme.colors.input, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, borderWidth: 1, borderColor: theme.colors.border },
+  presetOn: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accentDim },
+  presetText: { color: theme.colors.muted, fontWeight: '700', fontSize: 12 },
+  presetTextOn: { color: theme.colors.accent },
+  phoneInput: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.input, borderRadius: theme.radius.md, padding: 14, marginBottom: 8, borderWidth: 1, borderColor: theme.colors.border },
+  phonePrefix: { color: theme.colors.mutedDark, fontWeight: '700', fontSize: 16, marginRight: 8 },
+  hint: { color: theme.colors.mutedDark, fontSize: 12, marginBottom: 24, marginTop: -4 },
 });

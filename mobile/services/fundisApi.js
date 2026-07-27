@@ -21,7 +21,6 @@ export function mapFundiItem(item) {
       `UGX ${Math.round((item.quoteAmount || 8000) / 1000)}K/hr`,
     skills,
     verified: item.verified,
-    verificationStatus: item.verificationStatus || (item.verified ? "verified" : "unverified"),
     distanceKm: item.distanceKm,
     score: item.score,
     profilePhoto: user.profilePhoto || "",

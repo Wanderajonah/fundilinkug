@@ -28,7 +28,6 @@ export default function OtpScreen({
   phoneRaw = '',
   purpose = 'register',
   expiresIn = 600,
-  devCode = '',
   onBack,
   onVerify,
   onResent,
@@ -37,7 +36,6 @@ export default function OtpScreen({
   const [seconds, setSeconds] = useState(expiresIn);
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
-  const [localDevCode, setLocalDevCode] = useState(devCode);
   const inputRefs = useRef([]);
   const hiddenRef = useRef(null);
 
@@ -52,10 +50,6 @@ export default function OtpScreen({
     setDigits(emptyDigits());
     setSeconds(expiresIn);
   }, [expiresIn, phoneRaw]);
-
-  useEffect(() => {
-    setLocalDevCode(devCode);
-  }, [devCode]);
 
   const applyCode = useCallback(
     (raw) => {
@@ -146,7 +140,9 @@ export default function OtpScreen({
       setResending(true);
       const { data } = await sendOtp(phoneRaw || phone, purpose);
       setSeconds(data.expiresIn || 600);
-      if (data.devCode) setLocalDevCode(data.devCode);
+      if (data.devCode) {
+        Alert.alert('Dev mode', `Your code is: ${data.devCode}`);
+      }
       setDigits(emptyDigits());
       onResent?.(data);
     } catch (error) {
@@ -174,13 +170,6 @@ export default function OtpScreen({
       <Text style={styles.sub}>
         Enter the 4-digit code sent to <Text style={styles.phone}>{phone}</Text>
       </Text>
-
-      {localDevCode ? (
-        <View style={styles.devCodeWrap}>
-          <Text style={styles.devCodeLabel}>Dev code</Text>
-          <Text style={styles.devCode}>{localDevCode}</Text>
-        </View>
-      ) : null}
 
       {/* Hidden field for SMS autofill — does not render visible boxes */}
       <TextInput
@@ -276,19 +265,6 @@ const styles = StyleSheet.create({
   },
   sub: { color: theme.colors.muted, textAlign: 'center', marginTop: 10, lineHeight: 20 },
   phone: { color: theme.colors.accent, fontWeight: '700' },
-  devCodeWrap: {
-    alignSelf: 'center',
-    marginTop: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,184,0,0.1)',
-    borderWidth: 1,
-    borderColor: theme.colors.accent,
-    alignItems: 'center',
-  },
-  devCodeLabel: { color: theme.colors.accent, fontSize: 11, fontWeight: '700', textTransform: 'uppercase' },
-  devCode: { color: theme.colors.white, fontSize: 28, fontWeight: '800', letterSpacing: 4 },
   hiddenInput: {
     position: 'absolute',
     opacity: 0,
