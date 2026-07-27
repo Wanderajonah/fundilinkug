@@ -35,7 +35,7 @@ const Sidebar = () => {
 
   const fetchUnread = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/admin/notifications?limit=1');
+      const res = await fetch('https://fundilinkug.onrender.com/api/admin/notifications?limit=1');
       const data = await res.json();
       setUnread(data.unread || 0);
     } catch {

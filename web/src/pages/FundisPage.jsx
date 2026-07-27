@@ -6,7 +6,7 @@ import Modal from '../components/Modal';
 import { deleteFundi, getFundis, rejectFundi, verifyFundi } from '../services/api';
 import { formatDate, getInitials, readList, toastMessage } from '../utils/format';
 
-const API_BASE = 'http://localhost:5000';
+const API_BASE = 'https://fundilinkug.onrender.com';
 
 const FundisPage = () => {
   const [fundis, setFundis] = useState([]);
