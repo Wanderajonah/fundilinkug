@@ -21,6 +21,16 @@ const walletRoutes = require("./routes/walletRoutes");
 const adminRoutes = require("./routes/adminRoutes");
 
 const app = express();
+
+const fs = require("fs");
+const uploadDirs = ["profiles", "chat", "bookings", "portfolio", "verification"];
+const uploadRoot = path.join(__dirname, "../uploads");
+uploadDirs.forEach((dir) => {
+  const full = path.join(uploadRoot, dir);
+  if (!fs.existsSync(full)) fs.mkdirSync(full, { recursive: true });
+});
+console.log("Upload directories ensured");
+
 connectDB().then(() => {
   const bcrypt = require("bcryptjs");
   const User = require("./models/User");
