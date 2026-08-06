@@ -8,11 +8,10 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import ScrollScreen from '../components/ScrollScreen';
+import AuthHeader from '../components/AuthHeader';
 import AuthButton from '../components/AuthButton';
 import PhoneInput from '../components/PhoneInput';
-import AppLogo from '../components/AppLogo';
 import theme from '../theme';
 import { getErrorMessage, handleGoogleSignInResponse } from '../../services/authApi';
 import { useGoogleSignIn, fetchGoogleUser } from '../../services/googleSignIn';
@@ -87,38 +86,34 @@ export default function SignInScreen({
     <ScrollScreen keyboard contentStyle={styles.scroll} bottomPad={32}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.black} />
 
-      <View style={styles.topRow}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Ionicons name="arrow-back" size={20} color={theme.colors.white} />
-        </TouchableOpacity>
-        <View style={styles.spacer} />
-      </View>
-
-      <View style={styles.header}>
-        <AppLogo size={64} />
-        <Text style={styles.title}>Welcome back</Text>
-        <Text style={styles.subtitle}>
-          Sign in to continue as a {isFundi ? 'Fundi' : 'Client'}
-        </Text>
-      </View>
-
-      <PhoneInput
-        value={phone}
-        onChangeText={setPhone}
-        focused={phoneFocused}
-        onFocus={() => setPhoneFocused(true)}
-        onBlur={() => setPhoneFocused(false)}
+      <AuthHeader
+        onBack={onBack}
+        subtitle={
+          isFundi
+            ? 'Sign in to your fundi dashboard'
+            : 'Sign in to find and book trusted fundis'
+        }
       />
 
-      {otpSending ? (
-        <ActivityIndicator color={theme.colors.accent} style={{ marginVertical: 20 }} />
-      ) : (
-        <AuthButton
-          variant="phone"
-          label="Continue with Phone"
-          onPress={handlePhoneContinue}
+      <View style={styles.form}>
+        <PhoneInput
+          value={phone}
+          onChangeText={setPhone}
+          focused={phoneFocused}
+          onFocus={() => setPhoneFocused(true)}
+          onBlur={() => setPhoneFocused(false)}
         />
-      )}
+
+        {otpSending ? (
+          <ActivityIndicator color={theme.colors.accent} style={{ marginVertical: 20 }} />
+        ) : (
+          <AuthButton
+            variant="phone"
+            label="Continue with Phone"
+            onPress={handlePhoneContinue}
+          />
+        )}
+      </View>
 
       <View style={styles.dividerRow}>
         <View style={styles.dividerLine} />
@@ -146,48 +141,13 @@ export default function SignInScreen({
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 24 },
 
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: theme.colors.input,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  spacer: { flex: 1 },
+  form: { marginTop: 24 },
 
-  header: {
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-
-  title: {
-    color: theme.colors.white,
-    fontSize: 24,
-    fontWeight: '800',
-    marginTop: 20,
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    color: theme.colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
-    marginTop: 8,
-    textAlign: 'center',
-  },
-
-  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 24 },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 18 },
   dividerLine: { flex: 1, height: 1, backgroundColor: theme.colors.border },
   dividerText: { color: theme.colors.mutedDark, fontSize: 12, fontWeight: '600', marginHorizontal: 12 },
 
-  createRow: { marginTop: 24, alignItems: 'center' },
+  createRow: { marginTop: 20, alignItems: 'center' },
   createText: { color: theme.colors.muted, fontSize: 14 },
   createLink: { color: theme.colors.accent, fontWeight: '700' },
 });

@@ -31,6 +31,7 @@ import ChatScreen from "./app/screens/ChatScreen";
 import NotificationsScreen from "./app/screens/NotificationsScreen";
 import ProfileScreen from "./app/screens/ProfileScreen";
 import EditProfileScreen from "./app/screens/EditProfileScreen";
+import VerificationScreen from "./app/screens/VerificationScreen";
 import SettingsScreen from "./app/screens/SettingsScreen";
 import PaymentMethodsScreen from "./app/screens/PaymentMethodsScreen";
 import HelpSupportScreen from "./app/screens/HelpSupportScreen";
@@ -225,6 +226,7 @@ function AppContent() {
     if (key === "transfer") return setScreen("transfer");
     if (key === "transactionHistory") return setScreen("transactionHistory");
     if (key === "help") return setScreen("help");
+    if (key === "verification") return setScreen("verification");
     if (key === "createAccount") return setScreen("createAccount");
     if (key === "signIn") {
       if (!selectedRole) {
@@ -322,6 +324,7 @@ function AppContent() {
             goHome();
             return;
           }
+          if (key === "chat") setChatTargetUserId(null);
           historyRef.current = [];
           setScreen(key);
         }}
@@ -625,6 +628,7 @@ function AppContent() {
     return (
       <PhoneRegisterScreen
         submitting={signupSubmitting}
+        onBack={() => setScreen("createAccountChoice")}
         onSend={async (phone) => {
           try {
             setSignupSubmitting(true);
@@ -845,10 +849,11 @@ function AppContent() {
   }
 
   if (screen === "chat") {
-    return (
+    return tabLayout(
       <ChatProvider userId={userId} authToken={authToken}>
-        <ChatScreen onNavigate={handleNavigate} userRole={userRole} userId={userId} targetUserId={chatTargetUserId} />
-      </ChatProvider>
+        <ChatScreen onNavigate={handleNavigate} userRole={userRole} userId={userId} targetUserId={chatTargetUserId} inTab />
+      </ChatProvider>,
+      "chat",
     );
   }
 
@@ -874,6 +879,10 @@ function AppContent() {
 
   if (screen === "help") {
     return <HelpSupportScreen onNavigate={handleNavigate} />;
+  }
+
+  if (screen === "verification") {
+    return <VerificationScreen onNavigate={handleNavigate} />;
   }
 
   if (screen === "wallet") {
@@ -1050,14 +1059,6 @@ function AppContent() {
           );
           setReviewSuccessMessage("");
           pushAndNavigate("rateExperience");
-        }}
-        onRestartFlow={() => {
-          setReviewSuccessMessage("");
-          setEditingReview(null);
-          const job = defaultActiveJob(pendingBooking, selectedArtisan);
-          setActiveJob(job);
-          historyRef.current = [];
-          setScreen("confirm");
         }}
       />
     );

@@ -30,6 +30,7 @@ const seed = async () => {
       password,
       role: "fundi",
       phoneVerified: true,
+      profilePhoto: "https://randomuser.me/api/portraits/men/32.jpg",
       location: { lat: -1.292066, lng: 36.821945 }
     },
     {
@@ -39,6 +40,7 @@ const seed = async () => {
       password,
       role: "fundi",
       phoneVerified: true,
+      profilePhoto: "https://randomuser.me/api/portraits/women/44.jpg",
       location: { lat: -1.2801, lng: 36.8155 }
     },
     {
@@ -48,6 +50,7 @@ const seed = async () => {
       password,
       role: "fundi",
       phoneVerified: true,
+      profilePhoto: "https://randomuser.me/api/portraits/men/45.jpg",
       location: { lat: -1.3004, lng: 36.8071 }
     }
   ]);

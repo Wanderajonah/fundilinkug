@@ -65,7 +65,9 @@ export function buildBookingFromRequest(request = {}, artisan = {}) {
   };
 }
 
-export function defaultActiveJob(booking = {}, artisan = {}) {
+export function defaultActiveJob(booking, artisan) {
+  booking = booking || {};
+  artisan = artisan || booking.artisan || {};
   const name = artisan.name || booking.artisanName || 'Fundi';
   return {
     id: booking.jobId || booking.id,

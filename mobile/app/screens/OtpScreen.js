@@ -9,8 +9,8 @@ import {
   ActivityIndicator,
   TextInput,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import ScrollScreen from '../components/ScrollScreen';
+import AuthHeader from '../components/AuthHeader';
 import PrimaryButton from '../components/PrimaryButton';
 import theme from '../theme';
 import { sendOtp } from '../../services/authApi';
@@ -158,18 +158,16 @@ export default function OtpScreen({
   return (
     <ScrollScreen contentStyle={styles.container} bottomPad={32}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.black} />
-      <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-        <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
-      </TouchableOpacity>
 
-      <View style={styles.phoneArt}>
-        <Ionicons name="phone-portrait-outline" size={48} color={theme.colors.accent} />
-      </View>
-
-      <Text style={styles.title}>Verify your number</Text>
-      <Text style={styles.sub}>
-        Enter the 4-digit code sent to <Text style={styles.phone}>{phone}</Text>
-      </Text>
+      <AuthHeader
+        onBack={onBack}
+        title="Verify your number"
+        subtitle={
+          <>
+            Enter the 4-digit code sent to <Text style={styles.phone}>{phone}</Text>
+          </>
+        }
+      />
 
       {/* Hidden field for SMS autofill — does not render visible boxes */}
       <TextInput
@@ -237,35 +235,6 @@ export default function OtpScreen({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: theme.colors.black, paddingHorizontal: 24 },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: theme.colors.input,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  phoneArt: {
-    alignSelf: 'center',
-    marginTop: 32,
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,184,0,0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    color: theme.colors.white,
-    fontSize: 24,
-    fontWeight: '800',
-    textAlign: 'center',
-    marginTop: 24,
-  },
-  sub: { color: theme.colors.muted, textAlign: 'center', marginTop: 10, lineHeight: 20 },
   phone: { color: theme.colors.accent, fontWeight: '700' },
   hiddenInput: {
     position: 'absolute',

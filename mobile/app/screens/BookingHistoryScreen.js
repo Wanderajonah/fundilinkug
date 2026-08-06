@@ -13,7 +13,6 @@ export default function BookingHistoryScreen({
   successMessage = '',
   onBack,
   onEditReview,
-  onRestartFlow,
 }) {
   const insets = useSafeAreaInsets();
 
@@ -84,11 +83,6 @@ export default function BookingHistoryScreen({
         ))
         )}
       </ScrollView>
-
-      <TouchableOpacity style={styles.restartBtn} onPress={onRestartFlow}>
-        <Ionicons name="refresh" size={18} color={theme.colors.accent} />
-        <Text style={styles.restartText}>Restart flow from the beginning</Text>
-      </TouchableOpacity>
     </ScreenWrapper>
   );
 }
@@ -160,20 +154,4 @@ const styles = StyleSheet.create({
   comment: { color: theme.colors.muted, fontSize: 14, marginTop: 8, lineHeight: 20, fontStyle: 'italic' },
   editLink: { color: theme.colors.accent, fontWeight: '700', marginTop: 10, fontSize: 14 },
   noReview: { color: theme.colors.mutedDark, marginTop: 12, fontSize: 13 },
-  restartBtn: {
-    position: 'absolute',
-    bottom: 24,
-    left: 16,
-    right: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    borderRadius: theme.buttons.radius.md,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.glass,
-  },
-  restartText: { color: theme.colors.white, fontWeight: '700', fontSize: 13 },
 });

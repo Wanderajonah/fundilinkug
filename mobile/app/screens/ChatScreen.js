@@ -139,7 +139,7 @@ function TypingDots() {
   );
 }
 
-function ConversationView({ conversationId, userId, onBack }) {
+function ConversationView({ conversationId, userId, onBack, inTab }) {
   const insets = useSafeAreaInsets();
   const { messages, loading, sendTextMessage, sendImageMessage, typingUsers } = useChatOptional();
   const [input, setInput] = useState('');
@@ -249,7 +249,7 @@ function ConversationView({ conversationId, userId, onBack }) {
           style={[
             styles.inputRow,
             {
-              paddingBottom: Math.max(insets.bottom, 4),
+              paddingBottom: inTab ? 8 : Math.max(insets.bottom, 4),
               marginBottom: Platform.OS === 'android' ? kbHeight : 0,
             },
           ]}
@@ -283,7 +283,7 @@ function ConversationView({ conversationId, userId, onBack }) {
   );
 }
 
-function SupportChat({ userId }) {
+function SupportChat({ userId, inTab }) {
   const insets = useSafeAreaInsets();
   const { sendSupportQuery } = useChatOptional();
   const [messages, setMessages] = useState([
@@ -353,7 +353,7 @@ function SupportChat({ userId }) {
           style={[
             styles.inputRow,
             {
-              paddingBottom: Math.max(insets.bottom, 4),
+              paddingBottom: inTab ? 8 : Math.max(insets.bottom, 4),
               marginBottom: Platform.OS === 'android' ? kbHeight : 0,
             },
           ]}
@@ -376,7 +376,7 @@ function SupportChat({ userId }) {
   );
 }
 
-export default function ChatScreen({ onNavigate, userRole, userId, targetUserId }) {
+export default function ChatScreen({ onNavigate, userRole, userId, targetUserId, inTab }) {
   const chatCtx = useChatOptional();
   const [tab, setTab] = useState('messages');
   const [view, setView] = useState('list');
@@ -427,6 +427,7 @@ export default function ChatScreen({ onNavigate, userRole, userId, targetUserId 
         <ConversationView
           conversationId={activeConvId}
           userId={userId}
+          inTab={inTab}
           onBack={() => setView('list')}
         />
       </ScreenWrapper>
@@ -477,7 +478,7 @@ export default function ChatScreen({ onNavigate, userRole, userId, targetUserId 
             <Ionicons name="headset" size={20} color={theme.colors.accent} />
             <Text style={styles.supportHeaderText}>FundiLink Support</Text>
           </View>
-          <SupportChat userId={userId} />
+          <SupportChat userId={userId} inTab={inTab} />
         </View>
       )}
     </ScreenWrapper>

@@ -1,6 +1,8 @@
-import React from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
+import CountrySelectSheet, { DEFAULT_COUNTRY } from './CountrySelectSheet';
 
 export default function PhoneInput({
   label = 'Phone number',
@@ -10,15 +12,35 @@ export default function PhoneInput({
   focused,
   onFocus,
   onBlur,
+  country = DEFAULT_COUNTRY,
+  onCountryChange,
 }) {
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState(country);
+
+  useEffect(() => {
+    setSelectedCountry(country);
+  }, [country]);
+
+  const handleSelect = (next) => {
+    setSheetOpen(false);
+    setSelectedCountry(next);
+    onCountryChange?.(next);
+  };
+
   return (
     <View style={styles.wrap}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
       <View style={[styles.row, focused && styles.rowFocused]}>
-        <View style={styles.codeWrap}>
-          <Text style={styles.code}>UG</Text>
-          <Text style={styles.codeNum}>+256</Text>
-        </View>
+        <TouchableOpacity
+          style={styles.codeWrap}
+          activeOpacity={0.7}
+          onPress={() => setSheetOpen(true)}
+        >
+          <Text style={styles.flag}>{selectedCountry.flag}</Text>
+          <Text style={styles.codeNum}>{selectedCountry.dial}</Text>
+          <Ionicons name="chevron-down" size={14} color={theme.colors.muted} />
+        </TouchableOpacity>
         <View style={styles.divider} />
         <TextInput
           style={styles.input}
@@ -31,6 +53,12 @@ export default function PhoneInput({
           onBlur={onBlur}
         />
       </View>
+      <CountrySelectSheet
+        visible={sheetOpen}
+        selected={selectedCountry}
+        onSelect={handleSelect}
+        onClose={() => setSheetOpen(false)}
+      />
     </View>
   );
 }
@@ -53,17 +81,16 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: theme.colors.border,
   },
-  rowFocused: { borderColor: theme.colors.accent },
+  rowFocused: { borderColor: theme.colors.accent, borderWidth: 0.5 },
   codeWrap: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingVertical: 8,
+    paddingRight: 4,
   },
-  code: {
-    color: theme.colors.muted,
-    fontWeight: '700',
-    fontSize: 12,
-    letterSpacing: 0.5,
+  flag: {
+    fontSize: 17,
   },
   codeNum: {
     color: theme.colors.white,

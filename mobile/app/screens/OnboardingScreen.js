@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
-import AppLogo from '../components/AppLogo';
+import BrandLockup from '../components/BrandLockup';
 import RoleCard from '../components/RoleCard';
 import theme from '../theme';
 
@@ -49,10 +49,7 @@ export default function OnboardingScreen({ onSelectRole, onSignIn, onSkip }) {
         />
         <View style={styles.heroOverlay} />
         <View style={[styles.heroContent, { paddingTop: insets.top + 16 }]}>
-          <View style={styles.logoRing}>
-            <AppLogo size={56} />
-          </View>
-          <Text style={styles.brand}>FundiLink</Text>
+          <BrandLockup size={150} />
           <Text style={styles.tagline}>Trusted Fundis. On Demand.</Text>
         </View>
       </View>
@@ -64,7 +61,7 @@ export default function OnboardingScreen({ onSelectRole, onSignIn, onSkip }) {
         ]}
       >
         <Text style={styles.bodyTitle}>Welcome</Text>
-        <Text style={styles.bodySub}>Choose your experience</Text>
+        <Text style={styles.bodySub}>How would you like to use FundiLink?</Text>
         <View style={styles.cardsRow}>
           <RoleCard
             icon="search-outline"
@@ -106,28 +103,11 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
     paddingHorizontal: 24,
   },
-  logoRing: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  brand: {
-    color: theme.colors.white,
-    fontSize: 34,
-    fontWeight: '800',
-    marginTop: 12,
-    letterSpacing: -0.5,
-  },
   tagline: {
     color: theme.colors.white,
     fontSize: 17,
     fontWeight: '600',
-    marginTop: 6,
+    marginTop: 14,
     textAlign: 'center',
     opacity: 0.9,
   },

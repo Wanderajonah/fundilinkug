@@ -1,9 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
+import LoadingSkeleton from '../components/LoadingSkeleton';
+import EmptyState from '../components/EmptyState';
+import PrimaryButton from '../components/PrimaryButton';
 import { getWallet, getTransactions } from '../../services/walletApi';
 
 export default function WalletHomeScreen({ onNavigate }) {
@@ -12,6 +16,7 @@ export default function WalletHomeScreen({ onNavigate }) {
   const [recentTx, setRecentTx] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [hidden, setHidden] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -37,6 +42,8 @@ export default function WalletHomeScreen({ onNavigate }) {
 
   const formatCurrency = (val) =>
     `${wallet?.currency || 'UGX'} ${(val || 0).toLocaleString()}`;
+
+  const maskAmount = (val) => (hidden ? '••••••' : formatCurrency(val));
 
   const formatDate = (dateStr) => {
     const d = new Date(dateStr);
@@ -83,19 +90,50 @@ export default function WalletHomeScreen({ onNavigate }) {
         </View>
 
         {loading ? (
-          <View style={styles.loadingWrap}>
-            <ActivityIndicator color={theme.colors.accent} size="large" />
+          <View style={{ marginHorizontal: -16 }}>
+            <LoadingSkeleton count={2} />
           </View>
         ) : (
           <>
-            <View style={styles.balanceCard}>
-              <Text style={styles.balanceLabel}>Available Balance</Text>
-              <Text style={styles.balanceAmount}>{formatCurrency(wallet?.balance)}</Text>
-              <View style={styles.statusRow}>
-                <View style={[styles.statusDot, { backgroundColor: wallet?.status === 'active' ? theme.colors.green : theme.colors.red }]} />
-                <Text style={styles.statusText}>{wallet?.status === 'active' ? 'Active' : 'Frozen'}</Text>
+            <LinearGradient
+              colors={['#3A2A0F', '#1A1A1A']}
+              style={styles.balanceCard}
+            >
+              <View style={styles.balanceTop}>
+                <View style={styles.walletIconWrap}>
+                  <Ionicons name="wallet" size={18} color={theme.colors.accent} />
+                </View>
+                <TouchableOpacity
+                  style={styles.eyeBtn}
+                  onPress={() => setHidden((h) => !h)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name={hidden ? 'eye-off-outline' : 'eye-outline'}
+                    size={18}
+                    color={theme.colors.accent}
+                  />
+                </TouchableOpacity>
               </View>
-            </View>
+              <Text style={styles.balanceLabel}>Available Balance</Text>
+              <Text style={styles.balanceAmount}>{maskAmount(wallet?.balance)}</Text>
+              <View style={styles.statusRow}>
+                <View
+                  style={[
+                    styles.statusDot,
+                    {
+                      backgroundColor:
+                        wallet?.status === 'active'
+                          ? theme.colors.green
+                          : theme.colors.red,
+                    },
+                  ]}
+                />
+                <Text style={styles.statusText}>
+                  {wallet?.status === 'active' ? 'Active' : 'Frozen'}
+                </Text>
+              </View>
+            </LinearGradient>
 
             <View style={styles.actionsRow}>
               {quickActions.map((a) => (
@@ -123,9 +161,19 @@ export default function WalletHomeScreen({ onNavigate }) {
             </View>
 
             {recentTx.length === 0 ? (
-              <View style={styles.emptyTx}>
-                <Ionicons name="receipt-outline" size={36} color={theme.colors.mutedDark} />
-                <Text style={styles.emptyTxText}>No transactions yet</Text>
+              <View style={styles.emptyWrap}>
+                <EmptyState
+                  icon="receipt-outline"
+                  title="No transactions yet"
+                  message="Your deposits, transfers and payments will appear here."
+                />
+                <PrimaryButton
+                  onPress={() => onNavigate?.('deposit')}
+                  icon="add-circle-outline"
+                  style={styles.emptyBtn}
+                >
+                  Make a Deposit
+                </PrimaryButton>
               </View>
             ) : (
               recentTx.map((tx) => (
@@ -140,7 +188,7 @@ export default function WalletHomeScreen({ onNavigate }) {
                   <View style={styles.txAmount}>
                     <Text style={[styles.txValue, { color: txColor(tx.type) }]}>
                       {['deposit', 'payment_received', 'refund', 'transfer_in'].includes(tx.type) ? '+' : '-'}
-                      UGX {(tx.amount || 0).toLocaleString()}
+                      {wallet?.currency || 'UGX'} {(tx.amount || 0).toLocaleString()}
                     </Text>
                   </View>
                 </View>
@@ -159,21 +207,41 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   title: { color: theme.colors.white, fontSize: 20, fontWeight: '900' },
   historyBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: theme.colors.glass, borderWidth: 1, borderColor: theme.colors.border, justifyContent: 'center', alignItems: 'center' },
-  loadingWrap: { paddingVertical: 60, alignItems: 'center' },
   balanceCard: {
-    backgroundColor: theme.colors.panel,
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    borderRadius: 20,
-    padding: 24,
-    alignItems: 'center',
-    marginBottom: 20,
+    ...theme.elevation.md,
   },
-  balanceLabel: { color: theme.colors.muted, fontSize: 13, fontWeight: '600' },
-  balanceAmount: { color: theme.colors.accent, fontSize: 36, fontWeight: '900', marginTop: 8 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 6 },
+  balanceTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  walletIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,184,0,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  eyeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,184,0,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  balanceLabel: { color: theme.colors.muted, fontSize: 13, fontWeight: '700' },
+  balanceAmount: { color: theme.colors.accent, fontSize: 36, fontWeight: '900', marginTop: 6 },
+  statusRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 6 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
-  statusText: { color: theme.colors.muted, fontSize: 12 },
+  statusText: { color: theme.colors.muted, fontSize: 12, fontWeight: '600' },
   actionsRow: { flexDirection: 'row', gap: 10, marginBottom: 24 },
   actionBtn: { flex: 1, alignItems: 'center', backgroundColor: theme.colors.panel, borderRadius: 16, paddingVertical: 14, borderWidth: 1, borderColor: theme.colors.border },
   actionIcon: { width: 44, height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
@@ -181,8 +249,15 @@ const styles = StyleSheet.create({
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   sectionTitle: { color: theme.colors.white, fontSize: 16, fontWeight: '800' },
   viewAll: { color: theme.colors.accent, fontSize: 13, fontWeight: '700' },
-  emptyTx: { alignItems: 'center', paddingVertical: 30, backgroundColor: theme.colors.panel, borderRadius: 16, borderWidth: 1, borderColor: theme.colors.border },
-  emptyTxText: { color: theme.colors.mutedDark, fontSize: 14, marginTop: 8 },
+  emptyWrap: {
+    alignItems: 'center',
+    backgroundColor: theme.colors.panel,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingHorizontal: 16,
+  },
+  emptyBtn: { marginBottom: 16 },
   txRow: {
     flexDirection: 'row',
     alignItems: 'center',

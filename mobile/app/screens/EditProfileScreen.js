@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -8,18 +8,20 @@ import {
   ScrollView,
   Alert,
   ActivityIndicator,
+  Animated,
   Image,
   ImageBackground,
 } from "react-native";
-
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
 
 import theme from "../theme";
 import ScreenWrapper from "../components/ScreenWrapper";
+import PrimaryButton from "../components/PrimaryButton";
 import {
   getProfile,
   updateProfile,
-  updateUserLocation,
   uploadProfilePicture,
   uploadCoverPicture,
 } from "../../services/usersApi";
@@ -28,13 +30,50 @@ import { initials } from "../utils/ratings";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function Field({ label, children }) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      {children}
+    </View>
+  );
+}
+
 export default function EditProfileScreen({ onNavigate }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState(null);
 
+  const [saved, setSaved] = useState(false);
+  const savedAnim = useRef(new Animated.Value(0)).current;
+  const hideTimer = useRef(null);
+
+  const showSavedToast = () => {
+    setSaved(true);
+    Animated.timing(savedAnim, {
+      toValue: 1,
+      duration: 220,
+      useNativeDriver: true,
+    }).start();
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    hideTimer.current = setTimeout(() => {
+      Animated.timing(savedAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start(() => setSaved(false));
+    }, 2800);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, []);
+
   const user = profile?.user || {};
   const fundiProfile = profile?.fundiProfile || {};
+  const isFundi = user.role === "fundi";
 
   const [profilePhotoUri, setProfilePhotoUri] = useState("");
   const [coverPhotoUri, setCoverPhotoUri] = useState("");
@@ -64,8 +103,6 @@ export default function EditProfileScreen({ onNavigate }) {
         if (cancelled) return;
         setProfile(data);
 
-        // `getProfile()` returns: { user, fundiProfile }
-        // user model fields: name, email, phone, locationLabel, address, etc.
         const name =
           (typeof data?.user?.name === "string" && data.user.name) ||
           [data?.user?.firstName, data?.user?.lastName]
@@ -93,18 +130,6 @@ export default function EditProfileScreen({ onNavigate }) {
                 data?.user?.coverImage ||
                 data?.user?.backgroundImage ||
                 "",
-        );
-
-        // Debug logging
-        console.log(
-          "EditProfile - Profile photo URL:",
-          data?.user?.profilePhoto
-            ? `${process.env.EXPO_PUBLIC_API_URL?.replace("/api", "") || "http://localhost:5000"}${data.user.profilePhoto}`
-            : "No profile photo",
-        );
-        console.log(
-          "EditProfile - EXPO_PUBLIC_API_URL:",
-          process.env.EXPO_PUBLIC_API_URL,
         );
       } catch (e) {
         if (cancelled) return;
@@ -200,7 +225,6 @@ export default function EditProfileScreen({ onNavigate }) {
     try {
       setSaving(true);
 
-      // Upload profile photo if changed
       if (photoChanged && profilePhotoUri) {
         const formData = new FormData();
         formData.append("profilePicture", {
@@ -246,22 +270,23 @@ export default function EditProfileScreen({ onNavigate }) {
       }
 
       const payload = {
-        // Backend `updateProfile` updates arbitrary user fields from req.body.
-        // Use fields that exist on backend `User` model.
         name: fullName.trim(),
         email: email.trim() || undefined,
         phone: phone.trim() || undefined,
       };
 
-      // `bio` is stored on `FundiProfile` for fundis; safe to send if provided.
-      if (bio.trim()) payload.bio = bio.trim();
+      // Backend `updateProfile` applies arbitrary user fields, so the free-text
+      // location is persisted as both display label and address.
+      const location = locationText.trim();
+      if (location) {
+        payload.locationLabel = location;
+        payload.address = location;
+      }
+
+      // `bio` is stored on `FundiProfile` and only written for fundis.
+      if (isFundi && bio.trim()) payload.bio = bio.trim();
 
       await updateProfile(payload);
-
-      // Location update intentionally skipped here.
-      // Backend `updateUserLocation` expects numeric lat/lng (and likely a different payload shape),
-      // while this form currently captures a free-text location label/address.
-      // Location is handled in the dedicated SetLocation flow.
 
       const { data } = await getProfile();
       setProfile(data);
@@ -272,26 +297,13 @@ export default function EditProfileScreen({ onNavigate }) {
         setCoverPhotoUri(resolveMediaUrl(data.user.coverPhoto, Date.now()));
       }
 
-      Alert.alert(
-        "Saved",
-        "Your profile changes have been updated (server confirmed).",
-      );
+      showSavedToast();
     } catch (e) {
-      // Show actual backend error if available
       const message =
         e?.response?.data?.message ||
         e?.response?.data?.error ||
         e?.message ||
         "Unknown error";
-
-      // Helpful for debugging in Metro/console
-      // eslint-disable-next-line no-console
-      console.log("EditProfile save error:", {
-        status: e?.response?.status,
-        data: e?.response?.data,
-        message,
-      });
-
       Alert.alert("Save failed", message);
     } finally {
       setSaving(false);
@@ -299,28 +311,48 @@ export default function EditProfileScreen({ onNavigate }) {
   };
 
   return (
-    <ScreenWrapper style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
+    <ScreenWrapper style={styles.safe} edges={["top", "left", "right"]}>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
         <View style={styles.headerRow}>
           <TouchableOpacity
             onPress={() => onNavigate?.("profile")}
             style={styles.iconBtn}
           >
-            <Text style={styles.backArrow}>‹</Text>
+            <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
           </TouchableOpacity>
           <Text style={styles.title}>Edit Profile</Text>
-          <TouchableOpacity
-            style={[styles.saveBtn, (saving || loading) && { opacity: 0.7 }]}
-            onPress={handleSave}
-            disabled={saving || loading}
-          >
-            {saving ? (
-              <ActivityIndicator color="#0B0B0B" size="small" />
-            ) : (
-              <Text style={styles.saveText}>Save</Text>
-            )}
-          </TouchableOpacity>
+          <View style={{ width: 40 }} />
         </View>
+
+        {saved ? (
+          <Animated.View
+            style={[
+              styles.savedToast,
+              {
+                opacity: savedAnim,
+                transform: [
+                  {
+                    translateY: savedAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [-12, 0],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.savedIconWrap}>
+              <Ionicons name="checkmark" size={16} color={theme.colors.textDark} />
+            </View>
+            <View style={styles.savedBody}>
+              <Text style={styles.savedTitle}>Profile updated</Text>
+              <Text style={styles.savedMsg}>Your changes have been saved.</Text>
+            </View>
+          </Animated.View>
+        ) : null}
 
         {loading ? (
           <View style={styles.loadingWrap}>
@@ -336,104 +368,144 @@ export default function EditProfileScreen({ onNavigate }) {
                 imageStyle={styles.coverImageStyle}
               >
                 {!coverPhotoUri ? (
-                  <View style={styles.coverFallback}>
-                    <Text style={styles.coverFallbackText}>
-                      Add background image
-                    </Text>
-                  </View>
+                  <LinearGradient
+                    colors={["#3A2A0F", "#1A1A1A"]}
+                    style={styles.coverFallback}
+                  >
+                    <Ionicons
+                      name="image-outline"
+                      size={28}
+                      color="rgba(255,255,255,0.35)"
+                    />
+                  </LinearGradient>
                 ) : null}
+
+                <TouchableOpacity
+                  style={styles.coverBtn}
+                  onPress={pickCoverPhoto}
+                  disabled={uploadingCover || saving}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name="camera"
+                    size={14}
+                    color={theme.colors.white}
+                  />
+                  <Text style={styles.coverBtnText}>
+                    {coverPhotoUri ? "Change" : "Add cover"}
+                  </Text>
+                </TouchableOpacity>
+
                 {uploadingCover ? (
                   <View style={styles.coverLoading}>
                     <ActivityIndicator color={theme.colors.accent} />
                   </View>
                 ) : null}
               </ImageBackground>
-              <TouchableOpacity
-                style={styles.coverBtn}
-                onPress={pickCoverPhoto}
-                disabled={uploadingCover || saving}
-              >
-                <Text style={styles.coverBtnText}>＋ Cover</Text>
-              </TouchableOpacity>
-            </View>
 
-            <View style={styles.avatarWrap}>
-              <View style={styles.avatar}>
-                {profilePhotoUri ? (
-                  <Image
-                    source={{ uri: profilePhotoUri }}
-                    style={styles.avatarImage}
-                  />
-                ) : (
-                  <Text style={styles.avatarText}>{avatarInitials}</Text>
-                )}
-                {uploadingPhoto ? (
-                  <View style={styles.avatarLoading}>
-                    <ActivityIndicator color={theme.colors.accent} />
+              <View style={styles.avatarWrap}>
+                <LinearGradient
+                  colors={[theme.colors.accentLight, theme.colors.accentDark]}
+                  style={styles.avatarRing}
+                >
+                  <View style={styles.avatar}>
+                    {profilePhotoUri ? (
+                      <Image
+                        source={{ uri: profilePhotoUri }}
+                        style={styles.avatarImage}
+                      />
+                    ) : (
+                      <Text style={styles.avatarText}>{avatarInitials}</Text>
+                    )}
+                    {uploadingPhoto ? (
+                      <View style={styles.avatarLoading}>
+                        <ActivityIndicator color={theme.colors.accent} />
+                      </View>
+                    ) : null}
                   </View>
-                ) : null}
+                </LinearGradient>
+                <TouchableOpacity
+                  style={styles.avatarEditBtn}
+                  onPress={pickProfilePhoto}
+                  disabled={uploadingPhoto || saving}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons
+                    name="camera"
+                    size={13}
+                    color={theme.colors.textDark}
+                  />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={styles.addBtn}
-                onPress={pickProfilePhoto}
-                disabled={uploadingPhoto || saving}
-              >
-                <Text style={styles.addText}>＋</Text>
-              </TouchableOpacity>
-              <Text style={styles.changeText}>Change Photo</Text>
             </View>
 
-            <Text style={styles.label}>Full Name</Text>
-            <TextInput
-              style={styles.input}
-              value={fullName}
-              onChangeText={setFullName}
-              placeholder="John Doe"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              autoCapitalize="words"
-            />
+            <Text style={styles.sectionTitle}>Profile Details</Text>
 
-            <Text style={styles.label}>Email Address</Text>
-            <TextInput
-              style={styles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="john.doe@email.com"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
+            <Field label="Full Name">
+              <TextInput
+                style={styles.input}
+                value={fullName}
+                onChangeText={setFullName}
+                placeholder="John Doe"
+                placeholderTextColor={theme.colors.mutedDark}
+                autoCapitalize="words"
+              />
+            </Field>
 
-            <Text style={styles.label}>Phone Number</Text>
-            <TextInput
-              style={styles.input}
-              value={phone}
-              onChangeText={setPhone}
-              placeholder="+256 771 123 456"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-              keyboardType="phone-pad"
-            />
+            <Field label="Email Address">
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={setEmail}
+                placeholder="john.doe@email.com"
+                placeholderTextColor={theme.colors.mutedDark}
+                keyboardType="email-address"
+                autoCapitalize="none"
+              />
+            </Field>
 
-            <Text style={styles.label}>Location</Text>
-            <TextInput
-              style={styles.input}
-              value={locationText}
-              onChangeText={setLocationText}
-              placeholder="Kampala, Uganda"
-              placeholderTextColor="rgba(255,255,255,0.4)"
-            />
+            <Field label="Phone Number">
+              <TextInput
+                style={styles.input}
+                value={phone}
+                onChangeText={setPhone}
+                placeholder="+256 771 123 456"
+                placeholderTextColor={theme.colors.mutedDark}
+                keyboardType="phone-pad"
+              />
+            </Field>
 
-            <Text style={styles.label}>Bio (Optional)</Text>
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              multiline
-              value={bio}
-              onChangeText={setBio}
-              placeholder="Tell us about yourself..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
-            />
+            <Field label="Location">
+              <TextInput
+                style={styles.input}
+                value={locationText}
+                onChangeText={setLocationText}
+                placeholder="Kampala, Uganda"
+                placeholderTextColor={theme.colors.mutedDark}
+              />
+            </Field>
 
-            <Text style={styles.sectionTitle}>Account Settings</Text>
+            {isFundi ? (
+              <Field label="Bio (Optional)">
+                <TextInput
+                  style={[styles.input, styles.textArea]}
+                  multiline
+                  value={bio}
+                  onChangeText={setBio}
+                  placeholder="Tell clients about your experience..."
+                  placeholderTextColor={theme.colors.mutedDark}
+                />
+              </Field>
+            ) : null}
+
+            <PrimaryButton
+              onPress={handleSave}
+              loading={saving}
+              icon="checkmark"
+              style={styles.saveBtn}
+            >
+              Save Changes
+            </PrimaryButton>
           </>
         )}
       </ScrollView>
@@ -442,41 +514,8 @@ export default function EditProfileScreen({ onNavigate }) {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: theme.colors.bgDark },
-  container: { paddingHorizontal: 16, paddingBottom: 80 },
-  coverWrap: { marginBottom: 18 },
-  coverImage: {
-    height: 140,
-    borderRadius: 22,
-    overflow: "hidden",
-    backgroundColor: theme.colors.black,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    justifyContent: "flex-end",
-  },
-  coverImageStyle: { resizeMode: "cover" },
-  coverFallback: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "rgba(255,184,0,0.12)",
-  },
-  coverFallbackText: { color: theme.colors.accent, fontWeight: "800" },
-  coverLoading: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.45)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  coverBtn: {
-    alignSelf: "flex-end",
-    marginTop: 8,
-    backgroundColor: theme.colors.accent,
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-  },
-  coverBtnText: { color: theme.colors.textDark, fontWeight: "900" },
+  safe: { flex: 1, backgroundColor: theme.colors.black },
+  container: { paddingHorizontal: 16, paddingBottom: 32 },
 
   headerRow: {
     flexDirection: "row",
@@ -495,64 +534,146 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  backArrow: { color: "#F3F3F3", fontSize: 22 },
-  title: { color: "#F3F3F3", fontWeight: "900" },
-  saveBtn: {
-    backgroundColor: theme.colors.accent,
+  title: { color: theme.colors.white, fontWeight: "900", fontSize: 18 },
+
+  savedToast: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    backgroundColor: "rgba(34,197,94,0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.35)",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+  },
+  savedIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: theme.colors.green,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  savedBody: { flex: 1, gap: 2 },
+  savedTitle: { color: theme.colors.white, fontWeight: "800", fontSize: 14 },
+  savedMsg: { color: theme.colors.muted, fontSize: 12 },
+
+  loadingWrap: {
+    paddingVertical: 60,
+    alignItems: "center",
+  },
+  loadingText: { color: theme.colors.muted, marginTop: 12, fontSize: 13 },
+
+  coverWrap: { marginBottom: 8 },
+  coverImage: {
+    height: 150,
+    borderRadius: 22,
+    overflow: "hidden",
+    backgroundColor: theme.colors.black,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    justifyContent: "flex-end",
+  },
+  coverImageStyle: { resizeMode: "cover" },
+  coverFallback: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coverLoading: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  coverBtn: {
+    position: "absolute",
+    right: 12,
+    bottom: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(0,0,0,0.5)",
+    borderWidth: 1,
+    borderColor: theme.colors.borderLight,
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 12,
   },
-  saveText: { color: theme.colors.textDark, fontWeight: "900", fontSize: 12 },
+  coverBtnText: { color: theme.colors.white, fontWeight: "800", fontSize: 12 },
 
-  avatarWrap: { alignItems: "center", marginBottom: 18 },
+  avatarWrap: {
+    alignSelf: "center",
+    marginTop: -44,
+    width: 88,
+    position: "relative",
+    alignItems: "center",
+  },
+  avatarRing: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    padding: 3,
+    ...theme.elevation.md,
+  },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "rgba(245,158,11,0.25)",
+    flex: 1,
+    borderRadius: 41,
+    backgroundColor: "#121212",
     justifyContent: "center",
     alignItems: "center",
     overflow: "hidden",
   },
-  avatarImage: {
-    width: "100%",
-    height: "100%",
-    resizeMode: "cover",
-  },
-  avatarText: { color: "#F3F3F3", fontWeight: "900", fontSize: 22 },
+  avatarImage: { width: "100%", height: "100%", resizeMode: "cover" },
+  avatarText: { color: theme.colors.white, fontWeight: "900", fontSize: 24 },
   avatarLoading: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: "rgba(0,0,0,0.45)",
     alignItems: "center",
     justifyContent: "center",
   },
-  addBtn: {
+  avatarEditBtn: {
     position: "absolute",
-    right: 120,
-    top: 55,
+    right: -6,
+    bottom: 0,
     width: 28,
     height: 28,
     borderRadius: 14,
     backgroundColor: theme.colors.accent,
-    alignItems: "center",
+    borderWidth: 2.5,
+    borderColor: theme.colors.black,
     justifyContent: "center",
+    alignItems: "center",
+    ...theme.elevation.sm,
   },
-  addText: { color: "#0B0B0B", fontWeight: "900" },
-  changeText: { color: theme.colors.accent, marginTop: 8, fontWeight: "800" },
 
-  label: { color: "rgba(255,255,255,0.6)", marginBottom: 6, fontSize: 12 },
+  sectionTitle: {
+    color: theme.colors.white,
+    fontWeight: "900",
+    fontSize: 15,
+    marginTop: 20,
+    marginBottom: 4,
+  },
+
+  field: { marginBottom: 14 },
+  label: {
+    color: theme.colors.muted,
+    marginBottom: 6,
+    fontSize: 12,
+    fontWeight: "700",
+  },
   input: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: theme.colors.input,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
-    borderRadius: 12,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    color: "#F3F3F3",
-    marginBottom: 12,
+    borderColor: theme.colors.border,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    color: theme.colors.white,
+    fontSize: 14,
   },
-  textArea: { minHeight: 90, textAlignVertical: "top" },
+  textArea: { minHeight: 96, textAlignVertical: "top" },
 
-  sectionTitle: { color: "rgba(255,255,255,0.5)", marginTop: 8 },
+  saveBtn: { marginTop: 24 },
 });

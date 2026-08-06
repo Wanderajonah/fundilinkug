@@ -7,7 +7,7 @@ import theme from "../theme";
 const TABS = [
   { key: "home", label: "Home", icon: "home", iconOff: "home-outline" },
   { key: "browse", label: "Explore", icon: "compass", iconOff: "compass-outline" },
-  { key: "bookings", label: "Bookings", icon: "calendar", iconOff: "calendar-outline" },
+  { key: "chat", label: "Messages", icon: "chatbubble", iconOff: "chatbubble-outline" },
   { key: "wallet", label: "Wallet", icon: "wallet", iconOff: "wallet-outline" },
   { key: "profile", label: "Profile", icon: "person", iconOff: "person-outline" },
 ];
@@ -53,7 +53,7 @@ const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.surface,
+    backgroundColor: theme.colors.black,
     borderTopWidth: 1,
     borderTopColor: theme.colors.border,
     paddingTop: 8,

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ScrollScreen from "../components/ScrollScreen";
+import AuthHeader from "../components/AuthHeader";
 import AuthButton from "../components/AuthButton";
 import theme from "../theme";
 
@@ -54,93 +55,91 @@ export default function CreateAccountChoiceScreen({
 
   return (
     <ScrollScreen keyboard contentStyle={styles.scroll} bottomPad={32}>
-      <View style={styles.topRow}>
-        <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Ionicons name="arrow-back" size={20} color={theme.colors.white} />
-        </TouchableOpacity>
-
-        <View style={[styles.rolePill, { backgroundColor: pillBg }]}>
-          <View style={styles.rolePillIcon}>
-            <Ionicons name={roleIcon} size={12} color={theme.colors.black} />
+      <AuthHeader
+        onBack={onBack}
+        title="Create your account"
+        subtitle="Tell us your name, then choose how to verify your details."
+        right={
+          <View style={[styles.rolePill, { backgroundColor: pillBg }]}>
+            <View style={styles.rolePillIcon}>
+              <Ionicons name={roleIcon} size={12} color={theme.colors.black} />
+            </View>
+            <Text style={styles.rolePillText}>{roleLabel}</Text>
           </View>
-          <Text style={styles.rolePillText}>{roleLabel}</Text>
+        }
+      />
+
+      <View style={styles.form}>
+        <Text style={styles.sectionLabel}>FIRST NAME</Text>
+        <View style={inputRowStyle("firstName")}>
+          <Ionicons name="person-outline" size={18} color={theme.colors.muted} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            value={firstName}
+            onChangeText={setFirstName}
+            placeholder="e.g. John"
+            placeholderTextColor={theme.colors.mutedDark}
+            autoCapitalize="words"
+            onFocus={() => setFocused("firstName")}
+            onBlur={() => setFocused(null)}
+          />
         </View>
-      </View>
 
-      <Text style={styles.title}>Create your account</Text>
-      <Text style={styles.subtitle}>
-        Tell us your name, then choose how to verify your details.
-      </Text>
-
-      <Text style={styles.sectionLabel}>FIRST NAME</Text>
-      <View style={inputRowStyle("firstName")}>
-        <Ionicons name="person-outline" size={18} color={theme.colors.muted} style={styles.inputIcon} />
-        <TextInput
-          style={styles.input}
-          value={firstName}
-          onChangeText={setFirstName}
-          placeholder="e.g. John"
-          placeholderTextColor={theme.colors.mutedDark}
-          autoCapitalize="words"
-          onFocus={() => setFocused("firstName")}
-          onBlur={() => setFocused(null)}
-        />
-      </View>
-
-      <Text style={styles.sectionLabel}>LAST NAME</Text>
-      <View style={inputRowStyle("lastName")}>
-        <Ionicons name="person-outline" size={18} color={theme.colors.muted} style={styles.inputIcon} />
-        <TextInput
-          style={styles.input}
-          value={lastName}
-          onChangeText={setLastName}
-          placeholder="e.g. Mukasa"
-          placeholderTextColor={theme.colors.mutedDark}
-          autoCapitalize="words"
-          onFocus={() => setFocused("lastName")}
-          onBlur={() => setFocused(null)}
-        />
-      </View>
-      <Text style={styles.helper}>
-        Required for phone sign-up. Skip if you're continuing with Google.
-      </Text>
-
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Ionicons name="call-outline" size={18} color={theme.colors.muted} />
-          <Text style={styles.cardTitle}>Phone number</Text>
+        <Text style={styles.sectionLabel}>LAST NAME</Text>
+        <View style={inputRowStyle("lastName")}>
+          <Ionicons name="person-outline" size={18} color={theme.colors.muted} style={styles.inputIcon} />
+          <TextInput
+            style={styles.input}
+            value={lastName}
+            onChangeText={setLastName}
+            placeholder="e.g. Mukasa"
+            placeholderTextColor={theme.colors.mutedDark}
+            autoCapitalize="words"
+            onFocus={() => setFocused("lastName")}
+            onBlur={() => setFocused(null)}
+          />
         </View>
-        <Text style={styles.cardSubtext}>
-          We'll text you a one-time code, then ask for your email and date of birth.
+        <Text style={styles.helper}>
+          Required for phone sign-up. Skip if you're continuing with Google.
         </Text>
-        <AuthButton
-          variant="phone"
-          label="Continue with Phone Number"
-          onPress={handlePhone}
-          style={{ marginTop: 14 }}
-        />
-      </View>
 
-      <View style={styles.dividerRow}>
-        <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>OR</Text>
-        <View style={styles.dividerLine} />
-      </View>
-
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Ionicons name="logo-google" size={18} color={theme.colors.muted} />
-          <Text style={styles.cardTitle}>Google</Text>
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="call-outline" size={18} color={theme.colors.accent} />
+            <Text style={styles.cardTitle}>Phone number</Text>
+          </View>
+          <Text style={styles.cardSubtext}>
+            We'll text you a one-time code, then ask for your email and date of birth.
+          </Text>
+          <AuthButton
+            variant="phone"
+            label="Continue with Phone Number"
+            onPress={handlePhone}
+            style={{ marginTop: 14 }}
+          />
         </View>
-        <Text style={styles.cardSubtext}>
-          We'll pull your name and email from Google automatically.
-        </Text>
-        <AuthButton
-          variant="google"
-          label="Continue with Google"
-          onPress={handleGoogle}
-          style={{ marginTop: 14 }}
-        />
+
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Ionicons name="logo-google" size={18} color={theme.colors.accent} />
+            <Text style={styles.cardTitle}>Google</Text>
+          </View>
+          <Text style={styles.cardSubtext}>
+            We'll pull your name and email from Google automatically.
+          </Text>
+          <AuthButton
+            variant="google"
+            label="Continue with Google"
+            onPress={handleGoogle}
+            style={{ marginTop: 14 }}
+          />
+        </View>
       </View>
 
       <TouchableOpacity onPress={onBack} style={styles.footerLink}>
@@ -151,21 +150,9 @@ export default function CreateAccountChoiceScreen({
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 8 },
+  scroll: { paddingHorizontal: 24 },
 
-  topRow: { flexDirection: "row", alignItems: "center", marginBottom: 24 },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: theme.colors.input,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    justifyContent: "center",
-    alignItems: "center",
-  },
   rolePill: {
-    marginLeft: 12,
     flexDirection: "row",
     alignItems: "center",
     borderWidth: 1,
@@ -186,8 +173,7 @@ const styles = StyleSheet.create({
   },
   rolePillText: { color: theme.colors.accent, fontSize: 13, fontWeight: "700" },
 
-  title: { color: theme.colors.white, fontSize: 26, fontWeight: "800", marginBottom: 6 },
-  subtitle: { color: theme.colors.muted, fontSize: 14.5, lineHeight: 21, marginBottom: 26 },
+  form: { marginTop: 24 },
 
   sectionLabel: {
     color: theme.colors.muted,
@@ -226,7 +212,7 @@ const styles = StyleSheet.create({
   cardTitle: { color: theme.colors.white, fontWeight: "700", fontSize: 15.5 },
   cardSubtext: { color: theme.colors.mutedDark, fontSize: 12.5, lineHeight: 18, marginTop: 6 },
 
-  dividerRow: { flexDirection: "row", alignItems: "center", marginVertical: 18 },
+  dividerRow: { flexDirection: "row", alignItems: "center", marginVertical: 16 },
   dividerLine: { flex: 1, height: 1, backgroundColor: theme.colors.border },
   dividerText: { color: theme.colors.muted, fontSize: 12, fontWeight: "600", marginHorizontal: 12 },
 
