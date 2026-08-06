@@ -44,7 +44,7 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
   return (
     <ScrollScreen keyboard contentStyle={styles.scroll} bottomPad={32}>
       <TouchableOpacity style={styles.backRow} onPress={onBack}>
-        <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
+        <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
       </TouchableOpacity>
 
       <Text style={styles.title}>Set up your Fundi profile</Text>
@@ -91,7 +91,7 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
       />
 
       <PrimaryButton onPress={handleSave} disabled={loading}>
-        {loading ? 'Saving…' : 'Continue to dashboard →'}
+        {loading ? 'Saving…' : 'Continue to dashboard '}
       </PrimaryButton>
     </ScrollScreen>
   );
@@ -99,7 +99,17 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 4 },
-  backRow: { marginBottom: 16 },
+  backRow: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: theme.colors.input,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   title: { color: theme.colors.white, fontSize: 26, fontWeight: '800', marginBottom: 8 },
   subtitle: { color: theme.colors.muted, fontSize: 14, lineHeight: 20, marginBottom: 24 },
   label: {
@@ -114,7 +124,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: theme.radius.pill,
     backgroundColor: theme.colors.input,
     borderWidth: 1,
     borderColor: theme.colors.border,

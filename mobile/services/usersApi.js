@@ -24,6 +24,20 @@ export const uploadCoverPicture = (formData) => {
   });
 };
 
+// Upload portfolio images (fundi)
+export const uploadPortfolioImages = (formData) => {
+  return api.post("/users/portfolio/upload", formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+    },
+  });
+};
+
+// Delete a portfolio image by its stored URL (fundi)
+export const deletePortfolioImage = (imageUrl) => {
+  return api.delete("/users/portfolio/image", { data: { imageUrl } });
+};
+
 // Fundi-specific location update for current GPS location
 export const updateFundiLocation = (lat, lng) =>
   api.put("/bookings/fundi/location", { lat, lng });

@@ -13,7 +13,7 @@ export default function SettingsScreen({ onNavigate }) {
             <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
           </TouchableOpacity>
           <Text style={styles.title}>Settings</Text>
-          <View style={{ width: 32 }} />
+          <View style={{ width: 40 }} />
         </View>
 
         <Text style={styles.sectionLabel}>Notifications</Text>
@@ -50,7 +50,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.black },
   container: { paddingHorizontal: 16, paddingBottom: 60 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginBottom: 16 },
-  iconBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: theme.colors.glass, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.input, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
   title: { color: theme.colors.white, fontWeight: '900', fontSize: 18 },
 
   sectionLabel: { color: theme.colors.mutedDark, fontSize: 11, fontWeight: '700', letterSpacing: 0.6, marginTop: 10, marginBottom: 8 },

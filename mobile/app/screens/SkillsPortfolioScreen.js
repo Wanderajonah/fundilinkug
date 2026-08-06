@@ -107,10 +107,10 @@ export default function SkillsPortfolioScreen({ onNavigate }) {
       <View style={styles.container}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => onNavigate?.('profile')} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={24} color={theme.colors.white} />
+            <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
           </TouchableOpacity>
           <Text style={styles.title}>Skills & Portfolio</Text>
-          <View style={{ width: 36 }} />
+          <View style={{ width: 40 }} />
         </View>
 
         {loading ? (
@@ -183,7 +183,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.black },
   container: { flex: 1, paddingHorizontal: 20, paddingTop: 12 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  backBtn: { width: 36, height: 36, justifyContent: 'center' },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.input, borderWidth: 1, borderColor: theme.colors.border, justifyContent: 'center', alignItems: 'center' },
   title: { color: theme.colors.white, fontSize: 20, fontWeight: '800' },
   loadingWrap: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: theme.colors.accent,
     paddingVertical: 13,
-    borderRadius: theme.radius.pill,
+    borderRadius: 14,
     marginBottom: 16,
   },
   uploadText: { color: theme.colors.textDark, fontWeight: '800', fontSize: 15 },

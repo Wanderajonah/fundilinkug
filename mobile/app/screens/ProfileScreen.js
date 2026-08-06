@@ -12,9 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
-import BottomTabBar from '../components/BottomTabBar';
 import EmptyState from '../components/EmptyState';
-import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { getProfile } from '../../services/usersApi';
 import { resolveMediaUrl } from '../../utils/image';
 import { initials } from '../utils/ratings';
@@ -27,7 +25,6 @@ export default function ProfileScreen({
   onNavigate,
   onLogout,
 }) {
-  const tabBarHeight = useTabBarHeight();
   const isFundi = userRole === 'fundi';
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -87,10 +84,10 @@ export default function ProfileScreen({
       ];
 
   return (
-    <ScreenWrapper style={styles.safe}>
+    <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
       <ScrollView
         style={styles.container}
-        contentContainerStyle={{ paddingBottom: tabBarHeight + 16 }}
+        contentContainerStyle={{ paddingBottom: 16 }}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.headerRow}>
@@ -172,6 +169,7 @@ export default function ProfileScreen({
                 if (item.key === 'edit') return onNavigate?.('editProfile');
                 if (item.key === 'settings') return onNavigate?.('settings');
                 if (item.key === 'support') return onNavigate?.('help');
+                if (item.key === 'skills') return onNavigate?.('skillsPortfolio');
                 if (item.key === 'earnings') return onNavigate?.('bookings');
                 return Alert.alert(item.label, 'Coming soon.');
               }}
@@ -201,8 +199,6 @@ export default function ProfileScreen({
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
-
-      <BottomTabBar active="profile" onTab={onNavigate} role={userRole} />
     </ScreenWrapper>
   );
 }
@@ -214,8 +210,8 @@ const styles = StyleSheet.create({
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   title: { color: theme.colors.white, fontSize: 20, fontWeight: '900' },
   settingsBtn: {
-    width: 36,
-    height: 36,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     backgroundColor: theme.colors.glass,
     borderWidth: 1,

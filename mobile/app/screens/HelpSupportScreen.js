@@ -20,7 +20,7 @@ export default function HelpSupportScreen({ onNavigate }) {
             <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
           </TouchableOpacity>
           <Text style={styles.title}>Help & Support</Text>
-          <View style={{ width: 32 }} />
+          <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.searchRow}>
@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.black },
   container: { paddingHorizontal: 16, paddingBottom: 60 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, marginBottom: 16 },
-  iconBtn: { width: 36, height: 36, borderRadius: 12, backgroundColor: theme.colors.glass, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.input, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center', justifyContent: 'center' },
   title: { color: theme.colors.white, fontWeight: '900', fontSize: 18 },
 
   searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: theme.colors.input, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 14, paddingHorizontal: 14, height: 48, marginBottom: 16, gap: 10 },

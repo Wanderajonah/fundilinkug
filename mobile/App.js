@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { View, StatusBar, Alert, BackHandler } from "react-native";
+import { View, StatusBar, Alert, BackHandler, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import * as NavigationBar from "expo-navigation-bar";
 import theme from "./app/theme";
 
 import SplashScreen from "./app/screens/SplashScreen";
@@ -60,6 +61,8 @@ import { defaultActiveJob, buildBookingFromRequest } from "./app/utils/ratings";
 import BookingSubmittedScreen from "./app/screens/BookingSubmittedScreen";
 import BookingWaitingScreen from "./app/screens/BookingWaitingScreen";
 import FundiBookingDetailScreen from "./app/screens/FundiBookingDetailScreen";
+import SkillsPortfolioScreen from "./app/screens/SkillsPortfolioScreen";
+import BottomNav from "./app/components/BottomNav";
 import { LocationProvider, useLocation } from "./context/LocationContext";
 import { BookingProvider } from "./context/BookingContext";
 import { ChatProvider } from "./context/ChatContext";
@@ -213,6 +216,7 @@ function AppContent() {
     }
     if (key === "notifications") return setScreen("notifications");
     if (key === "editProfile") return setScreen("editProfile");
+    if (key === "skillsPortfolio") return setScreen("skillsPortfolio");
     if (key === "settings") return setScreen("settings");
     if (key === "payments") return setScreen("payments");
     if (key === "wallet") return setScreen("wallet");
@@ -307,10 +311,36 @@ function AppContent() {
     </BookingProvider>
   );
 
+  // Bottom tab bar layout: content on top, dark navbar pinned to the bottom.
+  const tabLayout = (el, active) => (
+    <View style={{ flex: 1 }}>
+      {el}
+      <BottomNav
+        active={active}
+        onNavigate={(key) => {
+          if (key === "home") {
+            goHome();
+            return;
+          }
+          historyRef.current = [];
+          setScreen(key);
+        }}
+      />
+    </View>
+  );
+
   // Clear chat target when leaving chat screen
   useEffect(() => {
     if (screen !== "chat") setChatTargetUserId(null);
   }, [screen]);
+
+  // Make the Android system navigation bar dark so no light strip shows
+  useEffect(() => {
+    if (Platform.OS === "android") {
+      NavigationBar.setBackgroundColorAsync("#000000");
+      NavigationBar.setButtonStyleAsync("light");
+    }
+  }, []);
 
   // Handle Android hardware back button by popping history
   useEffect(() => {
@@ -769,37 +799,49 @@ function AppContent() {
 
   if (screen === "home") {
     if (userRole === "fundi") {
-      return bookingWrap(<FundiDashboardScreen userName={userName} {...tabProps} />);
+      return tabLayout(
+        bookingWrap(<FundiDashboardScreen userName={userName} {...tabProps} />),
+        "home",
+      );
     }
-    return bookingWrap(<HomeScreen userName={userName} {...tabProps} />);
+    return tabLayout(
+      bookingWrap(<HomeScreen userName={userName} {...tabProps} />),
+      "home",
+    );
   }
 
   if (screen === "fundiDashboard") {
-    return bookingWrap(<FundiDashboardScreen userName={userName} {...tabProps} />);
+    return tabLayout(
+      bookingWrap(<FundiDashboardScreen userName={userName} {...tabProps} />),
+      "home",
+    );
   }
 
   if (screen === "browse") {
-    return bookingWrap(<BrowseArtisansScreen {...tabProps} />);
+    return tabLayout(bookingWrap(<BrowseArtisansScreen {...tabProps} />), "browse");
   }
 
   if (screen === "bookings") {
-    return bookingWrap(
-      <BookingsScreen
-        {...tabProps}
-        reviewHistory={reviewHistory}
-        onStartRatingFlow={() => {
-          const job =
-            activeJob || defaultActiveJob(pendingBooking, selectedArtisan);
-          setActiveJob(job);
-          pushAndNavigate("jobInProgress");
-        }}
-        onViewHistory={() => pushAndNavigate("bookingHistory")}
-      />
+    return tabLayout(
+      bookingWrap(
+        <BookingsScreen
+          {...tabProps}
+          reviewHistory={reviewHistory}
+          onStartRatingFlow={() => {
+            const job =
+              activeJob || defaultActiveJob(pendingBooking, selectedArtisan);
+            setActiveJob(job);
+            pushAndNavigate("jobInProgress");
+          }}
+          onViewHistory={() => pushAndNavigate("bookingHistory")}
+        />
+      ),
+      "bookings",
     );
   }
 
   if (screen === "profile") {
-    return <ProfileScreen {...tabPropsWithLogout} />;
+    return tabLayout(<ProfileScreen {...tabPropsWithLogout} />, "profile");
   }
 
   if (screen === "chat") {
@@ -818,6 +860,10 @@ function AppContent() {
     return <EditProfileScreen onNavigate={handleNavigate} />;
   }
 
+  if (screen === "skillsPortfolio") {
+    return <SkillsPortfolioScreen onNavigate={handleNavigate} />;
+  }
+
   if (screen === "settings") {
     return <SettingsScreen onNavigate={handleNavigate} />;
   }
@@ -831,7 +877,7 @@ function AppContent() {
   }
 
   if (screen === "wallet") {
-    return <WalletHomeScreen onNavigate={handleNavigate} />;
+    return tabLayout(<WalletHomeScreen onNavigate={handleNavigate} />, "wallet");
   }
 
   if (screen === "deposit") {

@@ -3,9 +3,20 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Image } fr
 import theme from '../theme';
 
 export default function GoogleAuthButton({ label, onPress, loading, disabled }) {
+  const v = theme.buttons.variants.google;
+
   return (
     <TouchableOpacity
-      style={[styles.button, disabled && styles.disabled]}
+      style={[
+        styles.button,
+        {
+          height: theme.buttons.height.lg,
+          borderRadius: theme.buttons.radius.lg,
+          backgroundColor: v.backgroundColor,
+          borderColor: v.borderColor,
+        },
+        disabled && styles.disabled,
+      ]}
       onPress={onPress}
       disabled={disabled || loading}
       activeOpacity={0.85}
@@ -28,18 +39,14 @@ export default function GoogleAuthButton({ label, onPress, loading, disabled }) 
 
 const styles = StyleSheet.create({
   button: {
-    height: 54,
-    borderRadius: 14,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.06)',
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
+    ...theme.elevation.sm,
   },
   disabled: { opacity: 0.6 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   text: { color: '#3C4043', fontWeight: '600', fontSize: 16 },
   googleIcon: { width: 22, height: 22 },
 });
-

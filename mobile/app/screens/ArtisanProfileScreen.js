@@ -7,7 +7,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  ImageBackground,
   Platform,
   Dimensions,
 } from "react-native";
@@ -15,14 +14,14 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import theme from "../theme";
 import ScreenWrapper from "../components/ScreenWrapper";
-import StarRating from "../components/StarRating";
+import PrimaryButton from "../components/PrimaryButton";
+import IconButton from "../components/IconButton";
 import { getReviewsByFundi } from "../../services/reviewsApi";
 import { getFundiById } from "../../services/fundisApi";
 import { resolveMediaUrl } from "../../utils/image";
 import { initials, formatBookingDate } from "../utils/ratings";
 
 const AVATAR_SIZE = 96;
-const BANNER_HEIGHT = 170;
 const GRID_GAP = 10;
 const GRID_COLS = 2;
 const screenWidth = Dimensions.get("window").width;
@@ -76,14 +75,27 @@ function extractMediaPath(value) {
 function StatItem({ icon, value, label }) {
   return (
     <View style={styles.statItem}>
-      <Ionicons
-        name={icon}
-        size={16}
-        color={theme.colors.accent}
-        style={styles.statIcon}
-      />
+      <View style={styles.statIconBadge}>
+        <Ionicons name={icon} size={16} color={theme.colors.accent} />
+      </View>
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function CompactStars({ value, size = 12 }) {
+  const rounded = Math.round(value || 0);
+  return (
+    <View style={styles.starsRow}>
+      {[1, 2, 3, 4, 5].map((s) => (
+        <Ionicons
+          key={s}
+          name={s <= rounded ? "star" : "star-outline"}
+          size={size}
+          color={s <= rounded ? theme.colors.accent : theme.colors.mutedDark}
+        />
+      ))}
     </View>
   );
 }
@@ -91,23 +103,37 @@ function StatItem({ icon, value, label }) {
 function ReviewCard({ review }) {
   const customerName = review.customerId?.name || "Customer";
   const dateLabel = review.createdAt ? formatBookingDate(review.createdAt) : "";
+  const customerPhoto = resolveMediaUrl(
+    review.customerId?.profilePhoto || review.customerId?.avatarUrl || ""
+  );
 
   return (
-    <View style={styles.card}>
+    <View style={styles.reviewCard}>
       <View style={styles.reviewHeader}>
-        <View style={styles.reviewAvatar}>
-          <Text style={styles.reviewAvatarText}>{initials(customerName)}</Text>
-        </View>
+        {customerPhoto ? (
+          <Image source={{ uri: customerPhoto }} style={styles.reviewAvatarImage} />
+        ) : (
+          <View style={styles.reviewAvatar}>
+            <Text style={styles.reviewAvatarText}>{initials(customerName)}</Text>
+          </View>
+        )}
         <View style={styles.reviewMeta}>
-          <Text style={styles.reviewAuthor}>{customerName}</Text>
-          <StarRating
-            value={review.rating}
-            showLabel={false}
-            size={14}
-            disabled
-          />
+          <View style={styles.reviewNameRow}>
+            <Text style={styles.reviewAuthor} numberOfLines={1}>
+              {customerName}
+            </Text>
+            <View style={styles.reviewVerifiedBadge}>
+              <Ionicons name="checkmark-circle" size={12} color={theme.colors.accent} />
+              <Text style={styles.reviewVerifiedText}>Verified</Text>
+            </View>
+          </View>
+          <View style={styles.reviewStarsWrap}>
+            <CompactStars value={review.rating} size={12} />
+            {dateLabel ? (
+              <Text style={styles.reviewDate}>{dateLabel}</Text>
+            ) : null}
+          </View>
         </View>
-        {dateLabel ? <Text style={styles.reviewDate}>{dateLabel}</Text> : null}
       </View>
       {review.comment ? (
         <Text style={styles.reviewText}>{review.comment}</Text>
@@ -235,31 +261,20 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
     return resolveMediaUrl(raw, imageCacheKey);
   }, [profile.profilePhoto, imageCacheKey]);
 
-  const bannerImageUri = useMemo(() => {
-    const raw = extractMediaPath([
-      profile.portfolioImages?.slice(1),
-      artisan.portfolioImages?.slice(1),
-      profile.profilePhoto,
-      artisan.profilePhoto,
-      artisan.coverPhoto,
-      propProfilePhoto,
-    ]);
-    return resolveMediaUrl(raw, imageCacheKey);
-  }, [
-    artisan.coverPhoto,
-    artisan.portfolioImages,
-    artisan.profilePhoto,
-    imageCacheKey,
-    profile.portfolioImages,
-    profile.profilePhoto,
-    propProfilePhoto,
-  ]);
-
   const avatarImageUri = profilePhotoUri;
 
   const reviewCount = reviewList.length || propReviews || 0;
   const ratingDisplay =
     profile.rating > 0 ? Number(profile.rating).toFixed(1) : "—";
+
+  const reviewDistribution = useMemo(() => {
+    const dist = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    reviewList.forEach((r) => {
+      const k = Math.min(5, Math.max(1, Math.round(r.rating || 0)));
+      dist[k] = (dist[k] || 0) + 1;
+    });
+    return dist;
+  }, [reviewList]);
   const jobCount = artisan.jobsCompleted ?? artisan.jobsDone ?? "—";
   const yearsValue = profile.experience > 0 ? profile.experience : "—";
 
@@ -369,18 +384,66 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
       );
     }
 
-    return reviewList.map((r) => <ReviewCard key={r._id} review={r} />);
+    const total = reviewList.length;
+    const score =
+      profile.rating > 0
+        ? Number(profile.rating).toFixed(1)
+        : (
+            reviewList.reduce((sum, r) => sum + (r.rating || 0), 0) / total
+          ).toFixed(1);
+
+    return (
+      <View>
+        <View style={styles.reviewSummaryCard}>
+          <View style={styles.reviewSummaryLeft}>
+            <Text style={styles.reviewScore}>{score}</Text>
+            <CompactStars value={Number(score)} size={13} />
+            <Text style={styles.reviewSummaryCount}>
+              {total} review{total === 1 ? "" : "s"}
+            </Text>
+          </View>
+          <View style={styles.reviewBreakdown}>
+            {[5, 4, 3, 2, 1].map((level) => {
+              const count = reviewDistribution[level] || 0;
+              const pct = total ? Math.round((count / total) * 100) : 0;
+              return (
+                <View key={level} style={styles.breakdownRow}>
+                  <Text style={styles.breakdownLabel}>{level}★</Text>
+                  <View style={styles.breakdownTrack}>
+                    <View
+                      style={[
+                        styles.breakdownFill,
+                        { width: `${pct}%` },
+                      ]}
+                    />
+                  </View>
+                  <Text style={styles.breakdownCount}>{count}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+
+        {reviewList.map((r) => <ReviewCard key={r._id} review={r} />)}
+      </View>
+    );
   };
 
   const renderAboutTab = () => (
     <View style={styles.aboutStack}>
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Biography</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="person-outline" size={16} color={theme.colors.accent} />
+          <Text style={styles.sectionTitle}>Biography</Text>
+        </View>
         <Text style={styles.bodyText}>{aboutBio}</Text>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Skills</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="construct-outline" size={16} color={theme.colors.accent} />
+          <Text style={styles.sectionTitle}>Skills</Text>
+        </View>
         {profile.skills.length ? (
           <View style={styles.skillRow}>
             {profile.skills.map((s) => (
@@ -395,7 +458,10 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Experience</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="time-outline" size={16} color={theme.colors.accent} />
+          <Text style={styles.sectionTitle}>Experience</Text>
+        </View>
         <Text style={styles.bodyText}>
           {profile.experience > 0
             ? `${profile.experience} years of professional experience`
@@ -404,16 +470,30 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Availability</Text>
-        <Text style={styles.bodyText}>
-          {profile.isAvailable === false
-            ? "Currently unavailable for new bookings"
-            : "Available for new bookings"}
-        </Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="calendar-outline" size={16} color={theme.colors.accent} />
+          <Text style={styles.sectionTitle}>Availability</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <View
+            style={[
+              styles.infoDot,
+              profile.isAvailable === false && styles.infoDotOff,
+            ]}
+          />
+          <Text style={styles.bodyText}>
+            {profile.isAvailable === false
+              ? "Currently unavailable for new bookings"
+              : "Available for new bookings"}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Contact & Rate</Text>
+        <View style={styles.sectionHeader}>
+          <Ionicons name="pricetag-outline" size={16} color={theme.colors.accent} />
+          <Text style={styles.sectionTitle}>Contact & Rate</Text>
+        </View>
         <Text style={styles.bodyText}>{rateLabel}</Text>
         {profile.location ? (
           <View style={styles.contactRow}>
@@ -435,41 +515,44 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.container}
       >
-        <View style={styles.bannerWrap}>
-          {bannerImageUri ? (
-            <ImageBackground
-              source={{ uri: bannerImageUri }}
-              style={styles.bannerImage}
-              imageStyle={styles.bannerImageCrop}
-            >
-              <View style={styles.bannerScrim} />
-            </ImageBackground>
-          ) : (
-            <LinearGradient
-              colors={[theme.colors.black, theme.colors.accentDark]}
-              style={styles.bannerImage}
-            />
-          )}
-          <TouchableOpacity
+        <View style={styles.topBar}>
+          <IconButton
+            name="chevron-back"
             onPress={() => onNavigate?.("browse")}
-            style={styles.backBtn}
-            activeOpacity={0.75}
+          />
+          <View
+            style={[
+              styles.presencePill,
+              profile.isAvailable === false && styles.presencePillOff,
+            ]}
           >
-            <Ionicons
-              name="chevron-back"
-              size={20}
-              color={theme.colors.white}
+            <View
+              style={[
+                styles.presenceDot,
+                profile.isAvailable === false && styles.presenceDotOff,
+              ]}
             />
-            <Text style={styles.backText}>Back</Text>
-          </TouchableOpacity>
+            <Text
+              style={[
+                styles.presenceText,
+                profile.isAvailable === false && styles.presenceTextOff,
+              ]}
+            >
+              {profile.isAvailable === false ? "Unavailable" : "Available"}
+            </Text>
+          </View>
         </View>
 
-        <View style={styles.avatarStandalone}>{renderAvatar()}</View>
-
+        {/* PROFILE SURFACE */}
         <View style={styles.profileSurface}>
-          <View style={styles.identityBlock}>
+          <View style={styles.profileHeader}>
+            <View style={styles.avatarWrap}>{renderAvatar()}</View>
+
+            <View style={styles.identityBlock}>
             <View style={styles.nameRow}>
-              <Text style={styles.name}>{profile.name}</Text>
+              <Text style={styles.name} numberOfLines={1}>
+                {profile.name}
+              </Text>
               {profile.verified ? (
                 <Ionicons
                   name="checkmark-circle"
@@ -480,47 +563,78 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
               ) : null}
             </View>
             <Text style={styles.profession}>{profile.role}</Text>
-            <View style={styles.ratingRow}>
-              <StarRating
-                value={profile.rating}
-                showLabel={false}
-                size={15}
-                disabled
-              />
+
+            <View style={styles.ratingPill}>
+              <View style={styles.starsRow}>
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Ionicons
+                    key={s}
+                    name={s <= Math.round(profile.rating) ? "star" : "star-outline"}
+                    size={13}
+                    color={
+                      s <= Math.round(profile.rating)
+                        ? theme.colors.accent
+                        : theme.colors.mutedDark
+                    }
+                  />
+                ))}
+              </View>
               <Text style={styles.ratingMeta}>
                 {ratingDisplay !== "—" ? `${ratingDisplay} · ` : ""}
                 {reviewCount} review{reviewCount === 1 ? "" : "s"}
               </Text>
             </View>
+
+            {profile.location ? (
+              <View style={styles.locationRow}>
+                <Ionicons name="location-outline" size={13} color={theme.colors.muted} />
+                <Text style={styles.locationText} numberOfLines={1}>
+                  {profile.location}
+                </Text>
+              </View>
+            ) : null}
+          </View>
           </View>
 
           <View style={styles.statsRow}>
-            <StatItem icon="star" value={ratingDisplay} label="Rating" />
-            <StatItem icon="construct-outline" value={jobCount} label="Jobs" />
-            <StatItem icon="time-outline" value={yearsValue} label="Years" />
+            <View style={styles.statTile}>
+              <StatItem icon="star" value={ratingDisplay} label="Rating" />
+            </View>
+            <View style={styles.statTile}>
+              <StatItem icon="construct-outline" value={jobCount} label="Jobs" />
+            </View>
+            <View style={styles.statTile}>
+              <StatItem icon="time-outline" value={yearsValue} label="Years" />
+            </View>
           </View>
 
           <View style={styles.ctaRow}>
+            <View style={styles.bookWrap}>
+              <PrimaryButton
+                icon="construct-outline"
+                onPress={() =>
+                  onNavigate?.("request", { artisan: mergedArtisan })
+                }
+                style={styles.bookBtn}
+              >
+                Book Now
+              </PrimaryButton>
+            </View>
+
             <TouchableOpacity
               style={styles.circleBtn}
               activeOpacity={0.82}
-              onPress={() => onNavigate?.("chat", { targetUserId: mergedArtisan._id || mergedArtisan.id })}
+              onPress={() =>
+                onNavigate?.("chat", {
+                  targetUserId: mergedArtisan._id || mergedArtisan.id,
+                })
+              }
             >
               <Ionicons
                 name="chatbubble-outline"
-                size={18}
+                size={20}
                 color={theme.colors.accent}
               />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.bookBtn}
-              activeOpacity={0.88}
-              onPress={() =>
-                onNavigate?.("request", { artisan: mergedArtisan })
-              }
-            >
-              <Text style={styles.bookBtnText}>Book Now</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -530,31 +644,32 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
             >
               <Ionicons
                 name="share-social-outline"
-                size={18}
+                size={20}
                 color={theme.colors.accent}
               />
             </TouchableOpacity>
           </View>
 
           <View style={styles.tabBar}>
-            {TABS.map((tab) => {
-              const active = activeTab === tab.key;
-              return (
-                <TouchableOpacity
-                  key={tab.key}
-                  style={styles.tabItem}
-                  onPress={() => setActiveTab(tab.key)}
-                  activeOpacity={0.75}
-                >
-                  <Text
-                    style={[styles.tabLabel, active && styles.tabLabelActive]}
+            <View style={styles.tabTrack}>
+              {TABS.map((tab) => {
+                const active = activeTab === tab.key;
+                return (
+                  <TouchableOpacity
+                    key={tab.key}
+                    style={[styles.tabItem, active && styles.tabItemActive]}
+                    onPress={() => setActiveTab(tab.key)}
+                    activeOpacity={0.75}
                   >
-                    {tab.label}
-                  </Text>
-                  {active ? <View style={styles.tabIndicator} /> : null}
-                </TouchableOpacity>
-              );
-            })}
+                    <Text
+                      style={[styles.tabLabel, active && styles.tabLabelActive]}
+                    >
+                      {tab.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
           </View>
 
           <View style={styles.tabContent}>
@@ -572,34 +687,59 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.bgDark },
   container: { paddingBottom: 120 },
 
-  bannerWrap: {
-    height: BANNER_HEIGHT,
+  /* Top bar */
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: theme.spacing.md,
+    paddingTop: Platform.OS === "ios" ? 12 : 8,
+    marginBottom: 8,
+  },
+  presencePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: theme.colors.glass,
+    borderWidth: 1,
+    borderColor: "rgba(34,197,94,0.35)",
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: theme.radius.pill,
+  },
+  presencePillOff: { borderColor: theme.colors.border },
+  presenceDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: theme.colors.green,
+  },
+  presenceDotOff: { backgroundColor: theme.colors.mutedDark },
+  presenceText: {
+    color: theme.colors.green,
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  presenceTextOff: { color: theme.colors.mutedDark },
+
+  profileSurface: {
     backgroundColor: theme.colors.black,
+    paddingTop: 8,
   },
-  bannerImage: { width: "100%", height: "100%" },
-  bannerImageCrop: { resizeMode: "cover" },
-  bannerScrim: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.26)",
+  profileHeader: {
+    backgroundColor: theme.colors.panel,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 24,
+    marginHorizontal: theme.spacing.md,
+    paddingTop: 24,
+    paddingBottom: 20,
+    paddingHorizontal: theme.spacing.md,
+    ...theme.elevation.md,
   },
-  backBtn: {
-    position: "absolute",
-    top: Platform.OS === "ios" ? 12 : 8,
-    left: theme.spacing.md,
+  avatarWrap: {
     alignItems: "center",
-    justifyContent: "center",
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "rgba(0,0,0,0.62)",
-  },
-  avatarStandalone: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: BANNER_HEIGHT - AVATAR_SIZE / 2,
-    alignItems: "center",
-    zIndex: 10,
+    marginBottom: 16,
   },
   avatarOuter: {
     width: AVATAR_SIZE,
@@ -611,7 +751,7 @@ const styles = StyleSheet.create({
     height: AVATAR_SIZE,
     borderRadius: AVATAR_SIZE / 2,
     borderWidth: 3,
-    borderColor: theme.colors.black,
+    borderColor: theme.colors.accent,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
@@ -623,7 +763,7 @@ const styles = StyleSheet.create({
     height: AVATAR_SIZE,
     borderRadius: AVATAR_SIZE / 2,
     borderWidth: 3,
-    borderColor: theme.colors.black,
+    borderColor: theme.colors.accent,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -651,15 +791,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
 
-  profileSurface: {
-    backgroundColor: theme.colors.black,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    marginTop: -AVATAR_SIZE / 2,
-    paddingTop: AVATAR_SIZE,
-    overflow: "hidden",
-  },
-
   identityBlock: {
     alignItems: "center",
     paddingHorizontal: theme.spacing.lg,
@@ -678,31 +809,66 @@ const styles = StyleSheet.create({
     marginTop: 4,
     textAlign: "center",
   },
-  ratingRow: {
+  ratingPill: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 8,
-    gap: 8,
+    gap: 10,
+    backgroundColor: "rgba(255,184,0,0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(255,184,0,0.22)",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: theme.radius.pill,
+    marginTop: 12,
   },
+  starsRow: { flexDirection: "row", alignItems: "center", gap: 2 },
   ratingMeta: {
     color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  locationRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 12,
+  },
+  locationText: {
+    color: theme.colors.muted,
     fontSize: 13,
+    maxWidth: 240,
   },
 
   statsRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    gap: theme.spacing.sm,
     marginTop: theme.spacing.lg,
     marginHorizontal: theme.spacing.md,
-    paddingVertical: 2,
-    paddingHorizontal: 0,
+  },
+  statTile: {
+    flex: 1,
+    alignItems: "center",
+    backgroundColor: theme.colors.panel,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
   },
   statItem: { flex: 1, alignItems: "center" },
-  statIcon: { marginBottom: 4 },
+  statIconBadge: {
+    width: 34,
+    height: 34,
+    borderRadius: 12,
+    backgroundColor: "rgba(255,184,0,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+  },
   statValue: {
     color: theme.colors.white,
     fontWeight: "900",
-    fontSize: 16,
+    fontSize: 17,
     textAlign: "center",
   },
   statLabel: {
@@ -710,13 +876,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 4,
     textAlign: "center",
-  },
-  locationHint: {
-    color: theme.colors.muted,
-    fontSize: 12,
-    textAlign: "center",
-    marginTop: 6,
-    marginHorizontal: theme.spacing.lg,
   },
 
   ctaRow: {
@@ -727,64 +886,45 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   circleBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 54,
+    height: 54,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    backgroundColor: theme.colors.black,
+    backgroundColor: theme.colors.glass,
     alignItems: "center",
     justifyContent: "center",
   },
-  bookBtn: {
-    flex: 1,
-    height: 50,
-    borderRadius: theme.radius.pill,
-    backgroundColor: theme.colors.accent,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.16,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  bookBtnText: {
-    color: theme.colors.black,
-    fontWeight: "900",
-    fontSize: 15,
-  },
+  bookWrap: { flex: 1 },
+  bookBtn: { width: "100%" },
 
   tabBar: {
-    flexDirection: "row",
     marginTop: theme.spacing.lg,
     marginHorizontal: theme.spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.colors.border,
+  },
+  tabTrack: {
+    flexDirection: "row",
+    backgroundColor: theme.colors.glass,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: theme.radius.pill,
+    padding: 4,
   },
   tabItem: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 9,
     alignItems: "center",
-    position: "relative",
+    borderRadius: theme.radius.pill - 4,
   },
+  tabItemActive: { backgroundColor: theme.colors.accent },
   tabLabel: {
-    fontSize: 14,
-    fontWeight: "600",
+    fontSize: 13,
+    fontWeight: "700",
     color: theme.colors.muted,
   },
-  tabLabelActive: { color: theme.colors.accent },
-  tabIndicator: {
-    position: "absolute",
-    bottom: -1,
-    left: "18%",
-    right: "18%",
-    height: 2,
-    backgroundColor: theme.colors.accent,
-    borderRadius: 2,
-  },
+  tabLabelActive: { color: theme.colors.textDark },
   tabContent: {
-    marginTop: theme.spacing.sm,
+    marginTop: theme.spacing.md,
     paddingHorizontal: theme.spacing.md,
     paddingBottom: theme.spacing.xl,
   },
@@ -797,17 +937,34 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
   sectionTitle: {
     color: theme.colors.white,
     fontWeight: "800",
-    fontSize: 18,
-    marginBottom: 10,
+    fontSize: 16,
   },
   bodyText: {
     color: theme.colors.muted,
     fontSize: 14,
     lineHeight: 21,
   },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  infoDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: theme.colors.green,
+  },
+  infoDotOff: { backgroundColor: theme.colors.mutedDark },
 
   skillRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   skillChip: {
@@ -837,6 +994,79 @@ const styles = StyleSheet.create({
     resizeMode: "cover",
   },
 
+  /* Review summary */
+  reviewSummaryCard: {
+    flexDirection: "row",
+    backgroundColor: theme.colors.panel,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 18,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.md,
+    gap: theme.spacing.md,
+  },
+  reviewSummaryLeft: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: theme.spacing.sm,
+  },
+  reviewScore: {
+    color: theme.colors.white,
+    fontSize: 40,
+    fontWeight: "900",
+    lineHeight: 44,
+  },
+  reviewSummaryCount: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    fontWeight: "600",
+    marginTop: 6,
+  },
+  reviewBreakdown: {
+    flex: 1,
+    justifyContent: "center",
+    gap: 6,
+  },
+  breakdownRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  breakdownLabel: {
+    color: theme.colors.muted,
+    fontSize: 11,
+    fontWeight: "700",
+    width: 20,
+  },
+  breakdownTrack: {
+    flex: 1,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.input,
+    overflow: "hidden",
+  },
+  breakdownFill: {
+    height: "100%",
+    borderRadius: 3,
+    backgroundColor: theme.colors.accent,
+  },
+  breakdownCount: {
+    color: theme.colors.muted,
+    fontSize: 11,
+    fontWeight: "700",
+    width: 16,
+    textAlign: "right",
+  },
+
+  /* Review cards */
+  reviewCard: {
+    backgroundColor: theme.colors.panel,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 18,
+    padding: theme.spacing.md,
+    marginBottom: theme.spacing.sm,
+  },
   reviewHeader: {
     flexDirection: "row",
     alignItems: "center",
@@ -845,15 +1075,40 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "rgba(255,184,0,0.22)",
+    backgroundColor: "rgba(255,184,0,0.15)",
+    borderWidth: 1,
+    borderColor: "rgba(255,184,0,0.25)",
     alignItems: "center",
     justifyContent: "center",
     marginRight: 10,
   },
+  reviewAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 10,
+  },
   reviewAvatarText: { color: theme.colors.white, fontWeight: "800" },
   reviewMeta: { flex: 1 },
-  reviewAuthor: { color: theme.colors.white, fontWeight: "800", fontSize: 15 },
-  reviewDate: { color: theme.colors.muted, fontSize: 12 },
+  reviewNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  reviewAuthor: { color: theme.colors.white, fontWeight: "800", fontSize: 14, flexShrink: 1 },
+  reviewVerifiedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "rgba(255,184,0,0.1)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  reviewVerifiedText: { color: theme.colors.accent, fontSize: 10, fontWeight: "700" },
+  reviewStarsWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginTop: 4,
+  },
+  reviewDate: { color: theme.colors.mutedDark, fontSize: 11, fontWeight: "600" },
   reviewText: {
     color: theme.colors.muted,
     fontSize: 14,

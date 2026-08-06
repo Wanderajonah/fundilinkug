@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -13,19 +13,21 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import ScreenWrapper from "../components/ScreenWrapper";
-import BottomTabBar from "../components/BottomTabBar";
 import LoadingSkeleton from "../components/LoadingSkeleton";
 import HomeSection from "../components/HomeSection";
-import { useTabBarHeight } from "../hooks/useTabBarHeight";
-import { formatUgx, initials } from "../utils/ratings";
-import { getNearbyFundis } from "../../services/mapsApi";
-import { mapFundiItem } from "../../services/fundisApi";
+import { formatUgx, formatBookingDate } from "../utils/ratings";
 import { getWallet } from "../../services/walletApi";
 import theme from "../theme";
 import { useBookingOptional } from "../../context/BookingContext";
 import { useLocation } from "../../context/LocationContext";
 
 const H_PAD = 20;
+
+const STATUS_COLORS = {
+  COMPLETED: { bg: "rgba(52,199,89,0.15)", fg: theme.colors.green },
+  CANCELLED: { bg: "rgba(255,69,58,0.15)", fg: theme.colors.red },
+  DISPUTED: { bg: "rgba(255,69,58,0.15)", fg: theme.colors.red },
+};
 
 const CATEGORIES = [
   { key: "plumber", label: "Plumbing", icon: "water-outline" },
@@ -34,7 +36,7 @@ const CATEGORIES = [
   { key: "painter", label: "Painter", icon: "color-palette-outline" },
 ];
 
-function ListHeader({ userName, onNavigate, locationLabel, activeJob, loading, walletBalance }) {
+function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLoading, walletBalance }) {
   const [showBalance, setShowBalance] = useState(true);
   return (
     <View>
@@ -177,60 +179,54 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, loading, w
         </ScrollView>
       </HomeSection>
 
-      {/* 5. Featured Fundis */}
+      {/* 5. Recent Bookings */}
       <HomeSection
-        title="Top Professionals"
-        onAction={() => onNavigate?.("browse")}
+        title="Recent Bookings"
+        onAction={() => onNavigate?.("bookings")}
         style={styles.sectionGap}
       >
-        {loading ? <LoadingSkeleton count={2} /> : null}
+        {bookingsLoading ? <LoadingSkeleton count={2} /> : null}
       </HomeSection>
 
     </View>
   );
 }
 
-function FundiCard({ item, onBook }) {
-  const stars = item.rating || 0;
-  const dist = item.distanceKm;
+function BookingCard({ item, onPress }) {
+  const palette = STATUS_COLORS[item.status] || { bg: "rgba(255,184,0,0.12)", fg: theme.colors.accent };
+  const counterpart = item.fundiName || item.clientName || "Fundi";
   return (
     <TouchableOpacity
-      style={styles.fundiCard}
+      style={styles.bookingCard}
       activeOpacity={0.9}
-      onPress={() => onBook?.(item)}
+      onPress={onPress}
     >
-      <View style={styles.fundiAvatar}>
-        <Text style={styles.fundiAvatarText}>{initials(item.name)}</Text>
-        {item.verified ? <View style={styles.verifiedBadge}><Ionicons name="checkmark" size={10} color={theme.colors.textDark} /></View> : null}
+      <View style={styles.bookingIcon}>
+        <Ionicons name="construct-outline" size={22} color={theme.colors.accent} />
       </View>
       <View style={styles.fundiBody}>
-        <View style={styles.fundiNameRow}>
-          <Text style={styles.fundiName} numberOfLines={1}>{item.name}</Text>
-          {item.isAvailable !== false ? <View style={styles.availDot} /> : null}
-        </View>
-        <Text style={styles.fundiRole} numberOfLines={1}>{item.role}</Text>
-        <View style={styles.fundiMeta}>
-          <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={12} color={theme.colors.accent} />
-            <Text style={styles.ratingText}>{stars > 0 ? stars.toFixed(1) : "New"}</Text>
+        <Text style={styles.bookingService} numberOfLines={1}>
+          {item.service || "Service"}
+        </Text>
+        <Text style={styles.bookingSub} numberOfLines={1}>
+          {counterpart}
+        </Text>
+        <View style={styles.bookingMeta}>
+          <View style={[styles.bookingStatus, { backgroundColor: palette.bg }]}>
+            <Text style={[styles.bookingStatusText, { color: palette.fg }]}>
+              {item.statusLabel || item.status}
+            </Text>
           </View>
-          {dist != null ? (
-            <Text style={styles.distText}>{dist < 1 ? `${(dist * 1000).toFixed(0)}m` : `${dist.toFixed(1)}km`}</Text>
-          ) : null}
-          {item.experience > 0 ? (
-            <Text style={styles.expText}>{item.experience}yr</Text>
+          {item.createdAt ? (
+            <Text style={styles.bookingDate}>{formatBookingDate(item.createdAt)}</Text>
           ) : null}
         </View>
       </View>
-      <View style={styles.hireWrap}>
-        <TouchableOpacity
-          style={styles.hireBtn}
-          activeOpacity={0.85}
-          onPress={() => onBook?.(item)}
-        >
-          <Text style={styles.hireBtnText}>Hire</Text>
-        </TouchableOpacity>
-      </View>
+      {item.total ? (
+        <View style={styles.bookingAmountWrap}>
+          <Text style={styles.bookingAmount}>{formatUgx(item.total)}</Text>
+        </View>
+      ) : null}
     </TouchableOpacity>
   );
 }
@@ -241,14 +237,28 @@ export default function HomeScreen({
   activeJob,
   onNavigate,
 }) {
-  const tabBarHeight = useTabBarHeight();
   const bookingCtx = useBookingOptional();
   const resolvedActiveJob = bookingCtx?.activeJob || activeJob;
-  const { address, coords, radiusKm, locationRevision } = useLocation();
-  const [featured, setFeatured] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { address } = useLocation();
   const [walletBalance, setWalletBalance] = useState(null);
+
+  const recentBookings = useMemo(() => {
+    const list = bookingCtx?.bookings || [];
+    const seen = new Set();
+    return [...list]
+      .filter(Boolean)
+      .sort(
+        (a, b) =>
+          new Date(b.createdAt || 0) - new Date(a.createdAt || 0)
+      )
+      .filter((b) => {
+        if (!b.fundiId) return true;
+        if (seen.has(b.fundiId)) return false;
+        seen.add(b.fundiId);
+        return true;
+      })
+      .slice(0, 5);
+  }, [bookingCtx?.bookings]);
 
   useEffect(() => {
     let cancelled = false;
@@ -261,41 +271,14 @@ export default function HomeScreen({
     return () => { cancelled = true; };
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError("");
-      try {
-        const { data } = await getNearbyFundis({
-          lat: coords.lat,
-          lng: coords.lng,
-          radiusKm,
-        });
-        const list = (data.fundis || data || []).slice(0, 5).map(mapFundiItem);
-        if (!cancelled) setFeatured(list);
-      } catch {
-        if (!cancelled) {
-          setFeatured([]);
-          setError("Could not load fundis.");
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [coords.lat, coords.lng, radiusKm, locationRevision]);
-
   return (
-    <ScreenWrapper style={styles.safe}>
+    <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar
         barStyle="light-content"
         backgroundColor={theme.colors.black}
       />
       <FlatList
-        data={loading ? [] : featured}
+        data={recentBookings}
         keyExtractor={(i) => String(i.id)}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
@@ -304,44 +287,33 @@ export default function HomeScreen({
             onNavigate={onNavigate}
             locationLabel={address}
             activeJob={resolvedActiveJob}
-            loading={loading}
+            bookingsLoading={bookingCtx?.loading}
             walletBalance={walletBalance}
           />
         }
         contentContainerStyle={[
           styles.listContent,
-          { paddingBottom: tabBarHeight + 24 },
+          { paddingBottom: 24 },
         ]}
         ListEmptyComponent={
-          !loading ? (
-            error ? (
-              <View style={styles.noFundis}>
-                <Ionicons name="cloud-offline-outline" size={28} color={theme.colors.mutedDark} />
-                <Text style={styles.noFundisTitle}>Unable to load</Text>
-                <Text style={styles.noFundisSub}>{error}</Text>
-              </View>
-            ) : (
-              <View style={styles.noFundis}>
-                <Ionicons name="search-outline" size={28} color={theme.colors.mutedDark} />
-                <Text style={styles.noFundisTitle}>No fundis nearby</Text>
-                <Text style={styles.noFundisSub}>Try expanding your search radius or browse all fundis</Text>
-                <TouchableOpacity style={styles.browseAllBtn} onPress={() => onNavigate?.("browse")}>
-                  <Text style={styles.browseAllText}>Browse All Fundis</Text>
-                </TouchableOpacity>
-              </View>
-            )
+          !bookingCtx?.loading ? (
+            <View style={styles.noBookings}>
+              <Ionicons name="calendar-outline" size={28} color={theme.colors.mutedDark} />
+              <Text style={styles.noFundisTitle}>No bookings yet</Text>
+              <Text style={styles.noFundisSub}>Book a fundi and your bookings will show up here</Text>
+              <TouchableOpacity style={styles.browseAllBtn} onPress={() => onNavigate?.("browse")}>
+                <Text style={styles.browseAllText}>Book a Fundi</Text>
+              </TouchableOpacity>
+            </View>
           ) : null
         }
         renderItem={({ item }) => (
-          <FundiCard
+          <BookingCard
             item={item}
-            onBook={(artisan) =>
-              onNavigate?.("artisan", { artisanId: artisan.id, artisan })
-            }
+            onPress={() => onNavigate?.("bookings")}
           />
         )}
       />
-      <BottomTabBar active="home" onTab={onNavigate} role={userRole} />
     </ScreenWrapper>
   );
 }
@@ -501,8 +473,8 @@ const styles = StyleSheet.create({
   },
   serviceLabel: { color: theme.colors.muted, fontSize: 12, fontWeight: "600", textAlign: "center" },
 
-  /* Fundi Card */
-  fundiCard: {
+  /* Booking Card */
+  bookingCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: theme.colors.panel,
@@ -512,7 +484,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  fundiAvatar: {
+  bookingIcon: {
     width: 48,
     height: 48,
     borderRadius: 16,
@@ -520,56 +492,25 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: 12,
-    position: "relative",
-  },
-  fundiAvatarText: { color: theme.colors.white, fontWeight: "800", fontSize: 16 },
-  verifiedBadge: {
-    position: "absolute",
-    bottom: -2,
-    right: -2,
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: theme.colors.green,
-    justifyContent: "center",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: theme.colors.panel,
   },
   fundiBody: { flex: 1 },
-  fundiNameRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  fundiName: { color: theme.colors.white, fontSize: 15, fontWeight: "800", flexShrink: 1 },
-  availDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 3.5,
-    backgroundColor: theme.colors.green,
-  },
-  fundiRole: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
-  fundiMeta: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
-  ratingBadge: {
+  bookingService: { color: theme.colors.white, fontSize: 15, fontWeight: "800", flexShrink: 1 },
+  bookingSub: { color: theme.colors.muted, fontSize: 12, marginTop: 2 },
+  bookingMeta: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
+  bookingStatus: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,184,0,0.12)",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
-    gap: 3,
   },
-  ratingText: { color: theme.colors.accent, fontWeight: "800", fontSize: 11 },
-  distText: { color: theme.colors.mutedDark, fontSize: 11, fontWeight: "600" },
-  expText: { color: theme.colors.mutedDark, fontSize: 11, fontWeight: "600" },
-  hireWrap: { marginLeft: 8 },
-  hireBtn: {
-    backgroundColor: theme.colors.accent,
-    paddingHorizontal: 16,
-    paddingVertical: 9,
-    borderRadius: 12,
-  },
-  hireBtnText: { color: theme.colors.textDark, fontWeight: "800", fontSize: 13 },
+  bookingStatusText: { fontWeight: "800", fontSize: 11 },
+  bookingDate: { color: theme.colors.mutedDark, fontSize: 11, fontWeight: "600" },
+  bookingAmountWrap: { marginLeft: 8 },
+  bookingAmount: { color: theme.colors.accent, fontWeight: "900", fontSize: 13 },
 
-  /* No fundis */
-  noFundis: {
+  /* No bookings */
+  noBookings: {
     alignItems: "center",
     paddingVertical: 24,
     backgroundColor: theme.colors.panel,

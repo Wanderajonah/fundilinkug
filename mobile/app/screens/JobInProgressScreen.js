@@ -67,7 +67,9 @@ export default function JobInProgressScreen({ job = {}, onNavigate, onComplete }
         <Text style={styles.rateDisabledText}>Rate this job (available after completion)</Text>
       </View>
 
-      <PrimaryButton onPress={() => onComplete?.(job)}>Mark job as complete</PrimaryButton>
+      <PrimaryButton style={styles.completeBtn} onPress={() => onComplete?.(job)}>
+        Mark job as complete
+      </PrimaryButton>
 
       <TouchableOpacity style={styles.chatFab} onPress={() => onNavigate?.('chat', { targetUserId: job?.fundiId })}>
         <Ionicons name="chatbubble-outline" size={24} color={theme.colors.white} />
@@ -156,6 +158,13 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   rateDisabledText: { color: theme.colors.mutedDark, fontSize: 13 },
+  completeBtn: {
+    alignSelf: 'stretch',
+    height: 54,
+    marginHorizontal: 24,
+    paddingHorizontal: 20,
+    marginBottom: 4,
+  },
   chatFab: {
     alignSelf: 'center',
     marginTop: 20,
@@ -164,6 +173,7 @@ const styles = StyleSheet.create({
     borderRadius: 26,
     borderWidth: 1.5,
     borderColor: theme.colors.border,
+    backgroundColor: theme.colors.glass,
     justifyContent: 'center',
     alignItems: 'center',
   },

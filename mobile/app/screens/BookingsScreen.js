@@ -11,18 +11,16 @@ import {
 } from 'react-native';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
-import BottomTabBar from '../components/BottomTabBar';
 import StarRating from '../components/StarRating';
 import PrimaryButton from '../components/PrimaryButton';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
-import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { getJobsForUser, updateJobStatus, getErrorMessage } from '../../services/jobsApi';
 import { useBookingOptional } from '../../context/BookingContext';
 import { partitionJobs } from '../utils/jobs';
 import { formatUgx, formatBookingDate, ratingLabel, initials } from '../utils/ratings';
 
-function FundiBookingsView({ bookings, tab, setTab, tabBarHeight, onNavigate, loading, onRefresh, refreshing }) {
+function FundiBookingsView({ bookings, tab, setTab, onNavigate, loading, onRefresh, refreshing }) {
   const active = bookings.filter((b) =>
     ['PENDING', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status)
   );
@@ -56,7 +54,7 @@ function FundiBookingsView({ bookings, tab, setTab, tabBarHeight, onNavigate, lo
         <FlatList
           data={list}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ paddingBottom: tabBarHeight + 16, flexGrow: 1 }}
+          contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
           }
@@ -108,7 +106,7 @@ function FundiBookingsView({ bookings, tab, setTab, tabBarHeight, onNavigate, lo
   );
 }
 
-function FundiJobsView({ jobs, completed, cancelled, tab, setTab, tabBarHeight, onNavigate, loading, onRefresh, refreshing }) {
+function FundiJobsView({ jobs, completed, cancelled, tab, setTab, onNavigate, loading, onRefresh, refreshing }) {
   const list =
     tab === 'active' ? jobs : tab === 'completed' ? completed : tab === 'cancelled' ? cancelled : [];
 
@@ -136,7 +134,7 @@ function FundiJobsView({ jobs, completed, cancelled, tab, setTab, tabBarHeight, 
         <FlatList
           data={list}
           keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ paddingBottom: tabBarHeight + 16, flexGrow: 1 }}
+          contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
           }
@@ -218,7 +216,6 @@ export default function BookingsScreen({
   onStartRatingFlow,
   onViewHistory,
 }) {
-  const tabBarHeight = useTabBarHeight();
   const [activeTab, setActiveTab] = useState('active');
   const [fundiTab, setFundiTab] = useState('active');
   const [jobs, setJobs] = useState([]);
@@ -266,14 +263,13 @@ export default function BookingsScreen({
 
   if (userRole === 'fundi') {
     return (
-      <ScreenWrapper style={styles.safe}>
+      <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={styles.container}>
           <Text style={styles.title}>My Jobs</Text>
           <FundiBookingsView
             bookings={fundiBookings}
             tab={fundiTab}
             setTab={setFundiTab}
-            tabBarHeight={tabBarHeight}
             onNavigate={onNavigate}
             loading={bookingCtx?.loading || loading}
             refreshing={refreshing}
@@ -291,8 +287,7 @@ export default function BookingsScreen({
             />
           ) : null}
         </View>
-        <BottomTabBar active="bookings" onTab={onNavigate} role={userRole} />
-      </ScreenWrapper>
+    </ScreenWrapper>
     );
   }
 
@@ -306,7 +301,7 @@ export default function BookingsScreen({
           : [];
 
   return (
-    <ScreenWrapper style={styles.safe}>
+    <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
         <Text style={styles.title}>My Bookings</Text>
 
@@ -337,7 +332,7 @@ export default function BookingsScreen({
           <FlatList
             data={listData}
             keyExtractor={(item) => String(item.id || item.reviewId)}
-            contentContainerStyle={{ paddingBottom: tabBarHeight + 16, flexGrow: 1 }}
+          contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
             refreshControl={
               <RefreshControl
                 refreshing={refreshing}
@@ -444,8 +439,6 @@ export default function BookingsScreen({
           <EmptyState icon="cloud-offline-outline" title="Could not load bookings" message={error} />
         ) : null}
       </View>
-
-      <BottomTabBar active="bookings" onTab={onNavigate} role={userRole} />
     </ScreenWrapper>
   );
 }
@@ -458,7 +451,7 @@ const styles = StyleSheet.create({
   topTab: {
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 14,
+    borderRadius: theme.radius.pill,
     backgroundColor: theme.colors.glass,
     borderWidth: 1,
     borderColor: theme.colors.border,

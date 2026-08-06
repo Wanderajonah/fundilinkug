@@ -16,6 +16,7 @@ export default function MapViewWrapper({
 }) {
   const [MapComponents, setMapComponents] = useState(null);
   const [mapError, setMapError] = useState(false);
+  const mapRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,7 +55,7 @@ export default function MapViewWrapper({
 
   return (
     <MapView
-      ref={useRef(null)}
+      ref={mapRef}
       style={style}
       customMapStyle={DARK_MAP_STYLE}
       initialRegion={mapRegion}

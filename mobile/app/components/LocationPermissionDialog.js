@@ -1,6 +1,7 @@
 import React from 'react';
 import { Modal, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import PrimaryButton from './PrimaryButton';
 import theme from '../theme';
 
 
@@ -28,12 +29,14 @@ export default function LocationPermissionDialog({
             <ActivityIndicator color={theme.colors.accent} style={{ marginVertical: 16 }} />
           ) : (
             <>
-              <TouchableOpacity style={styles.primaryBtn} onPress={onEnable} activeOpacity={0.9}>
-                <Text style={styles.primaryText}>Enable Location</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.cancelBtn} onPress={onCancel} activeOpacity={0.85}>
-                <Text style={styles.cancelText}>Cancel</Text>
-              </TouchableOpacity>
+              <View style={styles.dialogBtns}>
+                <PrimaryButton variant="primary" onPress={onEnable}>
+                  Enable Location
+                </PrimaryButton>
+                <TouchableOpacity style={styles.cancelBtn} onPress={onCancel} activeOpacity={0.85}>
+                  <Text style={styles.cancelText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
             </>
           )}
 
@@ -81,15 +84,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 20,
   },
-  primaryBtn: {
-    backgroundColor: theme.colors.accent,
-    borderRadius: 22,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-
-  primaryText: { color: theme.colors.white, fontWeight: '800', fontSize: 16 },
+  dialogBtns: { alignSelf: 'stretch', marginHorizontal: 24 },
   cancelBtn: { paddingVertical: 12, alignItems: 'center' },
   cancelText: { color: theme.colors.muted, fontWeight: '700', fontSize: 15 },
 });

@@ -155,11 +155,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: theme.colors.panel,
+    backgroundColor: theme.colors.input,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   spacer: { flex: 1 },
 

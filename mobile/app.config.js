@@ -33,6 +33,11 @@ module.exports = {
     android: {
       package: 'com.fundilink.uganda',
       permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION'],
+      softwareKeyboardLayoutMode: 'resize',
+      navigationBar: {
+        backgroundColor: '#000000',
+        barStyle: 'light-content',
+      },
       intentFilters: [
         {
           action: 'VIEW',

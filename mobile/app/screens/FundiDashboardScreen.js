@@ -12,13 +12,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenWrapper from '../components/ScreenWrapper';
-import BottomTabBar from '../components/BottomTabBar';
 import FundiMap from '../components/FundiMap';
 import PrimaryButton from '../components/PrimaryButton';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import CountdownTimer from '../components/CountdownTimer';
-import { useTabBarHeight } from '../hooks/useTabBarHeight';
 import { useLocation } from '../../context/LocationContext';
 import { useBooking } from '../../context/BookingContext';
 import {
@@ -40,7 +38,6 @@ export default function FundiDashboardScreen({
   userId,
   onNavigate,
 }) {
-  const tabBarHeight = useTabBarHeight();
   const { coords, address, region } = useLocation();
   const {
     pendingRequest,
@@ -152,9 +149,9 @@ export default function FundiDashboardScreen({
   const hasIncomingRequest = Boolean(pendingRequest?.bookingId && online);
 
   return (
-    <ScreenWrapper style={styles.safe}>
+    <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
       <ScrollView
-        contentContainerStyle={[styles.scroll, { paddingBottom: tabBarHeight + 16 }]}
+        contentContainerStyle={[styles.scroll, { paddingBottom: 16 }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
@@ -376,7 +373,6 @@ export default function FundiDashboardScreen({
           {address || 'Set your location'} · {online ? 'Sharing location' : 'Location hidden'}
         </Text>
       </ScrollView>
-      <BottomTabBar active="fundiDashboard" onTab={onNavigate} role={userRole} />
     </ScreenWrapper>
   );
 }
@@ -428,6 +424,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: theme.radius.md,
     backgroundColor: theme.colors.input,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   quickText: { color: theme.colors.white, fontSize: 11, fontWeight: '700' },
   section: { color: theme.colors.white, fontWeight: '800', fontSize: 16, marginBottom: 12 },
@@ -493,13 +491,14 @@ const styles = StyleSheet.create({
   declineBtn: {
     width: 80,
     height: 52,
-    borderRadius: theme.radius.pill,
+    borderRadius: theme.buttons.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
+    backgroundColor: theme.colors.glass,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  declineText: { color: theme.colors.muted, fontWeight: '700' },
+  declineText: { color: theme.colors.white, fontWeight: '700' },
   errorBox: {
     flexDirection: 'row',
     alignItems: 'center',

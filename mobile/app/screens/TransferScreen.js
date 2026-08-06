@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.black },
   scroll: { paddingHorizontal: 20, paddingBottom: 40 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: theme.colors.input, justifyContent: 'center', alignItems: 'center' },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.input, borderWidth: 1, borderColor: theme.colors.border, justifyContent: 'center', alignItems: 'center' },
   title: { color: theme.colors.white, fontSize: 18, fontWeight: '800' },
   balanceBanner: { backgroundColor: theme.colors.panel, borderRadius: 16, padding: 16, marginBottom: 20, alignItems: 'center', borderWidth: 1, borderColor: theme.colors.border },
   balanceLabel: { color: theme.colors.muted, fontSize: 12 },

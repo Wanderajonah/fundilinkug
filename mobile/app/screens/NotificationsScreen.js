@@ -43,7 +43,7 @@ export default function NotificationsScreen({ onNavigate }) {
             <Ionicons name="chevron-back" size={20} color={theme.colors.accent} />
           </TouchableOpacity>
           <Text style={styles.title}>Notifications</Text>
-          <View style={{ width: 48 }} />
+          <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.chipsRow}>
@@ -94,11 +94,11 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.bgDark },
   container: { flex: 1, paddingHorizontal: 16, paddingTop: 12 },
   headerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  backBtn: { width: 48 },
+  backBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.input, borderWidth: 1, borderColor: theme.colors.border, justifyContent: 'center', alignItems: 'center' },
   backText: { color: theme.colors.accent, fontWeight: '800' },
   title: { color: theme.colors.white, fontSize: 18, fontWeight: '900' },
   chipsRow: { flexDirection: 'row', gap: 8, marginBottom: 10 },
-  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: theme.colors.glass },
+  chip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: theme.radius.pill, backgroundColor: theme.colors.input },
   chipActive: { backgroundColor: theme.colors.accent },
   chipText: { color: theme.colors.mutedDark, fontWeight: '700', fontSize: 11 },
   chipTextActive: { color: theme.colors.textDark, fontWeight: '900' },

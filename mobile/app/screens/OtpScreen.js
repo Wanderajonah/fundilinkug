@@ -159,7 +159,7 @@ export default function OtpScreen({
     <ScrollScreen contentStyle={styles.container} bottomPad={32}>
       <StatusBar barStyle="light-content" backgroundColor={theme.colors.black} />
       <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-        <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
+        <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
       </TouchableOpacity>
 
       <View style={styles.phoneArt}>
@@ -240,8 +240,10 @@ const styles = StyleSheet.create({
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 12,
     backgroundColor: theme.colors.input,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 8,

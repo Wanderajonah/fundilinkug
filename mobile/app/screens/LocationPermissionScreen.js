@@ -68,21 +68,23 @@ export default function LocationPermissionScreen({
         <Text style={styles.title}>Enable Location</Text>
         <Text style={styles.sub}>{message}</Text>
 
-        <PrimaryButton
-          onPress={handling || loading ? undefined : handleEnable}
-          style={[styles.primaryCta, { backgroundColor: getBrandPrimaryColor() }]}
-          disabled={handling || loading}
-        >
-          {handling || loading ? 'Getting location…' : 'Enable Location'}
-        </PrimaryButton>
+        <View style={styles.btnGroup}>
+          <PrimaryButton
+            onPress={handling || loading ? undefined : handleEnable}
+            style={[styles.primaryCta, { backgroundColor: getBrandPrimaryColor() }]}
+            disabled={handling || loading}
+          >
+            {handling || loading ? 'Getting location…' : 'Enable Location'}
+          </PrimaryButton>
 
-        <PrimaryButton
-          filled={false}
-          onPress={handleOpenSystemSettings}
-          style={styles.secondary}
-        >
-          Cancel
-        </PrimaryButton>
+          <PrimaryButton
+            filled={false}
+            onPress={handleOpenSystemSettings}
+            style={styles.secondary}
+          >
+            Cancel
+          </PrimaryButton>
+        </View>
       </View>
     </View>
   );
@@ -113,7 +115,8 @@ const styles = StyleSheet.create({
   artwork: { width: 160, height: 120 },
   title: { fontSize: 20, fontWeight: '800', color: theme.colors.white, marginTop: 6 },
   sub: { color: theme.colors.muted, textAlign: 'center', marginTop: 8, marginBottom: 14, fontSize: 14, lineHeight: 20 },
-  primaryCta: { width: '100%', backgroundColor: theme.colors.accent, marginTop: 4 },
-  secondary: { width: '100%', marginTop: 10, borderColor: theme.colors.border },
+  primaryCta: { backgroundColor: theme.colors.accent, marginTop: 16 },
+  secondary: { marginTop: 12, marginBottom: 6, borderColor: theme.colors.border },
+  btnGroup: { alignSelf: 'stretch', marginHorizontal: 24 },
 });
 

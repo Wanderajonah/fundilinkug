@@ -7,6 +7,7 @@ import {
   FlatList,
   TextInput,
   KeyboardAvoidingView,
+  Keyboard,
   Platform,
   ActivityIndicator,
   Image,
@@ -23,9 +24,8 @@ import { formatShortTime } from '../utils/ratings';
 import { compressImage, resolveMediaUrl } from '../../utils/image';
 import { getOrCreateConversation } from '../../services/chatApi';
 
-const WHATSAPP_GREEN = '#25D366';
-const SENT_BUBBLE = '#005C4B';
-const RECEIVED_BUBBLE = '#1F2C33';
+const SENT_BUBBLE = '#3A2A0F';
+const RECEIVED_BUBBLE = '#202020';
 
 function formatDateSeparator(date) {
   if (!date) return '';
@@ -35,6 +35,24 @@ function formatDateSeparator(date) {
   if (diff < 1) return 'Today';
   if (diff < 2) return 'Yesterday';
   return d.toLocaleDateString('en-UG', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+// Deterministic keyboard height on Android. Unlike KeyboardAvoidingView's
+// 'height' behavior, this only reacts to real keyboard show/hide events, so the
+// input bar never jumps on mount.
+function useKeyboardHeight() {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', (e) =>
+      setHeight(e.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener('keyboardDidHide', () => setHeight(0));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+  return height;
 }
 
 function ConversationItem({ item, userId, onPress }) {
@@ -128,6 +146,7 @@ function ConversationView({ conversationId, userId, onBack }) {
   const [uploading, setUploading] = useState(false);
   const flatRef = useRef(null);
   const typingUserId = typingUsers?.[conversationId];
+  const kbHeight = useKeyboardHeight();
 
   useEffect(() => {
     if (messages?.length > 0) {
@@ -187,7 +206,7 @@ function ConversationView({ conversationId, userId, onBack }) {
   return (
     <View style={styles.conversationContainer}>
       <View style={styles.chatHeader}>
-        <TouchableOpacity onPress={onBack} style={styles.headerBtn}>
+        <TouchableOpacity onPress={onBack} style={[styles.headerBtn, styles.headerBackBtn]}>
           <Ionicons name="arrow-back" size={22} color={theme.colors.white} />
         </TouchableOpacity>
         <View style={styles.chatHeaderInfo}>
@@ -199,12 +218,15 @@ function ConversationView({ conversationId, userId, onBack }) {
       </View>
 
       {loading && messages.length === 0 ? (
-        <ActivityIndicator color={WHATSAPP_GREEN} style={{ marginTop: 40 }} />
+        <View style={styles.chatList}>
+          <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 40 }} />
+        </View>
       ) : (
         <FlatList
           ref={flatRef}
           data={messagesWithDates}
           keyExtractor={(item) => item._id || String(Math.random())}
+          style={styles.chatList}
           contentContainerStyle={styles.messageList}
           ListEmptyComponent={
             <EmptyState
@@ -220,13 +242,21 @@ function ConversationView({ conversationId, userId, onBack }) {
       {typingUserId && typingUserId !== userId ? <TypingDots /> : null}
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 4) }]}>
+        <View
+          style={[
+            styles.inputRow,
+            {
+              paddingBottom: Math.max(insets.bottom, 4),
+              marginBottom: Platform.OS === 'android' ? kbHeight : 0,
+            },
+          ]}
+        >
           <TouchableOpacity style={styles.attachBtn} onPress={handlePickImage} disabled={uploading}>
             {uploading ? (
-              <ActivityIndicator size="small" color={WHATSAPP_GREEN} />
+              <ActivityIndicator size="small" color={theme.colors.accent} />
             ) : (
               <Ionicons name="add-circle-outline" size={26} color={theme.colors.mutedDark} />
             )}
@@ -240,7 +270,7 @@ function ConversationView({ conversationId, userId, onBack }) {
           />
           {input.trim() ? (
             <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
-              <Ionicons name="send" size={18} color={theme.colors.white} />
+              <Ionicons name="send" size={18} color={theme.colors.textDark} />
             </TouchableOpacity>
           ) : (
             <TouchableOpacity style={styles.micBtn}>
@@ -262,6 +292,7 @@ function SupportChat({ userId }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const flatRef = useRef(null);
+  const kbHeight = useKeyboardHeight();
 
   useEffect(() => {
     setTimeout(() => flatRef.current?.scrollToEnd({ animated: true }), 100);
@@ -302,22 +333,31 @@ function SupportChat({ userId }) {
         ref={flatRef}
         data={messages}
         keyExtractor={(_, i) => String(i)}
+        style={styles.chatList}
         contentContainerStyle={styles.messageList}
         renderItem={renderMsg}
       />
 
       {loading ? (
         <View style={styles.supportLoading}>
-          <ActivityIndicator size="small" color={WHATSAPP_GREEN} />
+          <ActivityIndicator size="small" color={theme.colors.accent} />
           <Text style={styles.supportLoadingText}>Thinking...</Text>
         </View>
       ) : null}
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 4) }]}>
+        <View
+          style={[
+            styles.inputRow,
+            {
+              paddingBottom: Math.max(insets.bottom, 4),
+              marginBottom: Platform.OS === 'android' ? kbHeight : 0,
+            },
+          ]}
+        >
           <TextInput
             style={styles.input}
             value={input}
@@ -327,7 +367,7 @@ function SupportChat({ userId }) {
           />
           {input.trim() && !loading ? (
             <TouchableOpacity style={styles.sendBtn} onPress={handleSend}>
-              <Ionicons name="send" size={18} color={theme.colors.white} />
+              <Ionicons name="send" size={18} color={theme.colors.textDark} />
             </TouchableOpacity>
           ) : null}
         </View>
@@ -404,7 +444,7 @@ export default function ChatScreen({ onNavigate, userRole, userId, targetUserId 
           <Ionicons
             name={tab === 'support' ? 'chatbubbles' : 'headset-outline'}
             size={22}
-            color={WHATSAPP_GREEN}
+            color={theme.colors.accent}
           />
         </TouchableOpacity>
       </View>
@@ -420,6 +460,7 @@ export default function ChatScreen({ onNavigate, userRole, userId, targetUserId 
           <FlatList
             data={conversations}
             keyExtractor={(item) => item._id}
+            style={styles.chatList}
             contentContainerStyle={{ paddingBottom: 100 }}
             renderItem={({ item }) => (
               <ConversationItem
@@ -433,7 +474,7 @@ export default function ChatScreen({ onNavigate, userRole, userId, targetUserId 
       ) : (
         <View style={{ flex: 1 }}>
           <View style={styles.supportHeader}>
-            <Ionicons name="headset" size={20} color={WHATSAPP_GREEN} />
+            <Ionicons name="headset" size={20} color={theme.colors.accent} />
             <Text style={styles.supportHeaderText}>FundiLink Support</Text>
           </View>
           <SupportChat userId={userId} />
@@ -444,53 +485,55 @@ export default function ChatScreen({ onNavigate, userRole, userId, targetUserId 
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#0B141A' },
+  safe: { flex: 1, backgroundColor: theme.colors.black },
   headerRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#1F2C33',
+    backgroundColor: theme.colors.panel,
   },
   headerTitle: { color: theme.colors.white, fontWeight: '700', fontSize: 18 },
-  headerBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  headerBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.glass, borderWidth: 1, borderColor: theme.colors.border, justifyContent: 'center', alignItems: 'center' },
+  headerBackBtn: { backgroundColor: theme.colors.input },
   convItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 12,
-    backgroundColor: '#0B141A',
+    backgroundColor: theme.colors.black,
   },
   convAvatar: { marginRight: 12 },
   convAvatarInner: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: WHATSAPP_GREEN,
+    backgroundColor: theme.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  convAvatarText: { color: theme.colors.white, fontWeight: '700', fontSize: 18 },
+  convAvatarText: { color: theme.colors.textDark, fontWeight: '700', fontSize: 18 },
   convContent: { flex: 1 },
   convTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 2 },
   convName: { color: theme.colors.white, fontWeight: '600', fontSize: 15, flex: 1 },
   convTime: { color: theme.colors.mutedDark, fontSize: 11, marginLeft: 8 },
   convBottom: { flexDirection: 'row', alignItems: 'center' },
   convLast: { color: theme.colors.muted, fontSize: 13, flex: 1 },
-  conversationContainer: { flex: 1, backgroundColor: '#0B141A' },
+  conversationContainer: { flex: 1, backgroundColor: theme.colors.black },
+  chatList: { flex: 1 },
   chatHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 10,
-    backgroundColor: '#1F2C33',
+    backgroundColor: theme.colors.panel,
   },
   chatHeaderInfo: { flex: 1, marginLeft: 8 },
   chatHeaderTitle: { color: theme.colors.white, fontWeight: '600', fontSize: 16 },
   messageList: { paddingHorizontal: 8, paddingVertical: 8, flexGrow: 1 },
   dateSepRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 12, marginHorizontal: 40 },
-  dateSepLine: { flex: 1, height: 1, backgroundColor: '#313D45' },
+  dateSepLine: { flex: 1, height: 1, backgroundColor: theme.colors.border },
   dateSepText: { color: theme.colors.mutedDark, fontSize: 11, marginHorizontal: 10, fontWeight: '500' },
   bubbleRow: { marginBottom: 2, flexDirection: 'row', paddingHorizontal: 4 },
   bubbleRowOwn: { justifyContent: 'flex-end' },
@@ -557,12 +600,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 8,
-    backgroundColor: '#1F2C33',
+    backgroundColor: theme.colors.panel,
   },
-  attachBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center', marginRight: 4 },
+  attachBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: theme.colors.glass, borderWidth: 1, borderColor: theme.colors.border, justifyContent: 'center', alignItems: 'center', marginRight: 4 },
   input: {
     flex: 1,
-    backgroundColor: '#2A3942',
+    backgroundColor: theme.colors.input,
     borderRadius: 24,
     paddingHorizontal: 16,
     paddingVertical: 9,
@@ -570,18 +613,21 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   sendBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: WHATSAPP_GREEN,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: theme.colors.accent,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 6,
   },
   micBtn: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: theme.colors.glass,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 6,
@@ -593,9 +639,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 8,
     borderBottomWidth: 1,
-    borderBottomColor: '#1F2C33',
+    borderBottomColor: theme.colors.border,
   },
-  supportHeaderText: { color: WHATSAPP_GREEN, fontWeight: '600', fontSize: 14 },
+  supportHeaderText: { color: theme.colors.accent, fontWeight: '600', fontSize: 14 },
   supportLoading: {
     flexDirection: 'row',
     alignItems: 'center',

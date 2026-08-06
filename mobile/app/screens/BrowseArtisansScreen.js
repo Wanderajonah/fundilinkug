@@ -13,9 +13,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import ScreenWrapper from "../components/ScreenWrapper";
-import BottomTabBar from "../components/BottomTabBar";
 import FundiMap from "../components/FundiMap";
-import { useTabBarHeight } from "../hooks/useTabBarHeight";
 import { useLocation } from "../../context/LocationContext";
 import { getNearbyFundis } from "../../services/mapsApi";
 import theme from "../theme";
@@ -49,7 +47,6 @@ export default function BrowseArtisansScreen({
   const [fundis, setFundis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
-  const tabBarHeight = useTabBarHeight();
 
   useEffect(() => {
     let cancelled = false;
@@ -100,7 +97,7 @@ export default function BrowseArtisansScreen({
   });
 
   return (
-    <ScreenWrapper style={styles.safe}>
+    <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
       <StatusBar
         barStyle="light-content"
         backgroundColor={theme.colors.black}
@@ -118,7 +115,7 @@ export default function BrowseArtisansScreen({
       <View style={styles.bottom}>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: tabBarHeight + 24 }}
+          contentContainerStyle={{ paddingBottom: 24 }}
         >
           <View style={[styles.searchRow, styles.searchRowElevated]}>
             <Ionicons
@@ -239,8 +236,6 @@ export default function BrowseArtisansScreen({
           )}
         </ScrollView>
       </View>
-
-      <BottomTabBar active="browse" onTab={onNavigate} role={userRole} />
     </ScreenWrapper>
   );
 }
@@ -262,7 +257,7 @@ const styles = StyleSheet.create({
   filterSquare: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 12,
     backgroundColor: theme.colors.accent,
     justifyContent: "center",
     alignItems: "center",

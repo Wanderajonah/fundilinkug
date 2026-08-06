@@ -472,11 +472,11 @@ const styles = StyleSheet.create({
     alignSelf: "flex-end",
     marginTop: 8,
     backgroundColor: theme.colors.accent,
-    borderRadius: 10,
+    borderRadius: 12,
     paddingHorizontal: 12,
     paddingVertical: 6,
   },
-  coverBtnText: { color: "#0B0B0B", fontWeight: "900" },
+  coverBtnText: { color: theme.colors.textDark, fontWeight: "900" },
 
   headerRow: {
     flexDirection: "row",
@@ -486,10 +486,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   iconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255,255,255,0.05)",
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: theme.colors.input,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -499,9 +501,9 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.accent,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: 12,
   },
-  saveText: { color: "#0B0B0B", fontWeight: "900", fontSize: 12 },
+  saveText: { color: theme.colors.textDark, fontWeight: "900", fontSize: 12 },
 
   avatarWrap: { alignItems: "center", marginBottom: 18 },
   avatar: {

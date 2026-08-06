@@ -72,7 +72,7 @@ const updateReview = async (req, res, next) => {
 const getReviewsByFundi = async (req, res, next) => {
   try {
     const reviews = await Review.find({ fundiId: req.params.fundiId })
-      .populate("customerId", "name")
+      .populate("customerId", "name profilePhoto avatarUrl")
       .sort({ createdAt: -1 });
     return res.json(reviews);
   } catch (error) {

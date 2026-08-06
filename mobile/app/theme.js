@@ -67,4 +67,53 @@ const elevation = {
   },
 };
 
-export default { colors, typography, spacing, radius, elevation };
+/* Buttons — single source of truth for every tappable control in the app.
+   - height: `lg` is the standard full-width CTA, `md` for inline actions,
+     `sm` for chips/small actions.
+   - variant fills map 1:1 to a Button component's `variant` prop. */
+const buttons = {
+  height: { sm: 40, md: 46, lg: 54 },
+  radius: { sm: 10, md: 14, lg: 16 },
+  fontSize: { sm: 12, md: 14, lg: 16 },
+  iconBtn: { size: 40, radius: 12 },
+  variants: {
+    primary: {
+      backgroundColor: colors.accent,
+      borderColor: 'transparent',
+      text: colors.textDark,
+      pressed: '#F0AD00',
+    },
+    secondary: {
+      backgroundColor: colors.input,
+      borderColor: colors.border,
+      text: colors.white,
+      pressed: '#262626',
+    },
+    outline: {
+      backgroundColor: 'transparent',
+      borderColor: colors.accent,
+      text: colors.accent,
+      pressed: 'rgba(255,184,0,0.08)',
+    },
+    ghost: {
+      backgroundColor: 'transparent',
+      borderColor: 'transparent',
+      text: colors.muted,
+      pressed: 'rgba(255,255,255,0.05)',
+    },
+    destructive: {
+      backgroundColor: 'rgba(239,68,68,0.12)',
+      borderColor: 'rgba(239,68,68,0.35)',
+      text: colors.red,
+      pressed: 'rgba(239,68,68,0.22)',
+    },
+    google: {
+      backgroundColor: colors.white,
+      borderColor: 'rgba(0,0,0,0.08)',
+      text: '#3C4043',
+      pressed: '#F1F3F4',
+    },
+  },
+};
+
+export default { colors, typography, spacing, radius, elevation, buttons };

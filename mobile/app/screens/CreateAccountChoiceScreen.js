@@ -56,7 +56,7 @@ export default function CreateAccountChoiceScreen({
     <ScrollScreen keyboard contentStyle={styles.scroll} bottomPad={32}>
       <View style={styles.topRow}>
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-          <Ionicons name="arrow-back" size={18} color={theme.colors.white} />
+          <Ionicons name="arrow-back" size={20} color={theme.colors.white} />
         </TouchableOpacity>
 
         <View style={[styles.rolePill, { backgroundColor: pillBg }]}>
@@ -155,14 +155,14 @@ const styles = StyleSheet.create({
 
   topRow: { flexDirection: "row", alignItems: "center", marginBottom: 24 },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: theme.colors.card ?? theme.colors.input,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: theme.colors.input,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    alignItems: "center",
     justifyContent: "center",
+    alignItems: "center",
   },
   rolePill: {
     marginLeft: 12,
