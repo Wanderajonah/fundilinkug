@@ -1,12 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function OrDivider() {
+  const { t } = useLanguage();
   return (
     <View style={styles.row}>
       <View style={styles.line} />
-      <Text style={styles.text}>or</Text>
+      <Text style={styles.text}>{t('or')}</Text>
       <View style={styles.line} />
     </View>
   );

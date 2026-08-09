@@ -11,6 +11,7 @@ import { Ionicons } from "@expo/vector-icons";
 import ScrollScreen from "../components/ScrollScreen";
 import AuthButton from "../components/AuthButton";
 import theme from "../theme";
+import { useLanguage } from "../i18n/LanguageContext";
 
 function parseDateInput(value) {
   const match = String(value || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
@@ -50,6 +51,7 @@ export default function FinishProfileScreen({
   onBack,
   onSubmit,
 }) {
+  const { t } = useLanguage();
   const isFundi = role === "fundi";
   const roleLabel = isFundi ? "I am a Fundi" : "Find a Fundi";
   const roleIcon = isFundi ? "build" : "search";
@@ -86,7 +88,7 @@ export default function FinishProfileScreen({
   const handleSubmit = async () => {
     const err = validateProfile(form);
     if (err) {
-      Alert.alert("Check your details", err);
+      Alert.alert(t("Check your details"), t(err));
       return;
     }
     const dob = parseDateInput(form.dateOfBirthText);
@@ -116,18 +118,20 @@ export default function FinishProfileScreen({
           <View style={styles.rolePillIcon}>
             <Ionicons name={roleIcon} size={12} color={theme.colors.black} />
           </View>
-          <Text style={styles.rolePillText}>{roleLabel}</Text>
+          <Text style={styles.rolePillText}>{t(roleLabel)}</Text>
         </View>
       </View>
 
-      <Text style={styles.title}>Finish setting up</Text>
+      <Text style={styles.title}>{t("Finish setting up")}</Text>
       <Text style={styles.subtitle}>
-        {emailLocked
-          ? "We pulled your name and email from Google. Add your date of birth to finish."
-          : "Just a few details to finish creating your account."}
+        {t(
+          emailLocked
+            ? "We pulled your name and email from Google. Add your date of birth to finish."
+            : "Just a few details to finish creating your account."
+        )}
       </Text>
 
-      <Text style={styles.sectionLabel}>FIRST NAME</Text>
+      <Text style={styles.sectionLabel}>{t("FIRST NAME")}</Text>
       <View style={inputRowStyle("firstName")}>
         <Ionicons
           name="person-outline"
@@ -139,7 +143,7 @@ export default function FinishProfileScreen({
           style={styles.input}
           value={form.firstName}
           onChangeText={set("firstName")}
-          placeholder="e.g. John"
+          placeholder={t("e.g. John")}
           placeholderTextColor={theme.colors.mutedDark}
           autoCapitalize="words"
           onFocus={() => setFocused("firstName")}
@@ -147,7 +151,7 @@ export default function FinishProfileScreen({
         />
       </View>
 
-      <Text style={styles.sectionLabel}>LAST NAME</Text>
+      <Text style={styles.sectionLabel}>{t("LAST NAME")}</Text>
       <View style={inputRowStyle("lastName")}>
         <Ionicons
           name="person-outline"
@@ -159,7 +163,7 @@ export default function FinishProfileScreen({
           style={styles.input}
           value={form.lastName}
           onChangeText={set("lastName")}
-          placeholder="e.g. Mukasa"
+          placeholder={t("e.g. Mukasa")}
           placeholderTextColor={theme.colors.mutedDark}
           autoCapitalize="words"
           onFocus={() => setFocused("lastName")}
@@ -167,7 +171,7 @@ export default function FinishProfileScreen({
         />
       </View>
 
-      <Text style={styles.sectionLabel}>EMAIL ADDRESS</Text>
+      <Text style={styles.sectionLabel}>{t("EMAIL ADDRESS")}</Text>
       <View
         style={
           emailLocked ? styles.inputRowLocked : inputRowStyle("email")
@@ -183,7 +187,7 @@ export default function FinishProfileScreen({
           style={[styles.input, emailLocked && { color: theme.colors.mutedDark }]}
           value={form.email}
           onChangeText={set("email")}
-          placeholder="e.g. john@example.com"
+          placeholder={t("e.g. john@example.com")}
           placeholderTextColor={theme.colors.mutedDark}
           keyboardType="email-address"
           autoCapitalize="none"
@@ -196,10 +200,10 @@ export default function FinishProfileScreen({
         )}
       </View>
       {emailLocked && (
-        <Text style={styles.helper}>Email is locked to your Google account.</Text>
+        <Text style={styles.helper}>{t("Email is locked to your Google account.")}</Text>
       )}
 
-      <Text style={styles.sectionLabel}>DATE OF BIRTH</Text>
+      <Text style={styles.sectionLabel}>{t("DATE OF BIRTH")}</Text>
       <View style={inputRowStyle("dob")}>
         <Ionicons
           name="calendar-outline"
@@ -218,11 +222,11 @@ export default function FinishProfileScreen({
           onBlur={() => setFocused(null)}
         />
       </View>
-      <Text style={styles.helper}>Must match the name on your national ID.</Text>
+      <Text style={styles.helper}>{t("Must match the name on your national ID.")}</Text>
 
       <AuthButton
         variant="phone"
-        label="Finish setup"
+        label={t("Finish setup")}
         loading={submitting}
         onPress={handleSubmit}
         style={{ marginTop: 18 }}

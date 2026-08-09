@@ -9,9 +9,11 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import EmptyState from '../components/EmptyState';
 import PrimaryButton from '../components/PrimaryButton';
 import { getWallet, getTransactions } from '../../services/walletApi';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function WalletHomeScreen({ onNavigate }) {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const [wallet, setWallet] = useState(null);
   const [recentTx, setRecentTx] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,10 +71,10 @@ export default function WalletHomeScreen({ onNavigate }) {
   };
 
   const quickActions = [
-    { key: 'deposit', label: 'Deposit', icon: 'add-circle-outline', color: theme.colors.green },
-    { key: 'withdraw', label: 'Withdraw', icon: 'cash-outline', color: theme.colors.red },
-    { key: 'transfer', label: 'Transfer', icon: 'swap-horizontal-outline', color: theme.colors.blue },
-    { key: 'history', label: 'History', icon: 'time-outline', color: theme.colors.accent },
+    { key: 'deposit', label: t('Deposit'), icon: 'add-circle-outline', color: theme.colors.green },
+    { key: 'withdraw', label: t('Withdraw'), icon: 'cash-outline', color: theme.colors.red },
+    { key: 'transfer', label: t('Transfer'), icon: 'swap-horizontal-outline', color: theme.colors.blue },
+    { key: 'history', label: t('History'), icon: 'time-outline', color: theme.colors.accent },
   ];
 
   return (
@@ -83,7 +85,7 @@ export default function WalletHomeScreen({ onNavigate }) {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={styles.title}>Wallet</Text>
+          <Text style={styles.title}>{t('Wallet')}</Text>
           <TouchableOpacity style={styles.historyBtn} onPress={() => onNavigate?.('transactionHistory')}>
             <Ionicons name="receipt-outline" size={20} color={theme.colors.accent} />
           </TouchableOpacity>
@@ -115,7 +117,7 @@ export default function WalletHomeScreen({ onNavigate }) {
                   />
                 </TouchableOpacity>
               </View>
-              <Text style={styles.balanceLabel}>Available Balance</Text>
+              <Text style={styles.balanceLabel}>{t('Available Balance')}</Text>
               <Text style={styles.balanceAmount}>{maskAmount(wallet?.balance)}</Text>
               <View style={styles.statusRow}>
                 <View
@@ -130,7 +132,7 @@ export default function WalletHomeScreen({ onNavigate }) {
                   ]}
                 />
                 <Text style={styles.statusText}>
-                  {wallet?.status === 'active' ? 'Active' : 'Frozen'}
+                  {wallet?.status === 'active' ? t('Active') : t('Frozen')}
                 </Text>
               </View>
             </LinearGradient>
@@ -154,9 +156,9 @@ export default function WalletHomeScreen({ onNavigate }) {
             </View>
 
             <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Recent Transactions</Text>
+              <Text style={styles.sectionTitle}>{t('Recent Transactions')}</Text>
               <TouchableOpacity onPress={() => onNavigate?.('transactionHistory')}>
-                <Text style={styles.viewAll}>View All</Text>
+                <Text style={styles.viewAll}>{t('View All')}</Text>
               </TouchableOpacity>
             </View>
 
@@ -164,15 +166,15 @@ export default function WalletHomeScreen({ onNavigate }) {
               <View style={styles.emptyWrap}>
                 <EmptyState
                   icon="receipt-outline"
-                  title="No transactions yet"
-                  message="Your deposits, transfers and payments will appear here."
+                  title={t('No transactions yet')}
+                  message={t('Your deposits, transfers and payments will appear here.')}
                 />
                 <PrimaryButton
                   onPress={() => onNavigate?.('deposit')}
                   icon="add-circle-outline"
                   style={styles.emptyBtn}
                 >
-                  Make a Deposit
+                  {t('Make a Deposit')}
                 </PrimaryButton>
               </View>
             ) : (

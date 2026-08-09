@@ -2,6 +2,7 @@ import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import MapViewWrapper from './MapViewWrapper';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 /**
  * Unified map for customer browse, set location, live tracking.
@@ -18,12 +19,13 @@ export default function FundiMap({
   onRegionChange,
   onPressCoordinate,
 }) {
+  const { t } = useLanguage();
   const loc = currentLocation || (region ? { lat: region.latitude, lng: region.longitude } : null);
 
   if (!loc) {
     return (
       <View style={[styles.fallback, style]}>
-        <Text style={styles.fallbackText}>Loading map…</Text>
+        <Text style={styles.fallbackText}>{t('Loading map…')}</Text>
       </View>
     );
   }

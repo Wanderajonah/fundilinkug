@@ -2,6 +2,7 @@ import React from 'react';
 import { View } from 'react-native';
 import PrimaryButton from './PrimaryButton';
 import GoogleAuthButton from './GoogleAuthButton';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function AuthButton({
   variant = 'google',
@@ -11,11 +12,12 @@ export default function AuthButton({
   disabled = false,
   style,
 }) {
+  const { t } = useLanguage();
   if (variant === 'google') {
     return (
       <View style={style}>
         <GoogleAuthButton
-          label={label}
+          label={t(label)}
           onPress={onPress}
           loading={loading}
           disabled={disabled}
@@ -28,13 +30,13 @@ export default function AuthButton({
     <PrimaryButton
       variant="primary"
       icon="call-outline"
-      label={label}
+      label={t(label)}
       onPress={onPress}
       loading={loading}
       disabled={disabled}
       style={style}
     >
-      {label}
+      {t(label)}
     </PrimaryButton>
   );
 }

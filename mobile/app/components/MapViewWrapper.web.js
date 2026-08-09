@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 /** Web fallback — react-native-maps is native-only */
 export default function MapViewWrapper({
@@ -12,6 +13,7 @@ export default function MapViewWrapper({
   radiusKm = 10,
   onPressCoordinate,
 }) {
+  const { t } = useLanguage();
   return (
     <TouchableOpacity
       style={[styles.wrap, style]}
@@ -23,20 +25,20 @@ export default function MapViewWrapper({
         })
       }
     >
-      <Text style={styles.title}>Map preview</Text>
+      <Text style={styles.title}>{t('Map preview')}</Text>
       <Text style={styles.meta}>
-        You: {currentLocation.lat.toFixed(4)}, {currentLocation.lng.toFixed(4)}
+        {t('You: {{lat}}, {{lng}}', { lat: currentLocation.lat.toFixed(4), lng: currentLocation.lng.toFixed(4) })}
       </Text>
       {showRadiusCircle ? (
-        <Text style={styles.meta}>Search radius: {radiusKm} km</Text>
+        <Text style={styles.meta}>{t('Search radius: {{distance}} km', { distance: radiusKm })}</Text>
       ) : null}
       {destination ? (
         <Text style={styles.meta}>
-          Destination: {destination.lat.toFixed(4)}, {destination.lng.toFixed(4)}
+          {t('Destination: {{lat}}, {{lng}}', { lat: destination.lat.toFixed(4), lng: destination.lng.toFixed(4) })}
         </Text>
       ) : null}
-      <Text style={styles.meta}>{fundis.length} fundis shown</Text>
-      <Text style={styles.hint}>Use Expo Go on Android/iOS for live Google Maps.</Text>
+      <Text style={styles.meta}>{t('{{count}} fundis shown', { count: fundis.length })}</Text>
+      <Text style={styles.hint}>{t('Use Expo Go on Android/iOS for live Google Maps.')}</Text>
     </TouchableOpacity>
   );
 }

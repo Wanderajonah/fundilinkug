@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { DARK_MAP_STYLE, DEFAULT_REGION } from '../config/mapStyle';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function MapViewWrapper({
   style,
@@ -17,6 +18,7 @@ export default function MapViewWrapper({
   const [MapComponents, setMapComponents] = useState(null);
   const [mapError, setMapError] = useState(false);
   const mapRef = useRef(null);
+  const { t } = useLanguage();
 
   useEffect(() => {
     let cancelled = false;
@@ -38,7 +40,7 @@ export default function MapViewWrapper({
     return (
       <View style={[styles.fallback, style]}>
         <Text style={styles.fallbackText}>
-          {mapError ? 'Map unavailable' : 'Loading map…'}
+          {mapError ? t('Map unavailable') : t('Loading map…')}
         </Text>
       </View>
     );
@@ -77,7 +79,7 @@ export default function MapViewWrapper({
     >
       <Marker
         coordinate={{ latitude: lat, longitude: lng }}
-        title="You"
+        title={t('You')}
         pinColor={theme.colors.accent}
       />
 
@@ -93,7 +95,7 @@ export default function MapViewWrapper({
       {destination ? (
         <Marker
           coordinate={{ latitude: destination.lat, longitude: destination.lng }}
-          title={destination.title || 'Destination'}
+          title={destination.title || t('Destination')}
           pinColor="#EF4444"
         />
       ) : null}

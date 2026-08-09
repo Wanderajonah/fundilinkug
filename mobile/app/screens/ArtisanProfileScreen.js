@@ -20,6 +20,7 @@ import { getReviewsByFundi } from "../../services/reviewsApi";
 import { getFundiById } from "../../services/fundisApi";
 import { resolveMediaUrl } from "../../utils/image";
 import { initials, formatBookingDate } from "../utils/ratings";
+import { useLanguage } from "../i18n/LanguageContext";
 
 const AVATAR_SIZE = 96;
 const GRID_GAP = 10;
@@ -101,7 +102,8 @@ function CompactStars({ value, size = 12 }) {
 }
 
 function ReviewCard({ review }) {
-  const customerName = review.customerId?.name || "Customer";
+  const { t } = useLanguage();
+  const customerName = review.customerId?.name || t('Customer');
   const dateLabel = review.createdAt ? formatBookingDate(review.createdAt) : "";
   const customerPhoto = resolveMediaUrl(
     review.customerId?.profilePhoto || review.customerId?.avatarUrl || ""
@@ -124,7 +126,7 @@ function ReviewCard({ review }) {
             </Text>
             <View style={styles.reviewVerifiedBadge}>
               <Ionicons name="checkmark-circle" size={12} color={theme.colors.accent} />
-              <Text style={styles.reviewVerifiedText}>Verified</Text>
+              <Text style={styles.reviewVerifiedText}>{t('Verified')}</Text>
             </View>
           </View>
           <View style={styles.reviewStarsWrap}>
@@ -168,6 +170,7 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
   const [profileData, setProfileData] = useState(null);
   const [loadingProfile, setLoadingProfile] = useState(Boolean(fundiProfileId));
   const [imageCacheKey, setImageCacheKey] = useState(Date.now());
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (!fundiId) return;
@@ -278,12 +281,12 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
   const jobCount = artisan.jobsCompleted ?? artisan.jobsDone ?? "—";
   const yearsValue = profile.experience > 0 ? profile.experience : "—";
 
-  const rateLabel = hourlyRate || (price ? `$${price}/hr` : "Rate on request");
+  const rateLabel = hourlyRate || (price ? `$${price}/hr` : t('Rate on request'));
 
   const aboutBio =
     profile.experience > 0
-      ? `Experienced ${profile.role.toLowerCase()} with ${profile.experience}+ years in the field. Specializing in residential and commercial jobs. Available for emergency repairs and installations.`
-      : `Experienced ${profile.role.toLowerCase()} specializing in residential and commercial jobs. Available for emergency repairs and installations.`;
+      ? t('Experienced {{role}} with {{years}}+ years in the field. Specializing in residential and commercial jobs. Available for emergency repairs and installations.', { role: profile.role.toLowerCase(), years: profile.experience })
+      : t('Experienced {{role}} specializing in residential and commercial jobs. Available for emergency repairs and installations.', { role: profile.role.toLowerCase() });
 
   const mergedArtisan = useMemo(
     () => ({
@@ -338,9 +341,9 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
             size={36}
             color={theme.colors.muted}
           />
-          <Text style={styles.emptyTitle}>No portfolio photos yet</Text>
+          <Text style={styles.emptyTitle}>{t('No portfolio photos yet')}</Text>
           <Text style={styles.emptySub}>
-            Work samples will appear here once uploaded.
+            {t('Work samples will appear here once uploaded.')}
           </Text>
         </View>
       );
@@ -376,9 +379,9 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
       return (
         <View style={styles.emptyCard}>
           <Ionicons name="star" size={28} color={theme.colors.accent} />
-          <Text style={styles.emptyTitle}>No reviews yet</Text>
+          <Text style={styles.emptyTitle}>{t('No reviews yet')}</Text>
           <Text style={styles.emptySub}>
-            Be the first customer to leave a review.
+            {t('Be the first customer to leave a review.')}
           </Text>
         </View>
       );
@@ -399,7 +402,7 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
             <Text style={styles.reviewScore}>{score}</Text>
             <CompactStars value={Number(score)} size={13} />
             <Text style={styles.reviewSummaryCount}>
-              {total} review{total === 1 ? "" : "s"}
+              {total} {t('reviews')}
             </Text>
           </View>
           <View style={styles.reviewBreakdown}>
@@ -434,7 +437,7 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
       <View style={styles.card}>
         <View style={styles.sectionHeader}>
           <Ionicons name="person-outline" size={16} color={theme.colors.accent} />
-          <Text style={styles.sectionTitle}>Biography</Text>
+          <Text style={styles.sectionTitle}>{t('Biography')}</Text>
         </View>
         <Text style={styles.bodyText}>{aboutBio}</Text>
       </View>
@@ -442,7 +445,7 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
       <View style={styles.card}>
         <View style={styles.sectionHeader}>
           <Ionicons name="construct-outline" size={16} color={theme.colors.accent} />
-          <Text style={styles.sectionTitle}>Skills</Text>
+          <Text style={styles.sectionTitle}>{t('Skills')}</Text>
         </View>
         {profile.skills.length ? (
           <View style={styles.skillRow}>
@@ -453,26 +456,26 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
             ))}
           </View>
         ) : (
-          <Text style={styles.bodyText}>No skills listed yet.</Text>
+          <Text style={styles.bodyText}>{t('No skills listed yet.')}</Text>
         )}
       </View>
 
       <View style={styles.card}>
         <View style={styles.sectionHeader}>
           <Ionicons name="time-outline" size={16} color={theme.colors.accent} />
-          <Text style={styles.sectionTitle}>Experience</Text>
+          <Text style={styles.sectionTitle}>{t('Experience')}</Text>
         </View>
         <Text style={styles.bodyText}>
           {profile.experience > 0
-            ? `${profile.experience} years of professional experience`
-            : "Experience details not provided yet."}
+            ? t('{{years}} years of professional experience', { years: profile.experience })
+            : t('Experience details not provided yet.')}
         </Text>
       </View>
 
       <View style={styles.card}>
         <View style={styles.sectionHeader}>
           <Ionicons name="calendar-outline" size={16} color={theme.colors.accent} />
-          <Text style={styles.sectionTitle}>Availability</Text>
+          <Text style={styles.sectionTitle}>{t('Availability')}</Text>
         </View>
         <View style={styles.infoRow}>
           <View
@@ -483,8 +486,8 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
           />
           <Text style={styles.bodyText}>
             {profile.isAvailable === false
-              ? "Currently unavailable for new bookings"
-              : "Available for new bookings"}
+              ? t('Currently unavailable for new bookings')
+              : t('Available for new bookings')}
           </Text>
         </View>
       </View>
@@ -492,7 +495,7 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
       <View style={styles.card}>
         <View style={styles.sectionHeader}>
           <Ionicons name="pricetag-outline" size={16} color={theme.colors.accent} />
-          <Text style={styles.sectionTitle}>Contact & Rate</Text>
+          <Text style={styles.sectionTitle}>{t('Contact & Rate')}</Text>
         </View>
         <Text style={styles.bodyText}>{rateLabel}</Text>
         {profile.location ? (
@@ -538,7 +541,7 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
                 profile.isAvailable === false && styles.presenceTextOff,
               ]}
             >
-              {profile.isAvailable === false ? "Unavailable" : "Available"}
+              {profile.isAvailable === false ? t('Unavailable') : t('Available')}
             </Text>
           </View>
         </View>
@@ -581,7 +584,7 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
               </View>
               <Text style={styles.ratingMeta}>
                 {ratingDisplay !== "—" ? `${ratingDisplay} · ` : ""}
-                {reviewCount} review{reviewCount === 1 ? "" : "s"}
+                {reviewCount} {t('reviews')}
               </Text>
             </View>
 
@@ -598,13 +601,13 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
 
           <View style={styles.statsRow}>
             <View style={styles.statTile}>
-              <StatItem icon="star" value={ratingDisplay} label="Rating" />
+              <StatItem icon="star" value={ratingDisplay} label={t('Rating')} />
             </View>
             <View style={styles.statTile}>
-              <StatItem icon="construct-outline" value={jobCount} label="Jobs" />
+              <StatItem icon="construct-outline" value={jobCount} label={t('Jobs')} />
             </View>
             <View style={styles.statTile}>
-              <StatItem icon="time-outline" value={yearsValue} label="Years" />
+              <StatItem icon="time-outline" value={yearsValue} label={t('Years')} />
             </View>
           </View>
 
@@ -617,7 +620,7 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
                 }
                 style={styles.bookBtn}
               >
-                Book Now
+                {t('Book Now')}
               </PrimaryButton>
             </View>
 
@@ -664,7 +667,7 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
                     <Text
                       style={[styles.tabLabel, active && styles.tabLabelActive]}
                     >
-                      {tab.label}
+                      {t(tab.label)}
                     </Text>
                   </TouchableOpacity>
                 );

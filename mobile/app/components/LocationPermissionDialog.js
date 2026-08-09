@@ -3,6 +3,7 @@ import { Modal, View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } fr
 import { Ionicons } from '@expo/vector-icons';
 import PrimaryButton from './PrimaryButton';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 
 export default function LocationPermissionDialog({
@@ -11,6 +12,7 @@ export default function LocationPermissionDialog({
   onEnable,
   onCancel,
 }) {
+  const { t } = useLanguage();
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.overlay}>
@@ -19,9 +21,9 @@ export default function LocationPermissionDialog({
             <Ionicons name="location-outline" size={32} color={theme.colors.accent} />
           </View>
 
-          <Text style={styles.title}>Location required</Text>
+          <Text style={styles.title}>{t('Location required')}</Text>
           <Text style={styles.message}>
-            Location access is required to find nearby Fundis and provide location-based services.
+            {t('Location access is required to find nearby Fundis and provide location-based services.')}
           </Text>
 
 
@@ -31,10 +33,10 @@ export default function LocationPermissionDialog({
             <>
               <View style={styles.dialogBtns}>
                 <PrimaryButton variant="primary" onPress={onEnable}>
-                  Enable Location
+                  {t('Enable Location')}
                 </PrimaryButton>
                 <TouchableOpacity style={styles.cancelBtn} onPress={onCancel} activeOpacity={0.85}>
-                  <Text style={styles.cancelText}>Cancel</Text>
+                  <Text style={styles.cancelText}>{t('Cancel')}</Text>
                 </TouchableOpacity>
               </View>
             </>

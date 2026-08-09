@@ -12,11 +12,13 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import BrandLockup from '../components/BrandLockup';
 import RoleCard from '../components/RoleCard';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const HERO_VIDEO = require('../../assets/hero-bg.mp4');
 
 export default function OnboardingScreen({ onSelectRole, onSignIn, onSkip }) {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
   const fade = useRef(new Animated.Value(0)).current;
   const slide = useRef(new Animated.Value(24)).current;
 
@@ -50,7 +52,7 @@ export default function OnboardingScreen({ onSelectRole, onSignIn, onSkip }) {
         <View style={styles.heroOverlay} />
         <View style={[styles.heroContent, { paddingTop: insets.top + 16 }]}>
           <BrandLockup size={150} />
-          <Text style={styles.tagline}>Trusted Fundis. On Demand.</Text>
+          <Text style={styles.tagline}>{t('Trusted Fundis. On Demand.')}</Text>
         </View>
       </View>
 
@@ -60,30 +62,30 @@ export default function OnboardingScreen({ onSelectRole, onSignIn, onSkip }) {
           { paddingBottom: Math.max(insets.bottom, 16), opacity: fade, transform: [{ translateY: slide }] },
         ]}
       >
-        <Text style={styles.bodyTitle}>Welcome</Text>
-        <Text style={styles.bodySub}>How would you like to use FundiLink?</Text>
+        <Text style={styles.bodyTitle}>{t('Welcome')}</Text>
+        <Text style={styles.bodySub}>{t('How would you like to use FundiLink?')}</Text>
         <View style={styles.cardsRow}>
           <RoleCard
             icon="search-outline"
-            title="Find a Fundi"
-            description="I'm looking for skilled professionals to work with."
+            title={t('Find a Fundi')}
+            description={t("I'm looking for skilled professionals to work with.")}
             onPress={() => onSelectRole?.('customer')}
             style={{ marginRight: 10 }}
           />
           <RoleCard
             icon="construct-outline"
-            title="I am a Fundi"
-            description="I'd like to offer my services."
+            title={t('I am a Fundi')}
+            description={t("I'd like to offer my services.")}
             onPress={() => onSelectRole?.('fundi')}
           />
         </View>
 
         <View style={styles.footer}>
           <TouchableOpacity onPress={onSkip} hitSlop={12}>
-            <Text style={styles.footerLink}>Skip</Text>
+            <Text style={styles.footerLink}>{t('Skip')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={onSignIn} hitSlop={12}>
-            <Text style={styles.footerLinkBold}>Sign In</Text>
+            <Text style={styles.footerLinkBold}>{t('Sign In')}</Text>
           </TouchableOpacity>
         </View>
       </Animated.View>

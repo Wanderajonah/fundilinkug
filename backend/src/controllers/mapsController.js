@@ -2,6 +2,7 @@ const FundiProfile = require("../models/FundiProfile");
 const { getRecommendations } = require("../services/recommendationService");
 const { geocodeAddress, reverseGeocode, buildRouteSummary } = require("../services/mapsService");
 const { filterByRadius, normalizeCoords } = require("../utils/geo");
+const { buildSkillsQuery } = require("../utils/trades");
 
 const geocode = async (req, res, next) => {
   try {
@@ -37,7 +38,7 @@ const nearbyFundis = async (req, res, next) => {
 
     const origin = normalizeCoords(lat, lng);
     const radius = Math.min(50, Math.max(1, Number(radiusKm)));
-    const query = category && category !== "all" ? { skills: { $in: [category] } } : {};
+    const query = category && category !== "all" ? buildSkillsQuery(category) : {};
     const fundis = await FundiProfile.find(query)
       .populate({
         path: "userId",

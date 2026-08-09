@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function RoleToggle({
   value,
@@ -9,13 +10,14 @@ export default function RoleToggle({
   customerLabel = 'Client',
   fundiLabel = 'Fundi',
 }) {
+  const { t } = useLanguage();
   const segmented = variant === 'segmented';
 
   return (
     <View style={[styles.row, segmented && styles.rowSegmented]}>
       {['customer', 'fundi'].map((role) => {
         const on = value === role;
-        const label = role === 'customer' ? customerLabel : fundiLabel;
+        const label = role === 'customer' ? t(customerLabel) : t(fundiLabel);
         return (
           <TouchableOpacity
             key={role}

@@ -20,6 +20,7 @@ import { getWallet } from "../../services/walletApi";
 import theme from "../theme";
 import { useBookingOptional } from "../../context/BookingContext";
 import { useLocation } from "../../context/LocationContext";
+import { useLanguage } from "../i18n/LanguageContext";
 
 const H_PAD = 20;
 
@@ -38,6 +39,7 @@ const CATEGORIES = [
 
 function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLoading, walletBalance }) {
   const [showBalance, setShowBalance] = useState(true);
+  const { t } = useLanguage();
   return (
     <View>
       {/* 1. Header Row — logo + bell + balance below bell */}
@@ -68,7 +70,7 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
         >
           <Ionicons name="location-outline" size={14} color={theme.colors.green} />
           <Text style={styles.locationText} numberOfLines={1}>
-            {locationLabel || "Set your location"}
+            {locationLabel || t('Set your location')}
           </Text>
         </TouchableOpacity>
         {walletBalance !== null ? (
@@ -106,13 +108,13 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.activeBannerTitle}>
-              Active booking · {activeJob.service}
+              {t('Active booking')} · {activeJob.service}
             </Text>
             <Text style={styles.activeBannerSub}>
               {activeJob.fundiName} · {formatUgx(activeJob.amount)}
             </Text>
           </View>
-          <Text style={styles.activeBannerCta}>Open</Text>
+          <Text style={styles.activeBannerCta}>{t('Open')}</Text>
         </TouchableOpacity>
       ) : null}
 
@@ -120,7 +122,7 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
       <View style={styles.searchWrap}>
         <Ionicons name="search-outline" size={18} color={theme.colors.muted} />
         <TextInput
-          placeholder="What service do you need?"
+          placeholder={t('What service do you need?')}
           placeholderTextColor={theme.colors.mutedDark}
           style={styles.searchInput}
           onFocus={() => onNavigate?.("browse")}
@@ -146,10 +148,10 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
           >
             <View style={styles.heroContent}>
               <Text style={styles.heroTitle}>
-                Get a qualified verified fundi near you
+                {t('Get a qualified verified fundi near you')}
               </Text>
               <TouchableOpacity style={styles.heroBtn} activeOpacity={0.85}>
-                <Text style={styles.heroBtnText}>Find a Fundi</Text>
+                <Text style={styles.heroBtnText}>{t('Find a Fundi')}</Text>
               </TouchableOpacity>
             </View>
           </LinearGradient>
@@ -157,7 +159,7 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
       </TouchableOpacity>
 
       {/* 4. Services Section */}
-      <HomeSection title="Services" style={styles.sectionGap}>
+      <HomeSection title={t('Services')} style={styles.sectionGap}>
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -173,7 +175,7 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
               <View style={styles.serviceIconWrap}>
                 <Ionicons name={c.icon} size={24} color={theme.colors.accent} />
               </View>
-              <Text style={styles.serviceLabel}>{c.label}</Text>
+              <Text style={styles.serviceLabel}>{t(c.label)}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -181,7 +183,7 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
 
       {/* 5. Recent Bookings */}
       <HomeSection
-        title="Recent Bookings"
+        title={t('Recent Bookings')}
         onAction={() => onNavigate?.("bookings")}
         style={styles.sectionGap}
       >
@@ -240,6 +242,7 @@ export default function HomeScreen({
   const bookingCtx = useBookingOptional();
   const resolvedActiveJob = bookingCtx?.activeJob || activeJob;
   const { address } = useLocation();
+  const { t } = useLanguage();
   const [walletBalance, setWalletBalance] = useState(null);
 
   const recentBookings = useMemo(() => {
@@ -299,10 +302,10 @@ export default function HomeScreen({
           !bookingCtx?.loading ? (
             <View style={styles.noBookings}>
               <Ionicons name="calendar-outline" size={28} color={theme.colors.mutedDark} />
-              <Text style={styles.noFundisTitle}>No bookings yet</Text>
-              <Text style={styles.noFundisSub}>Book a fundi and your bookings will show up here</Text>
+              <Text style={styles.noFundisTitle}>{t('No bookings yet')}</Text>
+              <Text style={styles.noFundisSub}>{t('Book a fundi and your bookings will show up here')}</Text>
               <TouchableOpacity style={styles.browseAllBtn} onPress={() => onNavigate?.("browse")}>
-                <Text style={styles.browseAllText}>Book a Fundi</Text>
+                <Text style={styles.browseAllText}>{t('Book a Fundi')}</Text>
               </TouchableOpacity>
             </View>
           ) : null

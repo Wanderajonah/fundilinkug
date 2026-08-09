@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import theme from '../theme';
 import { getBookingStepIndex } from '../utils/bookings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const DEFAULT_STEPS = [
   'Requested',
@@ -15,6 +16,7 @@ const DEFAULT_STEPS = [
 ];
 
 export default function BookingStatusSteps({ booking, steps = DEFAULT_STEPS }) {
+  const { t } = useLanguage();
   const current = getBookingStepIndex(booking);
 
   return (
@@ -26,7 +28,7 @@ export default function BookingStatusSteps({ booking, steps = DEFAULT_STEPS }) {
           <View key={label} style={styles.item}>
             <View style={[styles.dot, done && styles.dotDone, active && styles.dotActive]} />
             <Text style={[styles.label, (done || active) && styles.labelOn]} numberOfLines={1}>
-              {label}
+              {t(label)}
             </Text>
           </View>
         );

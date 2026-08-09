@@ -7,8 +7,10 @@ import PhoneInput from '../components/PhoneInput';
 import theme from '../theme';
 import { formatUgx } from '../utils/ratings';
 import { canProceedToPayment } from '../utils/bookings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function PaymentScreen({ booking = {}, onBack, onPay, loading = false }) {
+  const { t } = useLanguage();
   const [method, setMethod] = useState('mtn');
   const [phone, setPhone] = useState('');
   const total = booking.total || booking.amount || 17600;
@@ -21,7 +23,7 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
           <TouchableOpacity style={styles.backBtn} onPress={onBack}>
             <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
           </TouchableOpacity>
-          <Text style={styles.title}>Payment</Text>
+          <Text style={styles.title}>{t('Payment')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -29,19 +31,19 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
           <View style={styles.lockBanner}>
             <Ionicons name="lock-closed-outline" size={18} color={theme.colors.accent} />
             <Text style={styles.lockText}>
-              Proceed to Payment unlocks once your fundi accepts and you both agree on the price.
+              {t('Proceed to Payment unlocks once your fundi accepts and you both agree on the price.')}
             </Text>
           </View>
         ) : null}
 
         <View style={styles.summary}>
-          <Text style={styles.summaryName}>{booking.artisanName || 'Fundi'} · {booking.service || 'Service'}</Text>
+          <Text style={styles.summaryName}>{booking.artisanName || t('Fundi')} · {booking.service || t('Service')}</Text>
           <Text style={styles.summaryMeta}>{booking.date || 'Sat, Apr 27'} · {booking.time || '09:00 AM'}</Text>
           <Text style={styles.summaryLoc}>{booking.location || 'Plot 14 Bukoto St'}</Text>
           <Text style={styles.total}>UGX {total.toLocaleString()}</Text>
         </View>
 
-        <Text style={styles.section}>PAYMENT METHOD</Text>
+        <Text style={styles.section}>{t('PAYMENT METHOD')}</Text>
         <TouchableOpacity
           style={[styles.methodCard, method === 'mtn' && styles.methodOn]}
           onPress={() => setMethod('mtn')}
@@ -50,7 +52,7 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
             <View style={[styles.logo, { backgroundColor: '#FFCC00' }]}>
               <Text style={styles.logoText}>MTN</Text>
             </View>
-            <Text style={styles.methodName}>MTN Mobile Money</Text>
+            <Text style={styles.methodName}>{t('MTN Mobile Money')}</Text>
           </View>
           <View style={[styles.radio, method === 'mtn' && styles.radioOn]} />
         </TouchableOpacity>
@@ -63,39 +65,39 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
             <View style={[styles.logo, { backgroundColor: '#E40000' }]}>
               <Text style={[styles.logoText, { color: '#fff' }]}>A</Text>
             </View>
-            <Text style={styles.methodName}>Airtel Money</Text>
+            <Text style={styles.methodName}>{t('Airtel Money')}</Text>
           </View>
           <View style={[styles.radio, method === 'airtel' && styles.radioOn]} />
         </TouchableOpacity>
 
         <View style={styles.escrow}>
           <Ionicons name="lock-closed-outline" size={14} color={theme.colors.muted} />
-          <Text style={styles.escrowText}> Funds held in escrow until job is confirmed complete.</Text>
+          <Text style={styles.escrowText}> {t('Funds held in escrow until job is confirmed complete.')}</Text>
         </View>
 
-        <PhoneInput label="MTN MOMO NUMBER" value={phone} onChangeText={setPhone} placeholder="7XX XXX XXX" />
-        <Text style={styles.hint}>You'll receive a MoMo STK push prompt to approve on your phone.</Text>
+        <PhoneInput label={t('MTN MOMO NUMBER')} value={phone} onChangeText={setPhone} placeholder="7XX XXX XXX" />
+        <Text style={styles.hint}>{t("You'll receive a MoMo STK push prompt to approve on your phone.")}</Text>
 
         <View style={styles.breakdown}>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Service (2hrs est.)</Text>
+            <Text style={styles.rowLabel}>{t('Service (2hrs est.)')}</Text>
             <Text style={styles.rowVal}>{formatUgx(booking.serviceFee || 16000)}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>Platform fee (10%)</Text>
+            <Text style={styles.rowLabel}>{t('Platform fee (10%)')}</Text>
             <Text style={styles.rowVal}>{formatUgx(booking.platformFee || 1600)}</Text>
           </View>
           <View style={[styles.row, styles.rowTotal]}>
-            <Text style={styles.totalLabel}>Total</Text>
+            <Text style={styles.totalLabel}>{t('Total')}</Text>
             <Text style={styles.totalVal}>UGX {total.toLocaleString()}</Text>
           </View>
         </View>
 
         <PrimaryButton onPress={onPay} disabled={!canPay || loading}>
-          {loading ? 'Processing…' : `Proceed to Payment · UGX ${total.toLocaleString()}`}
+          {loading ? t('Processing…') : t('Proceed to Payment · UGX {{amount}}', { amount: total.toLocaleString() })}
         </PrimaryButton>
         {!canPay ? (
-          <Text style={styles.disabledHint}>Complete price negotiation to enable payment.</Text>
+          <Text style={styles.disabledHint}>{t('Complete price negotiation to enable payment.')}</Text>
         ) : null}
         {loading ? <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 12 }} /> : null}
       </ScrollView>

@@ -81,15 +81,25 @@ export function computeEarnings(jobs = []) {
   startOfWeek.setDate(now.getDate() - now.getDay());
   startOfWeek.setHours(0, 0, 0, 0);
 
+  const startOfMonth = new Date(now);
+  startOfMonth.setDate(1);
+  startOfMonth.setHours(0, 0, 0, 0);
+
+  const filterBy = (from) => (j) => new Date(j.updatedAt || j.createdAt) >= from;
+
   const today = completed
-    .filter((j) => new Date(j.updatedAt || j.createdAt) >= startOfDay)
+    .filter(filterBy(startOfDay))
     .reduce((sum, j) => sum + amountOf(j), 0);
 
   const week = completed
-    .filter((j) => new Date(j.updatedAt || j.createdAt) >= startOfWeek)
+    .filter(filterBy(startOfWeek))
     .reduce((sum, j) => sum + amountOf(j), 0);
 
-  return { today, week };
+  const month = completed
+    .filter(filterBy(startOfMonth))
+    .reduce((sum, j) => sum + amountOf(j), 0);
+
+  return { today, week, month };
 }
 
 export function findPendingJobRequest(jobs = [], fundiUserId) {

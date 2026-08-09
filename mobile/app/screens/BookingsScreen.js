@@ -19,8 +19,10 @@ import { getJobsForUser, updateJobStatus, getErrorMessage } from '../../services
 import { useBookingOptional } from '../../context/BookingContext';
 import { partitionJobs } from '../utils/jobs';
 import { formatUgx, formatBookingDate, ratingLabel, initials } from '../utils/ratings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 function FundiBookingsView({ bookings, tab, setTab, onNavigate, loading, onRefresh, refreshing }) {
+  const { t } = useLanguage();
   const active = bookings.filter((b) =>
     ['PENDING', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status)
   );
@@ -34,9 +36,9 @@ function FundiBookingsView({ bookings, tab, setTab, onNavigate, loading, onRefre
     <>
       <View style={styles.tabRow}>
         {[
-          { key: 'active', label: `Active (${active.length})` },
-          { key: 'completed', label: `Completed (${completed.length})` },
-          { key: 'cancelled', label: `Cancelled (${cancelled.length})` },
+          { key: 'active', label: t('Active ({{count}})', { count: active.length }) },
+          { key: 'completed', label: t('Completed ({{count}})', { count: completed.length }) },
+          { key: 'cancelled', label: t('Cancelled ({{count}})', { count: cancelled.length }) },
         ].map((t) => (
           <TouchableOpacity
             key={t.key}
@@ -63,17 +65,17 @@ function FundiBookingsView({ bookings, tab, setTab, onNavigate, loading, onRefre
               icon="briefcase-outline"
               title={
                 tab === 'cancelled'
-                  ? 'No cancelled bookings'
+                  ? t('No cancelled bookings')
                   : tab === 'completed'
-                    ? 'No completed bookings yet'
-                    : 'No active bookings'
+                    ? t('No completed bookings yet')
+                    : t('No active bookings')
               }
               message={
                 tab === 'active'
-                  ? 'Accepted bookings will appear here.'
+                  ? t('Accepted bookings will appear here.')
                   : tab === 'completed'
-                    ? 'Complete your first booking to see it here.'
-                    : 'Cancelled bookings will appear here.'
+                    ? t('Complete your first booking to see it here.')
+                    : t('Cancelled bookings will appear here.')
               }
             />
           }
@@ -92,7 +94,7 @@ function FundiBookingsView({ bookings, tab, setTab, onNavigate, loading, onRefre
                   <Text style={styles.meta}>{item.address}</Text>
                 </View>
                 <View style={[styles.statusPill, styles.status_accepted]}>
-                  <Text style={styles.statusText}>{item.statusLabel}</Text>
+                  <Text style={styles.statusText}>{t(item.statusLabel)}</Text>
                 </View>
               </View>
               {item.agreedPrice ? (
@@ -107,6 +109,7 @@ function FundiBookingsView({ bookings, tab, setTab, onNavigate, loading, onRefre
 }
 
 function FundiJobsView({ jobs, completed, cancelled, tab, setTab, onNavigate, loading, onRefresh, refreshing }) {
+  const { t } = useLanguage();
   const list =
     tab === 'active' ? jobs : tab === 'completed' ? completed : tab === 'cancelled' ? cancelled : [];
 
@@ -114,9 +117,9 @@ function FundiJobsView({ jobs, completed, cancelled, tab, setTab, onNavigate, lo
     <>
       <View style={styles.tabRow}>
         {[
-          { key: 'active', label: `Active (${jobs.length})` },
-          { key: 'completed', label: `Completed (${completed.length})` },
-          { key: 'cancelled', label: `Cancelled (${cancelled.length})` },
+          { key: 'active', label: t('Active ({{count}})', { count: jobs.length }) },
+          { key: 'completed', label: t('Completed ({{count}})', { count: completed.length }) },
+          { key: 'cancelled', label: t('Cancelled ({{count}})', { count: cancelled.length }) },
         ].map((t) => (
           <TouchableOpacity
             key={t.key}
@@ -143,17 +146,17 @@ function FundiJobsView({ jobs, completed, cancelled, tab, setTab, onNavigate, lo
               icon="briefcase-outline"
               title={
                 tab === 'cancelled'
-                  ? 'No cancelled jobs'
+                  ? t('No cancelled jobs')
                   : tab === 'completed'
-                    ? 'No completed jobs yet'
-                    : 'No jobs available yet'
+                    ? t('No completed jobs yet')
+                    : t('No jobs available yet')
               }
               message={
                 tab === 'active'
-                  ? 'Jobs posted by clients will appear here.'
+                  ? t('Jobs posted by clients will appear here.')
                   : tab === 'completed'
-                    ? 'Complete your first job to see it here.'
-                    : 'Cancelled jobs will appear here.'
+                    ? t('Complete your first job to see it here.')
+                    : t('Cancelled jobs will appear here.')
               }
             />
           }
@@ -169,7 +172,7 @@ function FundiJobsView({ jobs, completed, cancelled, tab, setTab, onNavigate, lo
                   <Text style={styles.meta}>{item.address || item.time}</Text>
                 </View>
                 <View style={[styles.statusPill, styles[`status_${item.status}`]]}>
-                  <Text style={styles.statusText}>{item.statusLabel}</Text>
+                  <Text style={styles.statusText}>{t(item.statusLabel)}</Text>
                 </View>
               </View>
               <Text style={styles.amount}>{formatUgx(item.amount)}</Text>
@@ -180,24 +183,24 @@ function FundiJobsView({ jobs, completed, cancelled, tab, setTab, onNavigate, lo
                     try {
                       if (item.status === 'in_progress') {
                         await updateJobStatus(item.id, 'completed');
-                        Alert.alert('Job complete', 'Customer will be asked to confirm.');
+                        Alert.alert(t('Job complete'), t('Customer will be asked to confirm.'));
                         onRefresh?.();
                       } else if (item.status === 'accepted') {
                         await updateJobStatus(item.id, 'in_progress');
-                        Alert.alert('Job started', 'Navigate to customer location.');
+                        Alert.alert(t('Job started'), t('Navigate to customer location.'));
                         onRefresh?.();
                       } else {
                         onNavigate?.('chat');
                       }
                     } catch (e) {
-                      Alert.alert('Error', getErrorMessage(e));
+                      Alert.alert(t('Error'), getErrorMessage(e));
                     }
                   }}
                 >
-                  {item.action}
+                  {t(item.action)}
                 </PrimaryButton>
                 <TouchableOpacity style={styles.secondaryBtn} onPress={() => onNavigate?.('chat', { targetUserId: item.clientId })}>
-                  <Text style={styles.secondaryText}>Message</Text>
+                  <Text style={styles.secondaryText}>{t('Message')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -222,6 +225,7 @@ export default function BookingsScreen({
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const { t } = useLanguage();
 
   const bookingCtx = useBookingOptional();
 
@@ -254,18 +258,18 @@ export default function BookingsScreen({
 
   const customerTabs = useMemo(
     () => [
-      { key: 'active', label: `Active (${partitioned.active.length})` },
-      { key: 'completed', label: `Completed (${reviewHistory.length})` },
-      { key: 'cancelled', label: `Cancelled (${partitioned.cancelled.length})` },
+      { key: 'active', label: t('Active ({{count}})', { count: partitioned.active.length }) },
+      { key: 'completed', label: t('Completed ({{count}})', { count: reviewHistory.length }) },
+      { key: 'cancelled', label: t('Cancelled ({{count}})', { count: partitioned.cancelled.length }) },
     ],
-    [partitioned.active.length, partitioned.cancelled.length, reviewHistory.length]
+    [partitioned.active.length, partitioned.cancelled.length, reviewHistory.length, t]
   );
 
   if (userRole === 'fundi') {
     return (
       <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
         <View style={styles.container}>
-          <Text style={styles.title}>My Jobs</Text>
+          <Text style={styles.title}>{t('My Jobs')}</Text>
           <FundiBookingsView
             bookings={fundiBookings}
             tab={fundiTab}
@@ -282,7 +286,7 @@ export default function BookingsScreen({
           {error || bookingCtx?.error ? (
             <EmptyState
               icon="cloud-offline-outline"
-              title="Could not load bookings"
+              title={t('Could not load bookings')}
               message={error || bookingCtx?.error}
             />
           ) : null}
@@ -303,18 +307,18 @@ export default function BookingsScreen({
   return (
     <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.container}>
-        <Text style={styles.title}>My Bookings</Text>
+        <Text style={styles.title}>{t('My Bookings')}</Text>
 
         <View style={styles.tabRow}>
-          {customerTabs.map((t) => {
-            const isActive = t.key === activeTab;
+          {customerTabs.map((tab) => {
+            const isActive = tab.key === activeTab;
             return (
               <TouchableOpacity
-                key={t.key}
+                key={tab.key}
                 style={[styles.topTab, isActive && styles.topTabActive]}
-                onPress={() => setActiveTab(t.key)}
+                onPress={() => setActiveTab(tab.key)}
               >
-                <Text style={[styles.topTabText, isActive && styles.topTabTextActive]}>{t.label}</Text>
+                <Text style={[styles.topTabText, isActive && styles.topTabTextActive]}>{tab.label}</Text>
               </TouchableOpacity>
             );
           })}
@@ -322,7 +326,7 @@ export default function BookingsScreen({
 
         {activeTab === 'completed' ? (
           <TouchableOpacity style={styles.historyLink} onPress={onViewHistory}>
-            <Text style={styles.historyLinkText}>View full booking history →</Text>
+            <Text style={styles.historyLinkText}>{t('View full booking history →')}</Text>
           </TouchableOpacity>
         ) : null}
 
@@ -348,17 +352,17 @@ export default function BookingsScreen({
                 icon="calendar-outline"
                 title={
                   activeTab === 'cancelled'
-                    ? 'No cancelled bookings'
+                    ? t('No cancelled bookings')
                     : activeTab === 'completed'
-                      ? 'No reviews yet'
-                      : 'No active bookings'
+                      ? t('No reviews yet')
+                      : t('No active bookings')
                 }
                 message={
                   activeTab === 'completed'
-                    ? 'Complete your first job to start receiving reviews.'
+                    ? t('Complete your first job to start receiving reviews.')
                     : activeTab === 'active'
-                      ? 'Book a fundi to see your bookings here.'
-                      : 'Cancelled bookings will appear here.'
+                      ? t('Book a fundi to see your bookings here.')
+                      : t('Cancelled bookings will appear here.')
                 }
               />
             }
@@ -378,10 +382,10 @@ export default function BookingsScreen({
                     {item.rating ? (
                       <View style={styles.ratingRow}>
                         <StarRating value={item.rating} showLabel={false} size={16} disabled />
-                        <Text style={styles.ratingLabel}>{ratingLabel(item.rating)}</Text>
+                        <Text style={styles.ratingLabel}>{t(ratingLabel(item.rating))}</Text>
                       </View>
                     ) : (
-                      <Text style={styles.rateLink}>Leave a review →</Text>
+                      <Text style={styles.rateLink}>{t('Leave a review →')}</Text>
                     )}
                   </TouchableOpacity>
                 );
@@ -398,7 +402,7 @@ export default function BookingsScreen({
                       <Text style={styles.service}>{item.service}</Text>
                     </View>
                     <View style={[styles.statusPill, styles[`status_${item.status}`]]}>
-                      <Text style={styles.statusText}>{item.statusLabel}</Text>
+                      <Text style={styles.statusText}>{t(item.statusLabel)}</Text>
                     </View>
                   </View>
 
@@ -417,7 +421,7 @@ export default function BookingsScreen({
                       }
                     >
                       <Text style={styles.actionText}>
-                        {item.status === 'in_progress' ? 'Open job' : 'Message'}
+                        {item.status === 'in_progress' ? t('Open job') : t('Message')}
                       </Text>
                     </TouchableOpacity>
                     {item.status === 'in_progress' ? (
@@ -425,7 +429,7 @@ export default function BookingsScreen({
                         style={styles.secondaryBtn}
                         onPress={() => onNavigate?.('jobInProgress')}
                       >
-                        <Text style={styles.secondaryText}>Track</Text>
+                        <Text style={styles.secondaryText}>{t('Track')}</Text>
                       </TouchableOpacity>
                     ) : null}
                   </View>
@@ -436,7 +440,7 @@ export default function BookingsScreen({
         )}
 
         {error ? (
-          <EmptyState icon="cloud-offline-outline" title="Could not load bookings" message={error} />
+          <EmptyState icon="cloud-offline-outline" title={t('Could not load bookings')} message={error} />
         ) : null}
       </View>
     </ScreenWrapper>

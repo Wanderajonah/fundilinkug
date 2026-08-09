@@ -1,6 +1,10 @@
 const Conversation = require("../models/Conversation");
 const Message = require("../models/Message");
+const FundiProfile = require("../models/FundiProfile");
 const { getBotResponse } = require("../services/supportBotService");
+const { filterByRadius, normalizeCoords } = require("../utils/geo");
+const { getRecommendations } = require("../services/recommendationService");
+const { buildSkillsQuery, guessTradeFromText } = require("../utils/trades");
 
 async function getOrCreateConversation(req, res) {
   try {
@@ -112,7 +116,7 @@ async function sendMessage(req, res) {
 
 async function supportChat(req, res) {
   try {
-    const { message, history } = req.body;
+    const { message, history, imageUrl, lat, lng } = req.body;
     if (!message || !message.trim()) {
       return res.status(400).json({ success: false, message: "Message is required" });
     }
@@ -122,9 +126,45 @@ async function supportChat(req, res) {
       { role: "user", content: message.trim() }
     ];
 
-    const reply = await getBotResponse(messages);
+    const result = await getBotResponse({ messages, imageUrl, userText: message.trim() });
+    const reply = result.reply;
+    let category = result.category;
 
-    return res.json({ success: true, reply });
+    // If the analysis didn't identify a trade (general/unknown), infer one from the
+    // message text so we still only match fundis with the relevant skills.
+    if (!category) {
+      const lastUserText = [...messages].reverse().find((m) => m.role === "user")?.content;
+      category = guessTradeFromText(message.trim()) || guessTradeFromText(lastUserText) || null;
+    }
+
+    let recommendation = null;
+    const originLat = Number(lat) || req.user?.location?.lat;
+    const originLng = Number(lng) || req.user?.location?.lng;
+
+    // Only recommend fundis whose skills match the job trade (e.g. plumbers, not cleaners).
+    const query = category ? buildSkillsQuery(category) : {};
+    let fundis = await FundiProfile.find(query)
+      .populate({ path: "userId", select: "-password" })
+      .limit(50);
+
+    if (originLat && originLng) {
+      const origin = normalizeCoords(originLat, originLng);
+      const inRadius = filterByRadius(origin, fundis, 25, (f) => f.userId?.location);
+      fundis = inRadius.map(({ item, distanceKm }) => {
+        const plain = item.toObject();
+        plain.distanceKm = Number(distanceKm.toFixed(2));
+        return plain;
+      });
+      const scored = getRecommendations(origin, fundis, 3);
+      if (scored.length) {
+        recommendation = { category, fundis: scored };
+      }
+    } else if (category) {
+      // no location available: fall back to top-rated of the matched trade
+      recommendation = { category, fundis: fundis.slice(0, 3) };
+    }
+
+    return res.json({ success: true, reply, recommendation });
   } catch (error) {
     console.error("Error in support chat:", error);
     return res.status(500).json({ success: false, message: error.message });

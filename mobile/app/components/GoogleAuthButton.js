@@ -1,8 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Image } from 'react-native';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function GoogleAuthButton({ label, onPress, loading, disabled }) {
+  const { t } = useLanguage();
   const v = theme.buttons.variants.google;
 
   return (
@@ -30,7 +32,7 @@ export default function GoogleAuthButton({ label, onPress, loading, disabled }) 
             style={styles.googleIcon}
             resizeMode="contain"
           />
-          <Text style={styles.text}>{label || 'Continue with Google'}</Text>
+          <Text style={styles.text}>{label ? t(label) : t('Continue with Google')}</Text>
         </View>
       )}
     </TouchableOpacity>

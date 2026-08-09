@@ -27,6 +27,7 @@ import { useBooking } from '../../context/BookingContext';
 import { FUNDI_STATUS_ACTIONS, BOOKING_STATUS_LABELS } from '../utils/bookings';
 import { formatUgx, initials } from '../utils/ratings';
 import { resolveMediaUrl } from '../../utils/image';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const STATUS_ORDER = ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPLETED'];
 
@@ -34,6 +35,7 @@ const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'DISPUTED']);
 
 export default function FundiBookingDetailScreen({ bookingId, onBack }) {
   const { activeBooking, setPendingRequest, refreshBookingById, refreshBookings } = useBooking();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
   const [acceptLoading, setAcceptLoading] = useState(false);
@@ -60,11 +62,11 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
       setPendingRequest(null);
       await refreshBookingById(bookingId);
       await refreshBookings();
-      Alert.alert('Booking accepted', 'The booking has been accepted. Update your status when you are on the way.');
+      Alert.alert(t('Booking accepted'), t('The booking has been accepted. Update your status when you are on the way.'));
     } catch (e) {
       const msg = getErrorMessage(e);
       setError(msg);
-      Alert.alert('Could not accept', msg);
+      Alert.alert(t('Could not accept'), msg);
     } finally {
       setAcceptLoading(false);
     }
@@ -76,11 +78,11 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
     try {
       await updateBookingStatus(bookingId, status);
       await refreshBookingById(bookingId);
-      Alert.alert('Status updated', `Booking marked as ${BOOKING_STATUS_LABELS[status] || status}.`);
+      Alert.alert(t('Status updated'), t('Booking marked as {{label}}.', { label: BOOKING_STATUS_LABELS[status] || status }));
     } catch (e) {
       const msg = getErrorMessage(e);
       setError(msg);
-      Alert.alert('Status update failed', msg);
+      Alert.alert(t('Status update failed'), msg);
     } finally {
       setLoading(false);
     }
@@ -95,7 +97,7 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
     } catch (e) {
       const msg = getErrorMessage(e);
       setError(msg);
-      Alert.alert('Price proposal failed', msg);
+      Alert.alert(t('Price proposal failed'), msg);
     } finally {
       setPriceLoading(false);
     }
@@ -110,17 +112,17 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
     } catch (e) {
       const msg = getErrorMessage(e);
       setError(msg);
-      Alert.alert('Could not agree on price', msg);
+      Alert.alert(t('Could not agree on price'), msg);
     } finally {
       setPriceLoading(false);
     }
   };
 
   const handleCancel = () => {
-    Alert.alert('Cancel booking', 'Are you sure you want to cancel this booking?', [
-      { text: 'Keep', style: 'cancel' },
+    Alert.alert(t('Cancel booking'), t('Are you sure you want to cancel this booking?'), [
+      { text: t('Keep'), style: 'cancel' },
       {
-        text: 'Cancel booking',
+        text: t('Cancel booking'),
         style: 'destructive',
         onPress: async () => {
           setLoading(true);
@@ -132,7 +134,7 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
           } catch (e) {
             const msg = getErrorMessage(e);
             setError(msg);
-            Alert.alert('Could not cancel', msg);
+            Alert.alert(t('Could not cancel'), msg);
           } finally {
             setLoading(false);
           }
@@ -148,10 +150,10 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
       <ScreenWrapper style={styles.safe}>
         <View style={styles.center}>
           <ActivityIndicator color={theme.colors.accent} size="large" />
-          <Text style={styles.loadingText}>Loading booking…</Text>
+          <Text style={styles.loadingText}>{t('Loading booking…')}</Text>
           {error ? (
             <TouchableOpacity onPress={retry}>
-              <Text style={styles.retry}>Retry</Text>
+              <Text style={styles.retry}>{t('Retry')}</Text>
             </TouchableOpacity>
           ) : null}
         </View>
@@ -174,12 +176,12 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
       <ScrollView contentContainerStyle={styles.container}>
         <TouchableOpacity onPress={onBack} style={styles.backRow}>
           <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
-          <Text style={styles.backText}>Back</Text>
+          <Text style={styles.backText}>{t('Back')}</Text>
         </TouchableOpacity>
 
         <View style={styles.statusHeader}>
           <View style={styles.statusPill}>
-            <Text style={styles.statusPillText}>{booking.statusLabel}</Text>
+            <Text style={styles.statusPillText}>{t(booking.statusLabel)}</Text>
           </View>
         </View>
 
@@ -194,17 +196,17 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
         </View>
 
         <View style={styles.panel}>
-          <DetailRow icon="document-text-outline" label="Description" value={booking.description} />
-          <DetailRow icon="location-outline" label="Location" value={booking.address} />
-          <DetailRow icon="cash-outline" label="Amount" value={booking.agreedPrice ? formatUgx(booking.agreedPrice) : null} />
+          <DetailRow icon="document-text-outline" label={t('Description')} value={booking.description} />
+          <DetailRow icon="location-outline" label={t('Location')} value={booking.address} />
+          <DetailRow icon="cash-outline" label={t('Amount')} value={booking.agreedPrice ? formatUgx(booking.agreedPrice) : null} />
           {booking.distanceKm != null ? (
-            <DetailRow icon="navigate-outline" label="Distance" value={`${booking.distanceKm} km`} />
+            <DetailRow icon="navigate-outline" label={t('Distance')} value={t('{{distance}} km', { distance: booking.distanceKm })} />
           ) : null}
         </View>
 
         {booking.images?.length > 0 ? (
           <View style={styles.photoSection}>
-            <Text style={styles.photoLabel}>Photos from client</Text>
+            <Text style={styles.photoLabel}>{t('Photos from client')}</Text>
             <View style={styles.photoRow}>
               {booking.images.map((img, i) => (
                 <Image key={i} source={{ uri: resolveMediaUrl(img) }} style={styles.photoThumb} />
@@ -227,20 +229,20 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
 
         {isPending ? (
           <>
-            <Text style={styles.sectionTitle}>Respond to booking request</Text>
+            <Text style={styles.sectionTitle}>{t('Respond to booking request')}</Text>
             <PrimaryButton
               style={styles.statusBtn}
               onPress={handleAccept}
               disabled={acceptLoading}
             >
-              {acceptLoading ? 'Accepting…' : 'Accept Booking'}
+              {acceptLoading ? t('Accepting…') : t('Accept Booking')}
             </PrimaryButton>
           </>
         ) : null}
 
         {nextActions.length > 0 && !isTerminal ? (
           <>
-            <Text style={styles.sectionTitle}>Update status</Text>
+            <Text style={styles.sectionTitle}>{t('Update status')}</Text>
             {nextActions.map((action) => (
               <PrimaryButton
                 key={action.status}
@@ -248,7 +250,7 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
                 onPress={() => handleStatusUpdate(action.status)}
                 disabled={loading}
               >
-                {loading ? 'Updating…' : action.label}
+                {loading ? t('Updating…') : t(action.label)}
               </PrimaryButton>
             ))}
           </>
@@ -258,7 +260,7 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{error}</Text>
             <TouchableOpacity onPress={retry}>
-              <Text style={styles.retry}>Tap to retry</Text>
+              <Text style={styles.retry}>{t('Tap to retry')}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -266,7 +268,7 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
         {!isTerminal ? (
           <TouchableOpacity style={styles.cancelLink} onPress={handleCancel} disabled={loading}>
             <Ionicons name="close-circle-outline" size={18} color={theme.colors.red} />
-            <Text style={styles.cancelText}>Cancel booking</Text>
+            <Text style={styles.cancelText}>{t('Cancel booking')}</Text>
           </TouchableOpacity>
         ) : null}
       </ScrollView>

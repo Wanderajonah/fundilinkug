@@ -5,6 +5,7 @@ import theme from '../theme';
 import PrimaryButton from '../components/PrimaryButton';
 import FundiMap from '../components/FundiMap';
 import * as Linking from 'expo-linking';
+import { useLanguage } from '../i18n/LanguageContext';
 
 function getBrandPrimaryColor() {
   // Use the existing brand primary across the app. Accent is amber.
@@ -17,6 +18,7 @@ export default function LocationPermissionScreen({
   visibleReason,
 }) {
   const { coords, captureCurrentLocation, loading } = useLocation();
+  const { t } = useLanguage();
   const [handling, setHandling] = useState(false);
 
   const handleEnable = async () => {
@@ -25,7 +27,7 @@ export default function LocationPermissionScreen({
       await captureCurrentLocation();
       onAllow?.();
     } catch (e) {
-      Alert.alert('Permission needed', e?.message || 'Enable location to continue.');
+      Alert.alert(t('Permission needed'), e?.message || t('Enable location to continue.'));
     } finally {
       setHandling(false);
     }
@@ -47,8 +49,8 @@ export default function LocationPermissionScreen({
   };
 
   const message = useMemo(() => {
-    return visibleReason || 'Location access is required to find nearby Fundis and provide location-based services.';
-  }, [visibleReason]);
+    return visibleReason || t('Location access is required to find nearby Fundis and provide location-based services.');
+  }, [visibleReason, t]);
 
   return (
     <View style={styles.container}>
@@ -65,7 +67,7 @@ export default function LocationPermissionScreen({
           />
         </View>
 
-        <Text style={styles.title}>Enable Location</Text>
+        <Text style={styles.title}>{t('Enable Location')}</Text>
         <Text style={styles.sub}>{message}</Text>
 
         <View style={styles.btnGroup}>
@@ -74,7 +76,7 @@ export default function LocationPermissionScreen({
             style={[styles.primaryCta, { backgroundColor: getBrandPrimaryColor() }]}
             disabled={handling || loading}
           >
-            {handling || loading ? 'Getting location…' : 'Enable Location'}
+            {handling || loading ? t('Getting location…') : t('Enable Location')}
           </PrimaryButton>
 
           <PrimaryButton
@@ -82,7 +84,7 @@ export default function LocationPermissionScreen({
             onPress={handleOpenSystemSettings}
             style={styles.secondary}
           >
-            Cancel
+            {t('Cancel')}
           </PrimaryButton>
         </View>
       </View>

@@ -6,11 +6,13 @@ import theme from '../theme';
 import PrimaryButton from '../components/PrimaryButton';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { formatUgx } from '../utils/ratings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 /** Shown immediately after the client submits a booking request */
 export default function BookingSubmittedScreen({ booking = {}, onNavigate }) {
   const insets = useSafeAreaInsets();
-  const service = booking.service || booking.category || 'Service';
+  const { t } = useLanguage();
+  const service = booking.service || booking.category || t('Service');
   const address = booking.address || booking.location || '';
 
   useEffect(() => {
@@ -29,12 +31,12 @@ export default function BookingSubmittedScreen({ booking = {}, onNavigate }) {
         <View style={styles.checkCircle}>
           <Ionicons name="checkmark" size={48} color={theme.colors.textDark} />
         </View>
-        <Text style={styles.title}>Booking Request Sent!</Text>
+        <Text style={styles.title}>{t('Booking Request Sent!')}</Text>
         <Text style={styles.sub}>
-          We're notifying nearby fundis. You'll see live updates while we find someone for you.
+          {t("We're notifying nearby fundis. You'll see live updates while we find someone for you.")}
         </Text>
 
-        <Text style={styles.section}>REQUEST DETAILS</Text>
+        <Text style={styles.section}>{t('REQUEST DETAILS')}</Text>
         <View style={styles.panel}>
           <Text style={styles.line}>{service}</Text>
           <Text style={styles.lineMuted}>{address}</Text>
@@ -42,11 +44,11 @@ export default function BookingSubmittedScreen({ booking = {}, onNavigate }) {
         </View>
 
         <PrimaryButton onPress={() => onNavigate?.('bookingWaiting', { booking })} style={styles.mainBtn}>
-          View booking status
+          {t('View booking status')}
         </PrimaryButton>
 
         <TouchableOpacity onPress={() => onNavigate?.('home')}>
-          <Text style={styles.link}>Back to home →</Text>
+          <Text style={styles.link}>{t('Back to home →')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </ScreenWrapper>

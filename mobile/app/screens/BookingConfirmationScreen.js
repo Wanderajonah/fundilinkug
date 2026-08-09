@@ -7,17 +7,19 @@ import PrimaryButton from '../components/PrimaryButton';
 import ScreenWrapper from '../components/ScreenWrapper';
 import MapPlaceholder from '../components/MapPlaceholder';
 import { formatUgx } from '../utils/ratings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 /** Booking confirmed — post-payment success (client only) */
 export default function BookingConfirmationScreen({ booking = {}, onNavigate }) {
   const insets = useSafeAreaInsets();
-  const artisanName = booking.artisan?.name || booking.artisanName || 'Fundi';
+  const { t } = useLanguage();
+  const artisanName = booking.artisan?.name || booking.artisanName || t('Fundi');
   const firstName = artisanName.split(' ')[0];
-  const service = booking.service || 'Service';
+  const service = booking.service || t('Service');
   const address = booking.address || booking.location || '';
   const total = booking.total || booking.amount || 17600;
   const eta = booking.eta || 8;
-  const dateTime = [booking.date, booking.time].filter(Boolean).join(' · ') || 'Today · ASAP';
+  const dateTime = [booking.date, booking.time].filter(Boolean).join(' · ') || `${t('Today')} · ${t('ASAP')}`;
 
   return (
     <ScreenWrapper style={styles.safe}>
@@ -28,10 +30,10 @@ export default function BookingConfirmationScreen({ booking = {}, onNavigate }) 
         <View style={styles.checkCircle}>
           <Ionicons name="checkmark" size={48} color={theme.colors.textDark} />
         </View>
-        <Text style={styles.title}>Booking Confirmed!</Text>
-        <Text style={styles.sub}>{firstName} is on his way to your location.</Text>
+        <Text style={styles.title}>{t('Booking Confirmed!')}</Text>
+        <Text style={styles.sub}>{t('{{name}} is on the way to your location.', { name: firstName })}</Text>
 
-        <Text style={styles.section}>BOOKING DETAILS</Text>
+        <Text style={styles.section}>{t('BOOKING DETAILS')}</Text>
         <View style={styles.panel}>
           <Text style={styles.line}>
             {service} · {artisanName}
@@ -40,35 +42,35 @@ export default function BookingConfirmationScreen({ booking = {}, onNavigate }) 
           <Text style={styles.lineMutedSmall}>{dateTime}</Text>
           <View style={styles.twoCol}>
             <View>
-              <Text style={styles.colLabel}>Escrow Amount</Text>
+              <Text style={styles.colLabel}>{t('Escrow Amount')}</Text>
               <Text style={styles.colVal}>{formatUgx(total)}</Text>
             </View>
             <View>
-              <Text style={styles.colLabel}>ETA</Text>
-              <Text style={styles.colVal}>{eta} mins</Text>
+              <Text style={styles.colLabel}>{t('ETA')}</Text>
+              <Text style={styles.colVal}>{t('{{mins}} mins', { mins: eta })}</Text>
             </View>
           </View>
           <View style={styles.heldBadge}>
-            <Text style={styles.heldText}>Held in escrow</Text>
+            <Text style={styles.heldText}>{t('Held in escrow')}</Text>
           </View>
         </View>
 
         <View style={styles.shareBox}>
           <View style={{ flex: 1 }}>
             <Text style={styles.shareTitle}>
-              Your location is being shared with {firstName}
+              {t('Your location is being shared with {{name}}', { name: firstName })}
             </Text>
-            <Text style={styles.shareSub}>Visible on their navigation map.</Text>
+            <Text style={styles.shareSub}>{t('Visible on their navigation map.')}</Text>
           </View>
           <View style={{ width: 72 }}>
             <MapPlaceholder height={56} />
           </View>
         </View>
 
-        <Text style={styles.nextLabel}>WHAT'S NEXT</Text>
+        <Text style={styles.nextLabel}>{t("WHAT'S NEXT")}</Text>
 
         <PrimaryButton onPress={() => onNavigate?.('tracking')} style={styles.mainBtn}>
-          Track Live
+          {t('Track Live')}
         </PrimaryButton>
 
         <PrimaryButton
@@ -76,24 +78,24 @@ export default function BookingConfirmationScreen({ booking = {}, onNavigate }) 
           onPress={() => onNavigate?.('jobInProgress')}
           style={styles.mainBtn}
         >
-          Job in progress
+          {t('Job in progress')}
         </PrimaryButton>
 
         <View style={styles.rowActions}>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => onNavigate?.('bookings')}>
             <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
-            <Text style={styles.secondaryText}>My Bookings</Text>
+            <Text style={styles.secondaryText}>{t('My Bookings')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() =>
             onNavigate?.('chat', { targetUserId: booking.artisan?._id || booking.artisan?.id || booking.fundiId })
           }>
             <Ionicons name="chatbubble-outline" size={18} color={theme.colors.accent} />
-            <Text style={styles.secondaryText}>Message {firstName}</Text>
+            <Text style={styles.secondaryText}>{t('Message {{name}}', { name: firstName })}</Text>
           </TouchableOpacity>
         </View>
 
         <TouchableOpacity onPress={() => onNavigate?.('home')}>
-          <Text style={styles.safety}>Back to home →</Text>
+          <Text style={styles.safety}>{t('Back to home →')}</Text>
         </TouchableOpacity>
       </ScrollView>
     </ScreenWrapper>

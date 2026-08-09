@@ -20,6 +20,7 @@ import { useLocation } from "../../context/LocationContext";
 import { getNearbyFundis } from "../../services/mapsApi";
 import { resolveMediaUrl } from "../../utils/image";
 import theme from "../theme";
+import { useLanguage } from "../i18n/LanguageContext";
 
 const MAP_H = Dimensions.get("window").height * 0.4;
 const CARD_W = Dimensions.get("window").width * 0.62;
@@ -41,7 +42,8 @@ function initials(name) {
 }
 
 function FundiCard({ item, onPress }) {
-  const name = item.userId?.name || "Fundi";
+  const { t } = useLanguage();
+  const name = item.userId?.name || t('Fundi');
   const photo = item.userId?.profilePhoto
     ? resolveMediaUrl(item.userId.profilePhoto)
     : null;
@@ -89,7 +91,7 @@ function FundiCard({ item, onPress }) {
           {available ? <View style={styles.availDot} /> : null}
           <Ionicons name="star" size={12} color={theme.colors.accent} />
           <Text style={styles.metaText}>
-            {rating > 0 ? rating.toFixed(1) : "New"}
+            {rating > 0 ? rating.toFixed(1) : t('New')}
           </Text>
           {distance ? (
             <>
@@ -105,7 +107,7 @@ function FundiCard({ item, onPress }) {
       </View>
 
       <View style={styles.bookBtn}>
-        <Text style={styles.bookText}>View & Book</Text>
+        <Text style={styles.bookText}>{t('View & Book')}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -117,6 +119,7 @@ export default function BrowseArtisansScreen({
   onNavigate,
 }) {
   const { coords, region, radiusKm, locationRevision } = useLocation();
+  const { t } = useLanguage();
   const [activeFilter, setActiveFilter] = useState("available");
   const [fundis, setFundis] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -240,7 +243,7 @@ export default function BrowseArtisansScreen({
               <Ionicons name="search-outline" size={18} color={theme.colors.muted} />
               <TextInput
                 style={styles.searchInput}
-                placeholder="Search fundis or skills..."
+                placeholder={t('Search fundis or skills...')}
                 placeholderTextColor={theme.colors.mutedDark}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
@@ -271,7 +274,7 @@ export default function BrowseArtisansScreen({
                   onPress={() => setActiveFilter(f.key)}
                 >
                   <Text style={[styles.chipText, on && styles.chipTextOn]}>
-                    {f.label}
+                    {t(f.label)}
                   </Text>
                 </TouchableOpacity>
               );
@@ -281,10 +284,10 @@ export default function BrowseArtisansScreen({
 
         <Text style={styles.nearbyTitle}>
           {loading
-            ? "Finding fundis nearby..."
+            ? t('Finding fundis nearby...')
             : fundis.length > 0
-              ? `${filteredFundis.length} of ${fundis.length} Fundis nearby`
-              : "Fundis nearby"}
+              ? `${filteredFundis.length} ${t('of')} ${fundis.length} ${t('Fundis nearby')}`
+              : t('Fundis nearby')}
         </Text>
 
         {loading ? (
@@ -292,11 +295,11 @@ export default function BrowseArtisansScreen({
         ) : filteredFundis.length === 0 ? (
           <EmptyState
             icon="person-circle-outline"
-            title={fundis.length > 0 ? "No matches" : "No fundis nearby"}
+            title={fundis.length > 0 ? t('No matches') : t('No fundis nearby')}
             message={
               fundis.length > 0
-                ? "Try a different filter or search term."
-                : "Fundis near you will appear here. Try widening your radius."
+                ? t('Try a different filter or search term.')
+                : t('Fundis near you will appear here. Try widening your radius.')
             }
           />
         ) : (

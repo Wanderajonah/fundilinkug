@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import theme from '../theme';
 import { formatCountdown, getTimeLeftSeconds } from '../utils/bookings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function CountdownTimer({
   expiresAt,
@@ -10,6 +11,7 @@ export default function CountdownTimer({
   label = 'Time remaining',
   urgentAt = 60,
 }) {
+  const { t } = useLanguage();
   const [seconds, setSeconds] = useState(() =>
     Math.max(0, initialSeconds ?? getTimeLeftSeconds({ expiresAt }) ?? 0)
   );
@@ -23,7 +25,7 @@ export default function CountdownTimer({
       onExpire?.();
       return undefined;
     }
-    const t = setInterval(() => {
+    const timerId = setInterval(() => {
       setSeconds((prev) => {
         const next = expiresAt
           ? Math.max(0, getTimeLeftSeconds({ expiresAt }))
@@ -32,14 +34,14 @@ export default function CountdownTimer({
         return next;
       });
     }, 1000);
-    return () => clearInterval(t);
+    return () => clearInterval(timerId);
   }, [seconds, expiresAt, onExpire]);
 
   const urgent = seconds <= urgentAt;
 
   return (
     <View style={[styles.wrap, urgent && styles.urgent]}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>{t(label)}</Text>
       <Text style={[styles.time, urgent && styles.timeUrgent]}>{formatCountdown(seconds)}</Text>
     </View>
   );

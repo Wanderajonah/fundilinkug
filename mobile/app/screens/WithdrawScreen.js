@@ -5,10 +5,12 @@ import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
 import PrimaryButton from '../components/PrimaryButton';
 import { getWallet, withdraw } from '../../services/walletApi';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const PRESETS = [10000, 20000, 50000, 100000, 200000];
 
 export default function WithdrawScreen({ onNavigate }) {
+  const { t } = useLanguage();
   const [amount, setAmount] = useState('');
   const [phone, setPhone] = useState('');
   const [method, setMethod] = useState('mtn');
@@ -29,16 +31,16 @@ export default function WithdrawScreen({ onNavigate }) {
   const handlePreset = (val) => setAmount(val.toLocaleString());
 
   const handleWithdraw = async () => {
-    if (numericAmount <= 0) return Alert.alert('Error', 'Enter an amount');
-    if (numericAmount > balance) return Alert.alert('Error', 'Insufficient balance');
+    if (numericAmount <= 0) return Alert.alert(t('Error'), t('Enter an amount'));
+    if (numericAmount > balance) return Alert.alert(t('Error'), t('Insufficient balance'));
     setLoading(true);
     try {
       const { data } = await withdraw(numericAmount, method === 'mtn' ? 'mtn_momo' : 'airtel_money', phone);
-      Alert.alert('Success', `UGX ${numericAmount.toLocaleString()} withdrawn successfully!`, [
-        { text: 'OK', onPress: () => onNavigate?.('wallet') },
+      Alert.alert(t('Success'), t('UGX {{amount}} withdrawn successfully!', { amount: numericAmount.toLocaleString() }), [
+        { text: t('OK'), onPress: () => onNavigate?.('wallet') },
       ]);
     } catch (error) {
-      Alert.alert('Error', error.response?.data?.message || 'Withdrawal failed');
+      Alert.alert(t('Error'), error.response?.data?.message || t('Withdrawal failed'));
     } finally {
       setLoading(false);
     }
@@ -51,16 +53,16 @@ export default function WithdrawScreen({ onNavigate }) {
           <TouchableOpacity style={styles.backBtn} onPress={() => onNavigate?.('wallet')}>
             <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
           </TouchableOpacity>
-          <Text style={styles.title}>Withdraw</Text>
+          <Text style={styles.title}>{t('Withdraw')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.balanceBanner}>
-          <Text style={styles.balanceLabel}>Available Balance</Text>
+          <Text style={styles.balanceLabel}>{t('Available Balance')}</Text>
           <Text style={styles.balanceAmount}>UGX {(balance || 0).toLocaleString()}</Text>
         </View>
 
-        <Text style={styles.section}>WITHDRAW TO</Text>
+        <Text style={styles.section}>{t('WITHDRAW TO')}</Text>
         <TouchableOpacity
           style={[styles.methodCard, method === 'mtn' && styles.methodOn]}
           onPress={() => setMethod('mtn')}
@@ -69,7 +71,7 @@ export default function WithdrawScreen({ onNavigate }) {
             <View style={[styles.logo, { backgroundColor: '#FFCC00' }]}>
               <Text style={styles.logoText}>MTN</Text>
             </View>
-            <Text style={styles.methodName}>MTN Mobile Money</Text>
+            <Text style={styles.methodName}>{t('MTN Mobile Money')}</Text>
           </View>
           <View style={[styles.radio, method === 'mtn' && styles.radioOn]} />
         </TouchableOpacity>
@@ -82,12 +84,12 @@ export default function WithdrawScreen({ onNavigate }) {
             <View style={[styles.logo, { backgroundColor: '#E40000' }]}>
               <Text style={[styles.logoText, { color: '#fff' }]}>A</Text>
             </View>
-            <Text style={styles.methodName}>Airtel Money</Text>
+            <Text style={styles.methodName}>{t('Airtel Money')}</Text>
           </View>
           <View style={[styles.radio, method === 'airtel' && styles.radioOn]} />
         </TouchableOpacity>
 
-        <Text style={styles.section}>AMOUNT</Text>
+        <Text style={styles.section}>{t('AMOUNT')}</Text>
         <View style={styles.amountInput}>
           <Text style={styles.currency}>UGX</Text>
           <TextInput
@@ -108,7 +110,7 @@ export default function WithdrawScreen({ onNavigate }) {
           ))}
         </View>
 
-        <Text style={styles.section}>MOMO NUMBER</Text>
+        <Text style={styles.section}>{t('MOMO NUMBER')}</Text>
         <View style={styles.phoneInput}>
           <Text style={styles.phonePrefix}>+256</Text>
           <TextInput
@@ -120,10 +122,10 @@ export default function WithdrawScreen({ onNavigate }) {
             placeholderTextColor={theme.colors.mutedDark}
           />
         </View>
-        <Text style={styles.hint}>Funds will be sent to your mobile money wallet.</Text>
+        <Text style={styles.hint}>{t('Funds will be sent to your mobile money wallet.')}</Text>
 
         <PrimaryButton onPress={handleWithdraw} disabled={loading || numericAmount <= 0 || numericAmount > balance}>
-          {loading ? 'Processing...' : `Withdraw UGX ${numericAmount.toLocaleString()}`}
+          {loading ? t('Processing...') : t('Withdraw UGX {{amount}}', { amount: numericAmount.toLocaleString() })}
         </PrimaryButton>
         {loading ? <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 12 }} /> : null}
       </ScrollView>

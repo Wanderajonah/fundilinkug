@@ -16,6 +16,7 @@ import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { getProfile, uploadPortfolioImages, deletePortfolioImage } from '../../services/usersApi';
 import { resolveMediaUrl } from '../../utils/image';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const GAP = 8;
@@ -23,6 +24,7 @@ const COLS = 3;
 const IMG_SIZE = (SCREEN_WIDTH - 40 - GAP * (COLS - 1)) / COLS;
 
 export default function SkillsPortfolioScreen({ onNavigate }) {
+  const { t } = useLanguage();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -38,7 +40,7 @@ export default function SkillsPortfolioScreen({ onNavigate }) {
       const { data } = await getProfile();
       setProfile(data);
     } catch {
-      Alert.alert('Error', 'Could not load profile');
+      Alert.alert(t('Error'), t('Could not load profile'));
     } finally {
       setLoading(false);
     }
@@ -52,7 +54,7 @@ export default function SkillsPortfolioScreen({ onNavigate }) {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission required', 'Please allow access to your photos.');
+        Alert.alert(t('Permission required'), t('Please allow access to your photos.'));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -75,27 +77,27 @@ export default function SkillsPortfolioScreen({ onNavigate }) {
         await uploadPortfolioImages(formData);
         await loadProfile();
       } catch {
-        Alert.alert('Upload failed', 'Could not upload images.');
+        Alert.alert(t('Upload failed'), t('Could not upload images.'));
       } finally {
         setUploading(false);
       }
     } catch {
-      Alert.alert('Error', 'Could not open photo gallery.');
+      Alert.alert(t('Error'), t('Could not open photo gallery.'));
     }
   };
 
   const removePhoto = (imageUrl) => {
-    Alert.alert('Remove photo', 'Remove this photo from your portfolio?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('Remove photo'), t('Remove this photo from your portfolio?'), [
+      { text: t('Cancel'), style: 'cancel' },
       {
-        text: 'Remove',
+        text: t('Remove'),
         style: 'destructive',
         onPress: async () => {
           try {
             await deletePortfolioImage(imageUrl);
             await loadProfile();
           } catch {
-            Alert.alert('Error', 'Could not remove photo.');
+            Alert.alert(t('Error'), t('Could not remove photo.'));
           }
         },
       },
@@ -109,7 +111,7 @@ export default function SkillsPortfolioScreen({ onNavigate }) {
           <TouchableOpacity onPress={() => onNavigate?.('profile')} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
           </TouchableOpacity>
-          <Text style={styles.title}>Skills & Portfolio</Text>
+          <Text style={styles.title}>{t('Skills & Portfolio')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -119,7 +121,7 @@ export default function SkillsPortfolioScreen({ onNavigate }) {
           </View>
         ) : (
           <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.sectionLabel}>Skills</Text>
+            <Text style={styles.sectionLabel}>{t('Skills')}</Text>
             {skills.length > 0 ? (
               <View style={styles.skillsRow}>
                 {skills.map((s) => (
@@ -129,13 +131,13 @@ export default function SkillsPortfolioScreen({ onNavigate }) {
                 ))}
               </View>
             ) : (
-              <Text style={styles.emptyText}>No skills added yet</Text>
+              <Text style={styles.emptyText}>{t('No skills added yet')}</Text>
             )}
 
             <View style={styles.divider} />
 
-            <Text style={styles.sectionLabel}>Portfolio</Text>
-            <Text style={styles.hint}>Showcase your recent work to attract more clients</Text>
+            <Text style={styles.sectionLabel}>{t('Portfolio')}</Text>
+            <Text style={styles.hint}>{t('Showcase your recent work to attract more clients')}</Text>
 
             <TouchableOpacity
               style={styles.uploadBtn}
@@ -148,7 +150,7 @@ export default function SkillsPortfolioScreen({ onNavigate }) {
               ) : (
                 <>
                   <Ionicons name="cloud-upload-outline" size={18} color={theme.colors.textDark} />
-                  <Text style={styles.uploadText}>Add Photos</Text>
+                  <Text style={styles.uploadText}>{t('Add Photos')}</Text>
                 </>
               )}
             </TouchableOpacity>
@@ -156,7 +158,7 @@ export default function SkillsPortfolioScreen({ onNavigate }) {
             {portfolioImages.length === 0 ? (
               <View style={styles.emptyState}>
                 <Ionicons name="images-outline" size={40} color={theme.colors.mutedDark} />
-                <Text style={styles.emptyTitle}>No photos yet</Text>
+                <Text style={styles.emptyTitle}>{t('No photos yet')}</Text>
               </View>
             ) : (
               <View style={styles.grid}>

@@ -3,6 +3,7 @@ import { View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-nativ
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import CountrySelectSheet, { DEFAULT_COUNTRY } from './CountrySelectSheet';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function PhoneInput({
   label = 'Phone number',
@@ -15,6 +16,7 @@ export default function PhoneInput({
   country = DEFAULT_COUNTRY,
   onCountryChange,
 }) {
+  const { t } = useLanguage();
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState(country);
 
@@ -30,7 +32,7 @@ export default function PhoneInput({
 
   return (
     <View style={styles.wrap}>
-      {label ? <Text style={styles.label}>{label}</Text> : null}
+      {label ? <Text style={styles.label}>{t(label)}</Text> : null}
       <View style={[styles.row, focused && styles.rowFocused]}>
         <TouchableOpacity
           style={styles.codeWrap}

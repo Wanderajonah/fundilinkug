@@ -15,6 +15,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { resolveMediaUrl } from "../../utils/image";
+import { useLanguage } from "../i18n/LanguageContext";
 
 const Colors = {
   background: "#0D0D0D",
@@ -73,6 +74,7 @@ const extractMediaPath = (value) => {
 };
 
 const FundiProfileScreen = ({ navigation, route }) => {
+  const { t } = useLanguage();
   const fundi = route?.params?.fundi ?? DEFAULT_FUNDI;
   const [activeTab, setActiveTab] = useState("activity");
   const coverPhotoUri = useMemo(
@@ -225,19 +227,19 @@ const FundiProfileScreen = ({ navigation, route }) => {
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>{Number(fundi?.rating) || 0}</Text>
-              <Text style={styles.statLabel}>Rating</Text>
+              <Text style={styles.statLabel}>{t("Rating")}</Text>
             </View>
             <View style={[styles.statItem, styles.statDivider]}>
               <Text style={styles.statValue}>
                 {Number(fundi?.jobsDone) || 0}
               </Text>
-              <Text style={styles.statLabel}>Jobs</Text>
+              <Text style={styles.statLabel}>{t("Jobs")}</Text>
             </View>
             <View style={styles.statItem}>
               <Text style={styles.statValue}>
                 {Number(fundi?.yearsExp) || 0}
               </Text>
-              <Text style={styles.statLabel}>Years</Text>
+              <Text style={styles.statLabel}>{t("Years")}</Text>
             </View>
           </View>
 
@@ -259,13 +261,13 @@ const FundiProfileScreen = ({ navigation, route }) => {
               style={styles.bookBtn}
               onPress={() =>
                 Alert.alert(
-                  "Booking",
-                  "Booking feature will be available after fundi confirms the job.",
+                  t("Booking"),
+                  t("Booking feature will be available after fundi confirms the job."),
                 )
               }
               activeOpacity={0.75}
             >
-              <Text style={styles.bookBtnText}>Book Now</Text>
+              <Text style={styles.bookBtnText}>{t("Book Now")}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.circleBtn} activeOpacity={0.75}>
@@ -280,19 +282,19 @@ const FundiProfileScreen = ({ navigation, route }) => {
 
         {/* TAB BAR */}
         <View style={styles.tabBar}>
-          {tabs.map((t) => {
-            const active = activeTab === t.key;
+          {tabs.map((tab) => {
+            const active = activeTab === tab.key;
             return (
               <TouchableOpacity
-                key={t.key}
+                key={tab.key}
                 style={styles.tabItem}
-                onPress={() => setActiveTab(t.key)}
+                onPress={() => setActiveTab(tab.key)}
                 activeOpacity={0.75}
               >
                 <Text
                   style={[styles.tabLabel, active && styles.tabLabelActive]}
                 >
-                  {t.label}
+                  {t(tab.label)}
                 </Text>
                 {active ? <View style={styles.activeIndicator} /> : null}
               </TouchableOpacity>
@@ -315,7 +317,7 @@ const FundiProfileScreen = ({ navigation, route }) => {
                     color={Colors.border}
                   />
                   {p?.placeholder ? (
-                    <Text style={styles.placeholderText}>No photo yet</Text>
+                    <Text style={styles.placeholderText}>{t("No photo yet")}</Text>
                   ) : null}
                 </View>
                 <View style={styles.activityMetaRow}>
@@ -343,9 +345,9 @@ const FundiProfileScreen = ({ navigation, route }) => {
 
         {activeTab === "reviews" ? (
           <View style={styles.tabCard}>
-            <Text style={styles.cardTitle}>Reviews</Text>
+            <Text style={styles.cardTitle}>{t("Reviews")}</Text>
             <Text style={styles.emptyState}>
-              No reviews yet. Be the first to book and rate.
+              {t("No reviews yet. Be the first to book and rate.")}
             </Text>
           </View>
         ) : null}
@@ -353,12 +355,12 @@ const FundiProfileScreen = ({ navigation, route }) => {
         {activeTab === "about" ? (
           <View>
             <View style={styles.tabCard}>
-              <Text style={styles.cardTitle}>About</Text>
+              <Text style={styles.cardTitle}>{t("About")}</Text>
               <Text style={styles.cardBody}>{fundi?.about || ""}</Text>
             </View>
 
             <View style={styles.tabCard}>
-              <Text style={styles.cardTitle}>Skills</Text>
+              <Text style={styles.cardTitle}>{t("Skills")}</Text>
               <View style={styles.pillsRow}>
                 {(fundi?.skills || []).map((s) => (
                   <View key={s} style={styles.pill}>

@@ -2,8 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function PaymentMethodsScreen({ onNavigate }) {
+  const { t } = useLanguage();
   return (
     <ScreenWrapper style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -11,39 +13,39 @@ export default function PaymentMethodsScreen({ onNavigate }) {
           <TouchableOpacity onPress={() => onNavigate?.('profile')} style={styles.iconBtn}>
             <Text style={styles.backArrow}>‹</Text>
           </TouchableOpacity>
-          <Text style={styles.title}>Payment Methods</Text>
-          <TouchableOpacity style={styles.addBtn}><Text style={styles.addText}>+ Add</Text></TouchableOpacity>
+          <Text style={styles.title}>{t('Payment Methods')}</Text>
+          <TouchableOpacity style={styles.addBtn}><Text style={styles.addText}>+ {t('Add')}</Text></TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionLabel}>Saved Cards</Text>
-        <View style={styles.card}> 
+        <Text style={styles.sectionLabel}>{t('Saved Cards')}</Text>
+        <View style={styles.card}>
           <View style={styles.cardRow}>
             <View style={styles.brandDot}><Text style={styles.brandText}>VISA</Text></View>
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={styles.cardTitle}>•••• 4242</Text>
-              <Text style={styles.cardSub}>Expires 12/26</Text>
+              <Text style={styles.cardSub}>{t('Expires 12/26')}</Text>
             </View>
-            <View style={styles.defaultPill}><Text style={styles.defaultText}>Default</Text></View>
+            <View style={styles.defaultPill}><Text style={styles.defaultText}>{t('Default')}</Text></View>
           </View>
         </View>
 
-        <View style={styles.card}> 
+        <View style={styles.card}>
           <View style={styles.cardRow}>
             <View style={[styles.brandDot, { backgroundColor: 'rgba(239,68,68,0.2)' }]}><Text style={[styles.brandText, { color: '#EF4444' }]}>MC</Text></View>
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={styles.cardTitle}>•••• 8888</Text>
-              <Text style={styles.cardSub}>Expires 08/25</Text>
+              <Text style={styles.cardSub}>{t('Expires 08/25')}</Text>
             </View>
             <View style={styles.radio} />
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>Mobile Money</Text>
+        <Text style={styles.sectionLabel}>{t('Mobile Money')}</Text>
         <View style={styles.card}>
           <View style={styles.cardRow}>
             <View style={[styles.brandDot, { backgroundColor: 'rgba(234,179,8,0.2)' }]}><Text style={styles.brandText}>M</Text></View>
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={styles.cardTitle}>MTN Mobile Money</Text>
+              <Text style={styles.cardTitle}>{t('MTN Mobile Money')}</Text>
               <Text style={styles.cardSub}>+256 771 234 456</Text>
             </View>
             <View style={styles.radio} />
@@ -54,27 +56,27 @@ export default function PaymentMethodsScreen({ onNavigate }) {
           <View style={styles.cardRow}>
             <View style={[styles.brandDot, { backgroundColor: 'rgba(248,113,113,0.2)' }]}><Text style={[styles.brandText, { color: '#F87171' }]}>A</Text></View>
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={styles.cardTitle}>Airtel Money</Text>
+              <Text style={styles.cardTitle}>{t('Airtel Money')}</Text>
               <Text style={styles.cardSub}>+256 700 123 123</Text>
             </View>
             <View style={styles.radio} />
           </View>
         </View>
 
-        <Text style={styles.sectionLabel}>Other Methods</Text>
+        <Text style={styles.sectionLabel}>{t('Other Methods')}</Text>
         <View style={styles.card}>
           <View style={styles.cardRow}>
             <View style={[styles.brandDot, { backgroundColor: 'rgba(34,197,94,0.2)' }]}><Text style={[styles.brandText, { color: '#22C55E' }]}>$</Text></View>
             <View style={{ flex: 1, marginLeft: 10 }}>
-              <Text style={styles.cardTitle}>Cash</Text>
-              <Text style={styles.cardSub}>Pay in person</Text>
+              <Text style={styles.cardTitle}>{t('Cash')}</Text>
+              <Text style={styles.cardSub}>{t('Pay in person')}</Text>
             </View>
             <View style={styles.radio} />
           </View>
         </View>
 
         <View style={styles.noteBox}>
-          <Text style={styles.noteText}>Your payment info is encrypted and stored securely.</Text>
+          <Text style={styles.noteText}>{t('Your payment info is encrypted and stored securely.')}</Text>
         </View>
       </ScrollView>
     </ScreenWrapper>

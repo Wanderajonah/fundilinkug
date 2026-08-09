@@ -2,15 +2,17 @@ import React from 'react';
 import { TouchableOpacity, Text, View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function RoleCard({ icon, title, description, onPress, style }) {
+  const { t } = useLanguage();
   return (
     <TouchableOpacity style={[styles.card, style]} onPress={onPress} activeOpacity={0.85}>
       <View style={styles.iconWrap}>
         <Ionicons name={icon} size={26} color={theme.colors.accent} />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.desc}>{description}</Text>
+      <Text style={styles.title}>{t(title)}</Text>
+      <Text style={styles.desc}>{t(description)}</Text>
     </TouchableOpacity>
   );
 }

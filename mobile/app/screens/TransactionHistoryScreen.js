@@ -4,6 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { getTransactions } from '../../services/walletApi';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const TX_TABS = [
   { key: 'all', label: 'All' },
@@ -13,6 +14,7 @@ const TX_TABS = [
 ];
 
 export default function TransactionHistoryScreen({ onNavigate }) {
+  const { t } = useLanguage();
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -109,14 +111,14 @@ export default function TransactionHistoryScreen({ onNavigate }) {
           <TouchableOpacity style={styles.backBtn} onPress={() => onNavigate?.('wallet')}>
             <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
           </TouchableOpacity>
-          <Text style={styles.title}>Transaction History</Text>
+          <Text style={styles.title}>{t('Transaction History')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.tabRow}>
-          {TX_TABS.map((t) => (
-            <TouchableOpacity key={t.key} style={[styles.tab, tab === t.key && styles.tabOn]} onPress={() => setTab(t.key)}>
-              <Text style={[styles.tabText, tab === t.key && styles.tabTextOn]}>{t.label}</Text>
+          {TX_TABS.map((tabItem) => (
+            <TouchableOpacity key={tabItem.key} style={[styles.tab, tab === tabItem.key && styles.tabOn]} onPress={() => setTab(tabItem.key)}>
+              <Text style={[styles.tabText, tab === tabItem.key && styles.tabTextOn]}>{t(tabItem.label)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -138,7 +140,7 @@ export default function TransactionHistoryScreen({ onNavigate }) {
           ) : transactions.length === 0 ? (
             <View style={styles.emptyTx}>
               <Ionicons name="receipt-outline" size={48} color={theme.colors.mutedDark} />
-              <Text style={styles.emptyTxText}>No transactions found</Text>
+              <Text style={styles.emptyTxText}>{t('No transactions found')}</Text>
             </View>
           ) : (
             transactions.map((tx) => (
@@ -147,15 +149,15 @@ export default function TransactionHistoryScreen({ onNavigate }) {
                   <Ionicons name={txIcon(tx.type)} size={20} color={txColor(tx.type)} />
                 </View>
                 <View style={styles.txInfo}>
-                  <Text style={styles.txType}>{txLabel(tx.type)}</Text>
+                  <Text style={styles.txType}>{t(txLabel(tx.type))}</Text>
                   <Text style={styles.txDesc} numberOfLines={1}>{tx.description}</Text>
-                  <Text style={styles.txDate}>{formatDate(tx.createdAt)}{tx.reference ? ` · ${tx.reference}` : ''}</Text>
+                  <Text style={styles.txDate}>{t(formatDate(tx.createdAt))}{tx.reference ? ` · ${tx.reference}` : ''}</Text>
                 </View>
                 <View style={styles.txAmount}>
                   <Text style={[styles.txValue, { color: txColor(tx.type) }]}>
                     {isCredit(tx.type) ? '+' : '-'}UGX {(tx.amount || 0).toLocaleString()}
                   </Text>
-                  <Text style={styles.txBalance}>Bal: UGX {(tx.balanceAfter || 0).toLocaleString()}</Text>
+                  <Text style={styles.txBalance}>{t('Bal: UGX {{amount}}', { amount: (tx.balanceAfter || 0).toLocaleString() })}</Text>
                 </View>
               </View>
             ))

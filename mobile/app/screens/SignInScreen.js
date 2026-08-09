@@ -15,6 +15,7 @@ import PhoneInput from '../components/PhoneInput';
 import theme from '../theme';
 import { getErrorMessage, handleGoogleSignInResponse } from '../../services/authApi';
 import { useGoogleSignIn, fetchGoogleUser } from '../../services/googleSignIn';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function SignInScreen({
   role = 'client',
@@ -28,6 +29,7 @@ export default function SignInScreen({
   const [phoneFocused, setPhoneFocused] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [otpSending, setOtpSending] = useState(false);
+  const { t } = useLanguage();
 
   const { promptAsync, disabled: googleDisabled } = useGoogleSignIn();
 
@@ -63,7 +65,7 @@ export default function SignInScreen({
         onLoggedIn?.(data);
       }
     } catch (error) {
-      Alert.alert('Sign in failed', getErrorMessage(error));
+      Alert.alert(t('Sign in failed'), getErrorMessage(error));
     } finally {
       setGoogleLoading(false);
     }
@@ -71,7 +73,7 @@ export default function SignInScreen({
 
   const handlePhoneContinue = async () => {
     if (!phone.trim()) {
-      Alert.alert('Phone required', 'Enter your phone number.');
+      Alert.alert(t('Phone required'), t('Enter your phone number.'));
       return;
     }
     setOtpSending(true);
@@ -90,8 +92,8 @@ export default function SignInScreen({
         onBack={onBack}
         subtitle={
           isFundi
-            ? 'Sign in to your fundi dashboard'
-            : 'Sign in to find and book trusted fundis'
+            ? t('Sign in to your fundi dashboard')
+            : t('Sign in to find and book trusted fundis')
         }
       />
 
@@ -109,7 +111,7 @@ export default function SignInScreen({
         ) : (
           <AuthButton
             variant="phone"
-            label="Continue with Phone"
+            label={t('Continue with Phone')}
             onPress={handlePhoneContinue}
           />
         )}
@@ -117,13 +119,13 @@ export default function SignInScreen({
 
       <View style={styles.dividerRow}>
         <View style={styles.dividerLine} />
-        <Text style={styles.dividerText}>or continue with</Text>
+        <Text style={styles.dividerText}>{t('or continue with')}</Text>
         <View style={styles.dividerLine} />
       </View>
 
       <AuthButton
         variant="google"
-        label={googleDisabled ? "Google (not configured)" : "Google"}
+        label={googleDisabled ? t('Google (not configured)') : t('Google')}
         onPress={handleGoogle}
         loading={googleLoading}
         disabled={googleDisabled}
@@ -131,7 +133,7 @@ export default function SignInScreen({
 
       <TouchableOpacity onPress={onCreateAccount} style={styles.createRow}>
         <Text style={styles.createText}>
-          Don't have an account? <Text style={styles.createLink}>Sign up</Text>
+          {t("Don't have an account? ")}<Text style={styles.createLink}>{t('Sign up')}</Text>
         </Text>
       </TouchableOpacity>
     </ScrollScreen>

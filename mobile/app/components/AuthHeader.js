@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import BrandLockup from './BrandLockup';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 /**
  * Consistent top-of-screen treatment for every auth flow:
@@ -15,6 +16,7 @@ export default function AuthHeader({
   right,
   brandSize = 150,
 }) {
+  const { t } = useLanguage();
   return (
     <>
       <View style={styles.topRow}>
@@ -34,11 +36,11 @@ export default function AuthHeader({
 
       <BrandLockup size={brandSize} />
 
-      {title ? <Text style={styles.title}>{title}</Text> : null}
+      {title ? <Text style={styles.title}>{t(title)}</Text> : null}
       {subtitle ? (
         <>
           <View style={styles.titleAccent} />
-          <Text style={styles.subtitle}>{subtitle}</Text>
+          <Text style={styles.subtitle}>{t(subtitle)}</Text>
         </>
       ) : null}
     </>

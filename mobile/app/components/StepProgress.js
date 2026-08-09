@@ -1,13 +1,19 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function StepProgress({ step, total, label }) {
+  const { t } = useLanguage();
   const pct = (step / total) * 100;
   return (
     <View style={styles.wrap}>
       <Text style={styles.label}>
-        Step {step} of {total} — {label}
+        {t('Step {{current}} of {{total}} — {{label}}', {
+          current: step,
+          total,
+          label: t(label),
+        })}
       </Text>
       <View style={styles.track}>
         <View style={[styles.fill, { width: `${pct}%` }]} />

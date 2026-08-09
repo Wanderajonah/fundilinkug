@@ -14,6 +14,7 @@ import AuthHeader from '../components/AuthHeader';
 import PrimaryButton from '../components/PrimaryButton';
 import theme from '../theme';
 import { sendOtp } from '../../services/authApi';
+import { useLanguage } from '../i18n/LanguageContext';
 
 /** Exactly four OTP slots — do not change length without updating backend. */
 const OTP_LENGTH = 4;
@@ -38,6 +39,7 @@ export default function OtpScreen({
   const [resending, setResending] = useState(false);
   const inputRefs = useRef([]);
   const hiddenRef = useRef(null);
+  const { t } = useLanguage();
 
   const code = digits.join('');
 
@@ -69,7 +71,7 @@ export default function OtpScreen({
 
   const handleVerify = async (enteredCode = code) => {
     if (enteredCode.length !== OTP_LENGTH) {
-      Alert.alert('Invalid code', `Enter the full ${OTP_LENGTH}-digit code.`);
+      Alert.alert(t('Invalid code'), t('Enter the full {{length}}-digit code.', { length: OTP_LENGTH }));
       return;
     }
     setLoading(true);
@@ -77,8 +79,8 @@ export default function OtpScreen({
       await onVerify?.(enteredCode);
     } catch (error) {
       Alert.alert(
-        'Verification failed',
-        error?.response?.data?.message || 'Invalid or expired code.'
+        t('Verification failed'),
+        error?.response?.data?.message || t('Invalid or expired code.')
       );
     } finally {
       setLoading(false);
@@ -133,7 +135,7 @@ export default function OtpScreen({
 
   const handleResend = async () => {
     if (seconds > expiresIn - 60) {
-      Alert.alert('Please wait', 'You can resend after the cooldown period.');
+      Alert.alert(t('Please wait'), t('You can resend after the cooldown period.'));
       return;
     }
     try {
@@ -141,12 +143,12 @@ export default function OtpScreen({
       const { data } = await sendOtp(phoneRaw || phone, purpose);
       setSeconds(data.expiresIn || 600);
       if (data.devCode) {
-        Alert.alert('Dev mode', `Your code is: ${data.devCode}`);
+        Alert.alert(t('Dev mode'), t('Your code is: {{code}}', { code: data.devCode }));
       }
       setDigits(emptyDigits());
       onResent?.(data);
     } catch (error) {
-      Alert.alert('Resend failed', error?.response?.data?.message || 'Could not resend OTP.');
+      Alert.alert(t('Resend failed'), error?.response?.data?.message || t('Could not resend OTP.'));
     } finally {
       setResending(false);
     }
@@ -161,10 +163,11 @@ export default function OtpScreen({
 
       <AuthHeader
         onBack={onBack}
-        title="Verify your number"
+        title={t('Verify your number')}
         subtitle={
           <>
-            Enter the 4-digit code sent to <Text style={styles.phone}>{phone}</Text>
+            {t('Enter the {{digits}}-digit code sent to', { digits: OTP_LENGTH })}{' '}
+            <Text style={styles.phone}>{phone}</Text>
           </>
         }
       />
@@ -214,19 +217,19 @@ export default function OtpScreen({
       </TouchableOpacity>
 
       <Text style={styles.timer}>
-        Code expires in <Text style={styles.timerAccent}>{mm}:{ss}</Text>
+        {t('Code expires in')} <Text style={styles.timerAccent}>{mm}:{ss}</Text>
       </Text>
 
       {loading ? (
         <ActivityIndicator color={theme.colors.accent} style={{ marginVertical: 12 }} />
       ) : (
-        <PrimaryButton onPress={() => handleVerify()}>Verify Code</PrimaryButton>
+        <PrimaryButton onPress={() => handleVerify()}>{t('Verify Code')}</PrimaryButton>
       )}
 
       <TouchableOpacity onPress={handleResend} disabled={resending}>
         <Text style={styles.resend}>
-          Didn't receive the code?{' '}
-          <Text style={styles.link}>{resending ? 'Sending…' : 'Resend'}</Text>
+          {t("Didn't receive the code? ")}
+          <Text style={styles.link}>{resending ? t('Sending…') : t('Resend')}</Text>
         </Text>
       </TouchableOpacity>
     </ScrollScreen>

@@ -9,11 +9,13 @@ import { useBookingOptional } from '../../context/BookingContext';
 import { getRoutePreview } from '../../services/mapsApi';
 import { initials } from '../utils/ratings';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const STEPS = ['Confirmed', 'Paid', 'On Way', 'Arrived', 'Done'];
 
 export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStarted }) {
-  const fundiName = job.fundiName || 'Fundi';
+  const { t } = useLanguage();
+  const fundiName = job.fundiName || t('Fundi');
   const firstName = fundiName.split(' ')[0];
   const { coords, region } = useLocation();
   const bookingCtx = useBookingOptional();
@@ -29,10 +31,10 @@ export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStar
 
   const statusMessage = useMemo(() => {
     const status = job.status?.toUpperCase?.() || job.status;
-    if (status === 'ARRIVED') return `${firstName} has arrived at your location`;
-    if (status === 'IN_PROGRESS') return `${firstName} is working on your job`;
-    return `${firstName} is on the way to you`;
-  }, [firstName, job.status]);
+    if (status === 'ARRIVED') return t('{{name}} has arrived at your location', { name: firstName });
+    if (status === 'IN_PROGRESS') return t('{{name}} is working on your job', { name: firstName });
+    return t('{{name}} is on the way to you', { name: firstName });
+  }, [firstName, job.status, t]);
 
   useEffect(() => {
     (async () => {
@@ -64,9 +66,9 @@ export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStar
       </TouchableOpacity>
 
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Live Tracking</Text>
+        <Text style={styles.headerTitle}>{t('Live Tracking')}</Text>
         <View style={styles.etaBadge}>
-          <Text style={styles.etaText}>ETA {route.etaMinutes} mins</Text>
+          <Text style={styles.etaText}>{t('ETA {{mins}} mins', { mins: route.etaMinutes })}</Text>
         </View>
       </View>
 
@@ -89,7 +91,7 @@ export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStar
         {STEPS.map((s, i) => (
           <View key={s} style={styles.stepItem}>
             <View style={[styles.stepDot, i <= activeStep && styles.stepDotOn]} />
-            <Text style={[styles.stepLabel, i <= activeStep && styles.stepLabelOn]}>{s}</Text>
+            <Text style={[styles.stepLabel, i <= activeStep && styles.stepLabelOn]}>{t(s)}</Text>
           </View>
         ))}
       </View>
@@ -100,23 +102,23 @@ export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStar
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.name}>{fundiName}</Text>
-          <Text style={styles.meta}>{job.service || 'Service'} · Live location updating</Text>
+          <Text style={styles.meta}>{job.service || t('Service')} · {t('Live location updating')}</Text>
         </View>
         <PrimaryButton style={styles.chatBtn} onPress={onChat}>
-          💬 Chat
+          💬 {t('Chat')}
         </PrimaryButton>
       </View>
 
       <PrimaryButton style={{ marginBottom: 12 }} onPress={onJobStarted}>
-        Fundi arrived — job started →
+        {t('Fundi arrived — job started →')}
       </PrimaryButton>
 
       <TouchableOpacity style={styles.shareLink}>
-        <Text style={styles.shareText}>🔗 Share trip with a contact for safety</Text>
+        <Text style={styles.shareText}>🔗 {t('Share trip with a contact for safety')}</Text>
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.sosBtn}>
-        <Text style={styles.sosText}>🚨 SOS Emergency SOS</Text>
+        <Text style={styles.sosText}>🚨 {t('SOS Emergency SOS')}</Text>
       </TouchableOpacity>
     </ScreenWrapper>
   );

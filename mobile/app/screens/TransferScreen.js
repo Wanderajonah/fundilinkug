@@ -5,8 +5,10 @@ import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
 import PrimaryButton from '../components/PrimaryButton';
 import { getWallet, transfer } from '../../services/walletApi';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function TransferScreen({ onNavigate }) {
+  const { t } = useLanguage();
   const [amount, setAmount] = useState('');
   const [recipientPhone, setRecipientPhone] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,21 +26,21 @@ export default function TransferScreen({ onNavigate }) {
   const numericAmount = Number(amount.replace(/,/g, '')) || 0;
 
   const handleTransfer = async () => {
-    if (numericAmount <= 0) return Alert.alert('Error', 'Enter an amount');
-    if (numericAmount > balance) return Alert.alert('Error', 'Insufficient balance');
-    if (!recipientPhone.trim()) return Alert.alert('Error', 'Enter recipient phone number');
+    if (numericAmount <= 0) return Alert.alert(t('Error'), t('Enter an amount'));
+    if (numericAmount > balance) return Alert.alert(t('Error'), t('Insufficient balance'));
+    if (!recipientPhone.trim()) return Alert.alert(t('Error'), t('Enter recipient phone number'));
 
     const phone = recipientPhone.replace(/^0+/, '').replace(/[^0-9]/g, '');
-    if (phone.length < 8) return Alert.alert('Error', 'Enter a valid phone number');
+    if (phone.length < 8) return Alert.alert(t('Error'), t('Enter a valid phone number'));
 
     setLoading(true);
     try {
       const { data } = await transfer(numericAmount, `256${phone}`);
-      Alert.alert('Success', `UGX ${numericAmount.toLocaleString()} transferred successfully!`, [
-        { text: 'OK', onPress: () => onNavigate?.('wallet') },
+      Alert.alert(t('Success'), t('UGX {{amount}} transferred successfully!', { amount: numericAmount.toLocaleString() }), [
+        { text: t('OK'), onPress: () => onNavigate?.('wallet') },
       ]);
     } catch (error) {
-      Alert.alert('Transfer Failed', error.response?.data?.message || 'Something went wrong');
+      Alert.alert(t('Transfer Failed'), error.response?.data?.message || t('Something went wrong'));
     } finally {
       setLoading(false);
     }
@@ -51,16 +53,16 @@ export default function TransferScreen({ onNavigate }) {
           <TouchableOpacity style={styles.backBtn} onPress={() => onNavigate?.('wallet')}>
             <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
           </TouchableOpacity>
-          <Text style={styles.title}>Transfer</Text>
+          <Text style={styles.title}>{t('Transfer')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.balanceBanner}>
-          <Text style={styles.balanceLabel}>Available Balance</Text>
+          <Text style={styles.balanceLabel}>{t('Available Balance')}</Text>
           <Text style={styles.balanceAmount}>UGX {(balance || 0).toLocaleString()}</Text>
         </View>
 
-        <Text style={styles.section}>RECIPIENT</Text>
+        <Text style={styles.section}>{t('RECIPIENT')}</Text>
         <View style={styles.phoneInput}>
           <Text style={styles.phonePrefix}>+256</Text>
           <TextInput
@@ -72,9 +74,9 @@ export default function TransferScreen({ onNavigate }) {
             placeholderTextColor={theme.colors.mutedDark}
           />
         </View>
-        <Text style={styles.hint}>Enter the phone number of the FundiLink user to send funds to.</Text>
+        <Text style={styles.hint}>{t('Enter the phone number of the FundiLink user to send funds to.')}</Text>
 
-        <Text style={styles.section}>AMOUNT</Text>
+        <Text style={styles.section}>{t('AMOUNT')}</Text>
         <View style={styles.amountInput}>
           <Text style={styles.currency}>UGX</Text>
           <TextInput
@@ -88,7 +90,7 @@ export default function TransferScreen({ onNavigate }) {
         </View>
 
         <PrimaryButton onPress={handleTransfer} disabled={loading || numericAmount <= 0 || numericAmount > balance}>
-          {loading ? 'Processing...' : `Transfer UGX ${numericAmount.toLocaleString()}`}
+          {loading ? t('Processing...') : t('Transfer UGX {{amount}}', { amount: numericAmount.toLocaleString() })}
         </PrimaryButton>
         {loading ? <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 12 }} /> : null}
       </ScrollView>

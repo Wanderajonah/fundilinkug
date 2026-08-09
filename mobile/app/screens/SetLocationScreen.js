@@ -17,12 +17,14 @@ import FundiMap from '../components/FundiMap';
 import { useLocation } from '../../context/LocationContext';
 import { geocodeAddress, getNearbyFundis } from '../../services/mapsApi';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const RADII = ['5 km', '10 km', '20 km'];
 
 export default function SetLocationScreen({ onBack, onConfirm, authToken }) {
   const { coords, address, radiusKm, setRadiusKm, setManualLocation, region, saveToBackend, captureCurrentLocation } =
     useLocation();
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [nearbyCount, setNearbyCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -44,7 +46,7 @@ export default function SetLocationScreen({ onBack, onConfirm, authToken }) {
       await setManualLocation(data.lat, data.lng, data.formattedAddress);
       await loadNearby(data.lat, data.lng, radiusKm);
     } catch (e) {
-      Alert.alert('Search failed', e?.response?.data?.message || 'Address not found');
+      Alert.alert(t('Search failed'), e?.response?.data?.message || t('Address not found'));
     } finally {
       setLoading(false);
     }
@@ -61,7 +63,7 @@ export default function SetLocationScreen({ onBack, onConfirm, authToken }) {
       const pos = await captureCurrentLocation();
       await loadNearby(pos.lat, pos.lng, radiusKm);
     } catch (e) {
-      Alert.alert('Could not get location', e?.message || 'Enable device location');
+      Alert.alert(t('Could not get location'), e?.message || t('Enable device location'));
     } finally {
       setLoading(false);
     }
@@ -85,7 +87,7 @@ export default function SetLocationScreen({ onBack, onConfirm, authToken }) {
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
           <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Set Your Location</Text>
+        <Text style={styles.headerTitle}>{t('Set Your Location')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -93,14 +95,14 @@ export default function SetLocationScreen({ onBack, onConfirm, authToken }) {
         <Ionicons name="search-outline" size={18} color={theme.colors.muted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search address or area..."
+          placeholder={t('Search address or area...')}
           placeholderTextColor={theme.colors.mutedDark}
           value={search}
           onChangeText={setSearch}
           onSubmitEditing={handleSearch}
         />
         <TouchableOpacity onPress={handleSearch}>
-          <Text style={styles.gps}>GO</Text>
+          <Text style={styles.gps}>{t('GO')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -114,10 +116,10 @@ export default function SetLocationScreen({ onBack, onConfirm, authToken }) {
       />
 
       <View style={styles.badge}>
-        <Text style={styles.badgeText}>{nearbyCount} Fundis Nearby</Text>
+        <Text style={styles.badgeText}>{t('{{count}} Fundis Nearby', { count: nearbyCount })}</Text>
       </View>
 
-      <Text style={styles.section}>SELECTED LOCATION</Text>
+      <Text style={styles.section}>{t('SELECTED LOCATION')}</Text>
       <View style={styles.addressCard}>
         <View style={{ flex: 1 }}>
           <Text style={styles.addressTitle}>{address}</Text>
@@ -128,7 +130,7 @@ export default function SetLocationScreen({ onBack, onConfirm, authToken }) {
         <Ionicons name="pencil" size={18} color={theme.colors.accent} />
       </View>
 
-      <Text style={styles.section}>SEARCH RADIUS</Text>
+      <Text style={styles.section}>{t('SEARCH RADIUS')}</Text>
       <View style={styles.radiusRow}>
         {RADII.map((r) => (
           <TouchableOpacity
@@ -148,10 +150,10 @@ export default function SetLocationScreen({ onBack, onConfirm, authToken }) {
           onConfirm?.({ radiusKm });
         }}
       >
-        Confirm This Location
+        {t('Confirm This Location')}
       </PrimaryButton>
       <PrimaryButton filled={false} onPress={handleUseCurrent} style={{ marginTop: 12 }}>
-        Use current location
+        {t('Use current location')}
       </PrimaryButton>
       </ScrollView>
     </ScreenWrapper>

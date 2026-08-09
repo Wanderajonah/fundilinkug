@@ -1,11 +1,12 @@
 const FundiProfile = require("../models/FundiProfile");
 const { getRecommendations } = require("../services/recommendationService");
 const { filterByRadius, normalizeCoords } = require("../utils/geo");
+const { buildSkillsQuery } = require("../utils/trades");
 
 const getFundis = async (req, res, next) => {
   try {
     const { category, lat, lng, radiusKm = 20 } = req.query;
-    const query = category && category !== "all" ? { skills: { $in: [category] } } : {};
+    const query = category && category !== "all" ? buildSkillsQuery(category) : {};
     let fundis = await FundiProfile.find(query)
       .populate({
         path: "userId",

@@ -3,8 +3,9 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import theme from "../theme";
+import { useLanguage } from "../i18n/LanguageContext";
 
-const TABS = [
+const CUSTOMER_TABS = [
   { key: "home", label: "Home", icon: "home", iconOff: "home-outline" },
   { key: "browse", label: "Explore", icon: "compass", iconOff: "compass-outline" },
   { key: "chat", label: "Messages", icon: "chatbubble", iconOff: "chatbubble-outline" },
@@ -12,8 +13,18 @@ const TABS = [
   { key: "profile", label: "Profile", icon: "person", iconOff: "person-outline" },
 ];
 
-export default function BottomNav({ active, onNavigate }) {
+const FUNDI_TABS = [
+  { key: "home", label: "Home", icon: "home", iconOff: "home-outline" },
+  { key: "bookings", label: "Jobs", icon: "briefcase", iconOff: "briefcase-outline" },
+  { key: "chat", label: "Messages", icon: "chatbubble", iconOff: "chatbubble-outline" },
+  { key: "wallet", label: "Wallet", icon: "wallet", iconOff: "wallet-outline" },
+  { key: "profile", label: "Profile", icon: "person", iconOff: "person-outline" },
+];
+
+export default function BottomNav({ active, onNavigate, role = "customer" }) {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
+  const tabs = role === "fundi" ? FUNDI_TABS : CUSTOMER_TABS;
 
   return (
     <View
@@ -22,7 +33,7 @@ export default function BottomNav({ active, onNavigate }) {
         { paddingBottom: Math.max(insets.bottom, 10) },
       ]}
     >
-      {TABS.map((tab) => {
+      {tabs.map((tab) => {
         const isActive = active === tab.key;
         const color = isActive ? theme.colors.accent : theme.colors.mutedDark;
         return (
@@ -40,7 +51,7 @@ export default function BottomNav({ active, onNavigate }) {
               />
             </View>
             <Text style={[styles.label, isActive && styles.labelActive]}>
-              {tab.label}
+              {t(tab.label)}
             </Text>
           </TouchableOpacity>
         );

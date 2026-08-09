@@ -5,6 +5,7 @@ import ScrollScreen from "../components/ScrollScreen";
 import AuthHeader from "../components/AuthHeader";
 import AuthButton from "../components/AuthButton";
 import theme from "../theme";
+import { useLanguage } from "../i18n/LanguageContext";
 
 /**
  * Collects first/last name up front (required by the phone-register
@@ -23,7 +24,8 @@ export default function CreateAccountChoiceScreen({
   onGoogleContinue,
 }) {
   const isFundi = role === "fundi";
-  const roleLabel = isFundi ? "I am a Fundi" : "Find a Fundi";
+  const { t } = useLanguage();
+  const roleLabel = isFundi ? t("I am a Fundi") : t("Find a Fundi");
   const roleIcon = isFundi ? "build" : "search";
   const pillBg = theme.colors.accentDim;
 
@@ -37,7 +39,7 @@ export default function CreateAccountChoiceScreen({
 
   const handlePhone = () => {
     if (!nameOk) {
-      Alert.alert("Almost there", "Enter your first and last name to continue.");
+      Alert.alert(t("Almost there"), t("Enter your first and last name to continue."));
       return;
     }
     onPhoneContinue?.({
@@ -57,8 +59,8 @@ export default function CreateAccountChoiceScreen({
     <ScrollScreen keyboard contentStyle={styles.scroll} bottomPad={32}>
       <AuthHeader
         onBack={onBack}
-        title="Create your account"
-        subtitle="Tell us your name, then choose how to verify your details."
+        title={t("Create your account")}
+        subtitle={t("Tell us your name, then choose how to verify your details.")}
         right={
           <View style={[styles.rolePill, { backgroundColor: pillBg }]}>
             <View style={styles.rolePillIcon}>
@@ -70,14 +72,14 @@ export default function CreateAccountChoiceScreen({
       />
 
       <View style={styles.form}>
-        <Text style={styles.sectionLabel}>FIRST NAME</Text>
+        <Text style={styles.sectionLabel}>{t("FIRST NAME")}</Text>
         <View style={inputRowStyle("firstName")}>
           <Ionicons name="person-outline" size={18} color={theme.colors.muted} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             value={firstName}
             onChangeText={setFirstName}
-            placeholder="e.g. John"
+            placeholder={t("e.g. John")}
             placeholderTextColor={theme.colors.mutedDark}
             autoCapitalize="words"
             onFocus={() => setFocused("firstName")}
@@ -85,14 +87,14 @@ export default function CreateAccountChoiceScreen({
           />
         </View>
 
-        <Text style={styles.sectionLabel}>LAST NAME</Text>
+        <Text style={styles.sectionLabel}>{t("LAST NAME")}</Text>
         <View style={inputRowStyle("lastName")}>
           <Ionicons name="person-outline" size={18} color={theme.colors.muted} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             value={lastName}
             onChangeText={setLastName}
-            placeholder="e.g. Mukasa"
+            placeholder={t("e.g. Mukasa")}
             placeholderTextColor={theme.colors.mutedDark}
             autoCapitalize="words"
             onFocus={() => setFocused("lastName")}
@@ -100,20 +102,20 @@ export default function CreateAccountChoiceScreen({
           />
         </View>
         <Text style={styles.helper}>
-          Required for phone sign-up. Skip if you're continuing with Google.
+          {t("Required for phone sign-up. Skip if you're continuing with Google.")}
         </Text>
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="call-outline" size={18} color={theme.colors.accent} />
-            <Text style={styles.cardTitle}>Phone number</Text>
+            <Text style={styles.cardTitle}>{t("Phone number")}</Text>
           </View>
           <Text style={styles.cardSubtext}>
-            We'll text you a one-time code, then ask for your email and date of birth.
+            {t("We'll text you a one-time code, then ask for your email and date of birth.")}
           </Text>
           <AuthButton
             variant="phone"
-            label="Continue with Phone Number"
+            label={t("Continue with Phone Number")}
             onPress={handlePhone}
             style={{ marginTop: 14 }}
           />
@@ -121,21 +123,21 @@ export default function CreateAccountChoiceScreen({
 
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR</Text>
+          <Text style={styles.dividerText}>{t("OR")}</Text>
           <View style={styles.dividerLine} />
         </View>
 
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <Ionicons name="logo-google" size={18} color={theme.colors.accent} />
-            <Text style={styles.cardTitle}>Google</Text>
+            <Text style={styles.cardTitle}>{t("Google")}</Text>
           </View>
           <Text style={styles.cardSubtext}>
-            We'll pull your name and email from Google automatically.
+            {t("We'll pull your name and email from Google automatically.")}
           </Text>
           <AuthButton
             variant="google"
-            label="Continue with Google"
+            label={t("Continue with Google")}
             onPress={handleGoogle}
             style={{ marginTop: 14 }}
           />
@@ -143,7 +145,7 @@ export default function CreateAccountChoiceScreen({
       </View>
 
       <TouchableOpacity onPress={onBack} style={styles.footerLink}>
-        <Text style={styles.footerLinkText}>Go back</Text>
+        <Text style={styles.footerLinkText}>{t("Go back")}</Text>
       </TouchableOpacity>
     </ScrollScreen>
   );

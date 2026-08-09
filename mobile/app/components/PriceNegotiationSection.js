@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TextInput, ActivityIndicator } from 'react-nati
 import theme from '../theme';
 import PrimaryButton from './PrimaryButton';
 import { formatUgx } from '../utils/ratings';
-import { priceSummaryText } from '../utils/bookings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function PriceNegotiationSection({
   booking,
@@ -12,6 +12,7 @@ export default function PriceNegotiationSection({
   onAgree,
   loading = false,
 }) {
+  const { t } = useLanguage();
   const [priceInput, setPriceInput] = useState('');
 
   if (!booking || booking.status !== 'ACCEPTED') return null;
@@ -31,33 +32,43 @@ export default function PriceNegotiationSection({
     setPriceInput('');
   };
 
+  const summary =
+    booking.priceAgreed && booking.agreedPrice
+      ? t('Agreed price: {{amount}}', { amount: formatUgx(booking.agreedPrice) })
+      : booking.proposedPrice
+        ? t('{{party}} proposed {{amount}}', {
+            party: t(booking.proposedBy === 'CLIENT' ? 'Client' : 'Fundi'),
+            amount: formatUgx(booking.proposedPrice),
+          })
+        : t('Agree on a service price to continue');
+
   return (
     <View style={styles.wrap}>
-      <Text style={styles.title}>Price Negotiation</Text>
-      <Text style={styles.summary}>{priceSummaryText(booking)}</Text>
+      <Text style={styles.title}>{t('Price Negotiation')}</Text>
+      <Text style={styles.summary}>{summary}</Text>
 
       {booking.priceAgreed ? (
         <View style={styles.agreedBadge}>
-          <Text style={styles.agreedText}>✓ Price agreed · {formatUgx(booking.agreedPrice)}</Text>
+          <Text style={styles.agreedText}>{t('✓ Price agreed · {{amount}}', { amount: formatUgx(booking.agreedPrice) })}</Text>
         </View>
       ) : (
         <>
           {booking.proposedPrice ? (
             <View style={styles.proposalBox}>
               <Text style={styles.proposalLabel}>
-                Current offer from {booking.proposedBy === 'CLIENT' ? 'Client' : 'Fundi'}
+                {t('Current offer from {{party}}', { party: t(booking.proposedBy === 'CLIENT' ? 'Client' : 'Fundi') })}
               </Text>
               <Text style={styles.proposalPrice}>{formatUgx(booking.proposedPrice)}</Text>
             </View>
           ) : (
-            <Text style={styles.hint}>Propose a price or wait for the other party.</Text>
+            <Text style={styles.hint}>{t('Propose a price or wait for the other party.')}</Text>
           )}
 
-          <Text style={styles.fieldLabel}>Your price (UGX)</Text>
+          <Text style={styles.fieldLabel}>{t('Your price (UGX)')}</Text>
           <TextInput
             value={priceInput}
             onChangeText={setPriceInput}
-            placeholder="e.g. 50000"
+            placeholder={t('e.g. 50000')}
             placeholderTextColor={theme.colors.mutedDark}
             keyboardType="number-pad"
             style={styles.input}
@@ -69,7 +80,7 @@ export default function PriceNegotiationSection({
               onPress={handlePropose}
               disabled={loading || !priceInput}
             >
-              {loading ? 'Sending…' : isMyProposal ? 'Update Proposal' : 'Propose Price'}
+              {loading ? t('Sending…') : isMyProposal ? t('Update Proposal') : t('Propose Price')}
             </PrimaryButton>
 
             {canAgree ? (
@@ -79,7 +90,7 @@ export default function PriceNegotiationSection({
                 onPress={() => onAgree?.()}
                 disabled={loading}
               >
-                Agree to {formatUgx(booking.proposedPrice)}
+                {t('Agree to {{amount}}', { amount: formatUgx(booking.proposedPrice) })}
               </PrimaryButton>
             ) : null}
           </View>

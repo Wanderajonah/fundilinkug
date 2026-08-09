@@ -5,8 +5,10 @@ import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
 import EmptyState from '../components/EmptyState';
 import { useBookingOptional } from '../../context/BookingContext';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function NotificationsScreen({ onNavigate }) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState('all');
   const bookingCtx = useBookingOptional();
 
@@ -25,10 +27,10 @@ export default function NotificationsScreen({ onNavigate }) {
   }, [bookingCtx?.notification]);
 
   const chips = [
-    { key: 'all', label: 'All' },
-    { key: 'bookings', label: 'Bookings' },
-    { key: 'messages', label: 'Messages' },
-    { key: 'updates', label: 'Updates' },
+    { key: 'all', label: t('All') },
+    { key: 'bookings', label: t('Bookings') },
+    { key: 'messages', label: t('Messages') },
+    { key: 'updates', label: t('Updates') },
   ];
 
   const filtered = notifications.filter(
@@ -42,7 +44,7 @@ export default function NotificationsScreen({ onNavigate }) {
           <TouchableOpacity onPress={() => onNavigate?.('profile')} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.accent} />
           </TouchableOpacity>
-          <Text style={styles.title}>Notifications</Text>
+          <Text style={styles.title}>{t('Notifications')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -68,8 +70,8 @@ export default function NotificationsScreen({ onNavigate }) {
           ListEmptyComponent={
             <EmptyState
               icon="notifications-outline"
-              title="No notifications yet"
-              message="Booking updates and messages will appear here."
+              title={t('No notifications yet')}
+              message={t('Booking updates and messages will appear here.')}
             />
           }
           renderItem={({ item }) => (
@@ -81,7 +83,7 @@ export default function NotificationsScreen({ onNavigate }) {
                 <Text style={styles.cardTitle}>{item.title}</Text>
                 <Text style={styles.cardBody}>{item.body}</Text>
               </View>
-              <Text style={styles.time}>{item.time}</Text>
+              <Text style={styles.time}>{t(item.time)}</Text>
             </View>
           )}
         />

@@ -2,6 +2,7 @@ const Booking = require("../models/Booking");
 const User = require("../models/User");
 const FundiProfile = require("../models/FundiProfile");
 const { notifyFundi, notifyClient } = require("./notificationService");
+const { buildSkillsQuery } = require("../utils/trades");
 
 // Timer storage for 5-minute expiry
 const bookingTimers = new Map();
@@ -21,7 +22,7 @@ async function findNearestAvailableFundis(lat, lng, category, radiusKm = 50, exc
   try {
     // Find fundis with matching skills
     const fundiProfiles = await FundiProfile.find({
-      skills: category,
+      ...buildSkillsQuery(category),
       isAvailable: true
     }).populate("userId");
     

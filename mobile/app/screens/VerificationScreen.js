@@ -16,6 +16,7 @@ import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { getProfile, requestVerification } from '../../services/usersApi';
 import { resolveMediaUrl } from '../../utils/image';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const STATUS_MAP = {
   unverified: { label: 'Not Verified', color: theme.colors.mutedDark, icon: 'shield-checkmark-outline' },
@@ -24,7 +25,27 @@ const STATUS_MAP = {
   rejected: { label: 'Rejected', color: theme.colors.red, icon: 'shield-outline' },
 };
 
+const EXT_TO_MIME = {
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  pdf: 'application/pdf',
+};
+
+const documentUpload = (asset) => {
+  const name = asset.name || `verification-${Date.now()}.jpg`;
+  const ext = String(name.split('.').pop() || '').toLowerCase();
+  return {
+    uri: asset.uri,
+    name,
+    type: asset.mimeType || EXT_TO_MIME[ext] || 'application/octet-stream',
+  };
+};
+
 export default function VerificationScreen({ onNavigate }) {
+  const { t } = useLanguage();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -41,7 +62,7 @@ export default function VerificationScreen({ onNavigate }) {
       const { data } = await getProfile();
       setProfile(data);
     } catch {
-      Alert.alert('Error', 'Could not load profile');
+      Alert.alert(t('Error'), t('Could not load profile'));
     } finally {
       setLoading(false);
     }
@@ -65,7 +86,7 @@ export default function VerificationScreen({ onNavigate }) {
         return [...prev, ...newDocs].slice(0, 5);
       });
     } catch {
-      Alert.alert('Error', 'Could not pick documents.');
+      Alert.alert(t('Error'), t('Could not pick documents.'));
     }
   };
 
@@ -75,25 +96,21 @@ export default function VerificationScreen({ onNavigate }) {
 
   const handleSubmit = async () => {
     if (selectedDocs.length === 0) {
-      Alert.alert('Documents required', 'Please upload at least one document (e.g., ID, business license).');
+      Alert.alert(t('Documents required'), t('Please upload at least one document (e.g., ID, business license).'));
       return;
     }
     setSubmitting(true);
     try {
       const formData = new FormData();
       for (const asset of selectedDocs) {
-        formData.append('documents', {
-          uri: asset.uri,
-          type: asset.mimeType || 'image/jpeg',
-          name: asset.fileName || `verification-${Date.now()}.jpg`,
-        });
+        formData.append('documents', documentUpload(asset));
       }
       const { data } = await requestVerification(formData);
       setProfile((prev) => ({ ...prev, fundiProfile: data.fundiProfile }));
       setSelectedDocs([]);
-      Alert.alert('Submitted', 'Your verification request has been submitted for review.');
+      Alert.alert(t('Submitted'), t('Your verification request has been submitted for review.'));
     } catch (e) {
-      Alert.alert('Error', e?.response?.data?.message || 'Could not submit request.');
+      Alert.alert(t('Error'), e?.response?.data?.message || t('Could not submit request.'));
     } finally {
       setSubmitting(false);
     }
@@ -106,7 +123,7 @@ export default function VerificationScreen({ onNavigate }) {
           <TouchableOpacity onPress={() => onNavigate?.('profile')} style={styles.backBtn}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
           </TouchableOpacity>
-          <Text style={styles.title}>Verification</Text>
+          <Text style={styles.title}>{t('Verification')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -118,33 +135,33 @@ export default function VerificationScreen({ onNavigate }) {
           <ScrollView showsVerticalScrollIndicator={false}>
             <View style={styles.statusCard}>
               <Ionicons name={statusInfo.icon} size={40} color={statusInfo.color} />
-              <Text style={[styles.statusLabel, { color: statusInfo.color }]}>{statusInfo.label}</Text>
+              <Text style={[styles.statusLabel, { color: statusInfo.color }]}>{t(statusInfo.label)}</Text>
               {status === 'verified' && (
-                <Text style={styles.statusSub}>Your identity has been verified. Clients can trust you with confidence.</Text>
+                <Text style={styles.statusSub}>{t('Your identity has been verified. Clients can trust you with confidence.')}</Text>
               )}
               {status === 'pending' && (
-                <Text style={styles.statusSub}>Your documents are being reviewed. This usually takes 1-2 business days.</Text>
+                <Text style={styles.statusSub}>{t('Your documents are being reviewed. This usually takes 1-2 business days.')}</Text>
               )}
               {status === 'rejected' && (
                 <Text style={styles.statusSub}>
-                  {fundiProfile.verificationNotes || 'Your verification was rejected. Please submit new documents.'}
+                  {fundiProfile.verificationNotes || t('Your verification was rejected. Please submit new documents.')}
                 </Text>
               )}
               {status === 'unverified' && (
-                <Text style={styles.statusSub}>Verify your identity to build trust with clients and get more bookings.</Text>
+                <Text style={styles.statusSub}>{t('Verify your identity to build trust with clients and get more bookings.')}</Text>
               )}
             </View>
 
             {(status === 'unverified' || status === 'rejected') && (
               <>
-                <Text style={styles.sectionTitle}>Upload Documents</Text>
+                <Text style={styles.sectionTitle}>{t('Upload Documents')}</Text>
                 <Text style={styles.hint}>
-                  Upload a photo or PDF of your national ID, business license, or any official document
+                  {t('Upload a photo or PDF of your national ID, business license, or any official document')}
                 </Text>
 
                 <TouchableOpacity style={styles.uploadBtn} onPress={pickDocuments} activeOpacity={0.85}>
                   <Ionicons name="document-attach-outline" size={20} color={theme.colors.textDark} />
-                  <Text style={styles.uploadText}>Select Images or PDF</Text>
+                  <Text style={styles.uploadText}>{t('Select Images or PDF')}</Text>
                 </TouchableOpacity>
 
                 {selectedDocs.length > 0 && (
@@ -160,7 +177,7 @@ export default function VerificationScreen({ onNavigate }) {
                           ) : (
                             <Image source={{ uri: doc.uri }} style={styles.docThumb} />
                           )}
-                          <Text style={styles.docName} numberOfLines={1}>{doc.name || `Document ${idx + 1}`}</Text>
+                          <Text style={styles.docName} numberOfLines={1}>{doc.name || t('Document {{num}}', { num: idx + 1 })}</Text>
                           <TouchableOpacity onPress={() => removeDoc(doc)}>
                             <Ionicons name="close-circle" size={20} color={theme.colors.red} />
                           </TouchableOpacity>
@@ -179,7 +196,7 @@ export default function VerificationScreen({ onNavigate }) {
                   {submitting ? (
                     <ActivityIndicator color={theme.colors.textDark} size="small" />
                   ) : (
-                    <Text style={styles.submitText}>Submit for Review</Text>
+                    <Text style={styles.submitText}>{t('Submit for Review')}</Text>
                   )}
                 </TouchableOpacity>
               </>
@@ -187,7 +204,7 @@ export default function VerificationScreen({ onNavigate }) {
 
             {status === 'pending' && docs.length > 0 && (
               <>
-                <Text style={styles.sectionTitle}>Submitted Documents</Text>
+                <Text style={styles.sectionTitle}>{t('Submitted Documents')}</Text>
                 <View style={styles.docsPreview}>
                   {docs.map((url, idx) => (
                     <Image key={`${url}-${idx}`} source={{ uri: resolveMediaUrl(url) }} style={styles.submittedDoc} />
@@ -199,7 +216,7 @@ export default function VerificationScreen({ onNavigate }) {
             <View style={styles.infoCard}>
               <Ionicons name="information-circle-outline" size={18} color={theme.colors.accent} />
               <Text style={styles.infoText}>
-                Verification helps clients trust your profile. Verified fundis appear higher in search results. You can upload images or PDF documents.
+                {t('Verification helps clients trust your profile. Verified fundis appear higher in search results. You can upload images or PDF documents.')}
               </Text>
             </View>
           </ScrollView>

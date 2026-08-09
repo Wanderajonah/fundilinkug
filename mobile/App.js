@@ -64,9 +64,11 @@ import BookingWaitingScreen from "./app/screens/BookingWaitingScreen";
 import FundiBookingDetailScreen from "./app/screens/FundiBookingDetailScreen";
 import SkillsPortfolioScreen from "./app/screens/SkillsPortfolioScreen";
 import BottomNav from "./app/components/BottomNav";
+import FloatingSupportChat from "./app/components/FloatingSupportChat";
 import { LocationProvider, useLocation } from "./context/LocationContext";
 import { BookingProvider } from "./context/BookingContext";
 import { ChatProvider } from "./context/ChatContext";
+import { LanguageProvider } from "./app/i18n/LanguageContext";
 
 /** Screens only clients should use (browse, book, pay). */
 
@@ -319,6 +321,7 @@ function AppContent() {
       {el}
       <BottomNav
         active={active}
+        role={userRole}
         onNavigate={(key) => {
           if (key === "home") {
             goHome();
@@ -329,6 +332,7 @@ function AppContent() {
           setScreen(key);
         }}
       />
+      {authToken && userId ? <FloatingSupportChat userId={userId} onNavigate={handleNavigate} /> : null}
     </View>
   );
 
@@ -1070,15 +1074,17 @@ function AppContent() {
 export default function App() {
   return (
     <SafeAreaProvider>
-      <LocationProvider>
-        <View style={{ flex: 1, backgroundColor: theme.colors.black }}>
-          <StatusBar
-            barStyle="light-content"
-            backgroundColor={theme.colors.black}
-          />
-          <AppContent />
-        </View>
-      </LocationProvider>
+      <LanguageProvider>
+        <LocationProvider>
+          <View style={{ flex: 1, backgroundColor: theme.colors.black }}>
+            <StatusBar
+              barStyle="light-content"
+              backgroundColor={theme.colors.black}
+            />
+            <AppContent />
+          </View>
+        </LocationProvider>
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }

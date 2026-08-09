@@ -3,13 +3,15 @@ import { View, Text, StyleSheet, TouchableOpacity, TextInput, ScrollView } from 
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function HelpSupportScreen({ onNavigate }) {
+  const { t } = useLanguage();
   const faqs = [
-    'How do I book a service?',
-    'How do I cancel a booking?',
-    'Payment methods accepted?',
-    'How to rate an artisan?'
+    t('How do I book a service?'),
+    t('How do I cancel a booking?'),
+    t('Payment methods accepted?'),
+    t('How to rate an artisan?'),
   ];
 
   return (
@@ -19,22 +21,22 @@ export default function HelpSupportScreen({ onNavigate }) {
           <TouchableOpacity onPress={() => onNavigate?.('profile')} style={styles.iconBtn}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
           </TouchableOpacity>
-          <Text style={styles.title}>Help & Support</Text>
+          <Text style={styles.title}>{t('Help & Support')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
         <View style={styles.searchRow}>
           <Ionicons name="search-outline" size={18} color={theme.colors.muted} />
-          <TextInput placeholder="Search for help..." placeholderTextColor={theme.colors.mutedDark} style={styles.searchInput} />
+          <TextInput placeholder={t('Search for help...')} placeholderTextColor={theme.colors.mutedDark} style={styles.searchInput} />
         </View>
 
-        <Text style={styles.sectionLabel}>Quick Actions</Text>
+        <Text style={styles.sectionLabel}>{t('Quick Actions')}</Text>
         <View style={styles.quickRow}>
-          <TouchableOpacity style={styles.quickCard}><Ionicons name="flag-outline" size={20} color={theme.colors.accent} /><Text style={styles.quickText}>Report Issue</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.quickCard}><Ionicons name="chatbubbles-outline" size={20} color={theme.colors.accent} /><Text style={styles.quickText}>Chat Support</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.quickCard}><Ionicons name="flag-outline" size={20} color={theme.colors.accent} /><Text style={styles.quickText}>{t('Report Issue')}</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.quickCard}><Ionicons name="chatbubbles-outline" size={20} color={theme.colors.accent} /><Text style={styles.quickText}>{t('Chat Support')}</Text></TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionLabel}>Frequently Asked</Text>
+        <Text style={styles.sectionLabel}>{t('Frequently Asked')}</Text>
         <View style={styles.card}>
           {faqs.map((q) => (
             <TouchableOpacity key={q} style={styles.faqRow}>
@@ -44,19 +46,19 @@ export default function HelpSupportScreen({ onNavigate }) {
           ))}
         </View>
 
-        <Text style={styles.sectionLabel}>Contact Us</Text>
+        <Text style={styles.sectionLabel}>{t('Contact Us')}</Text>
         <View style={styles.card}>
           <TouchableOpacity style={styles.contactRow}>
             <View style={styles.contactLeft}>
               <Ionicons name="mail-outline" size={16} color={theme.colors.accent} />
-              <Text style={styles.contactText}>Email Support</Text>
+              <Text style={styles.contactText}>{t('Email Support')}</Text>
             </View>
             <Text style={styles.contactSub}>support@fundlink.com</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.contactRow}>
             <View style={styles.contactLeft}>
               <Ionicons name="call-outline" size={16} color={theme.colors.accent} />
-              <Text style={styles.contactText}>Call Us</Text>
+              <Text style={styles.contactText}>{t('Call Us')}</Text>
             </View>
             <Text style={styles.contactSub}>+256 700 123 456</Text>
           </TouchableOpacity>

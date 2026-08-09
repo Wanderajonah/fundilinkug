@@ -16,6 +16,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import StarRating from '../components/StarRating';
 import theme from '../theme';
 import { formatUgx, initials } from '../utils/ratings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const MAX_COMMENT = 300;
 
@@ -29,6 +30,7 @@ export default function RateExperienceScreen({
   const [comment, setComment] = useState(existingReview?.comment || '');
   const [photos, setPhotos] = useState(existingReview?.photoUrls || []);
   const [submitting, setSubmitting] = useState(false);
+  const { t } = useLanguage();
 
   const fundiName = job.fundiName || 'Fundi';
   const firstName = fundiName.split(' ')[0];
@@ -39,7 +41,7 @@ export default function RateExperienceScreen({
   const pickPhotos = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Allow photo access to attach images.');
+      Alert.alert(t('Permission needed'), t('Allow photo access to attach images.'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -57,7 +59,7 @@ export default function RateExperienceScreen({
 
   const handleSubmit = async () => {
     if (rating < 1) {
-      Alert.alert('Rating required', 'Pick a star rating before submitting.');
+      Alert.alert(t('Rating required'), t('Pick a star rating before submitting.'));
       return;
     }
     setSubmitting(true);
@@ -77,7 +79,7 @@ export default function RateExperienceScreen({
     <ScrollScreen keyboard contentStyle={styles.scroll} bottomPad={32}>
       <TouchableOpacity style={styles.backRow} onPress={onBack}>
         <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
-        <Text style={styles.backText}>Back</Text>
+        <Text style={styles.backText}>{t('Back')}</Text>
       </TouchableOpacity>
 
       <View style={styles.card}>
@@ -87,31 +89,37 @@ export default function RateExperienceScreen({
         <View style={{ flex: 1 }}>
           <Text style={styles.name}>{fundiName}</Text>
           <Text style={styles.meta}>
-            {job.service} · Completed
+            {job.service} · {t('Completed')}
           </Text>
         </View>
         <View style={styles.releasedBadge}>
           <Ionicons name="cash-outline" size={14} color={theme.colors.green} />
-          <Text style={styles.releasedText}> Released</Text>
+          <Text style={styles.releasedText}> {t('Released')}</Text>
         </View>
       </View>
 
       <Text style={styles.releasedLine}>
-        {formatUgx(job.amount)} released to {firstName} · {releasedTime}
+        {t('{{amount}} released to {{firstName}} · {{time}}', {
+          amount: formatUgx(job.amount),
+          firstName,
+          time: releasedTime,
+        })}
       </Text>
 
-      <Text style={styles.question}>How was your experience with {firstName}?</Text>
+      <Text style={styles.question}>
+        {t('How was your experience with {{firstName}}?', { firstName })}
+      </Text>
       <StarRating value={rating} onChange={setRating} />
 
-      <Text style={styles.fieldLabel}>Tell others about your experience</Text>
+      <Text style={styles.fieldLabel}>{t('Tell others about your experience')}</Text>
       <View style={styles.inputWrap}>
         <TextInput
           style={styles.input}
           multiline
-          placeholder="What went well? Anything that could've been better?"
+          placeholder={t("What went well? Anything that could've been better?")}
           placeholderTextColor={theme.colors.mutedDark}
           value={comment}
-          onChangeText={(t) => setComment(t.slice(0, MAX_COMMENT))}
+          onChangeText={(val) => setComment(val.slice(0, MAX_COMMENT))}
           maxLength={MAX_COMMENT}
         />
         <Text style={styles.counter}>
@@ -119,10 +127,10 @@ export default function RateExperienceScreen({
         </Text>
       </View>
 
-      <Text style={styles.fieldLabel}>Add photos (optional)</Text>
+      <Text style={styles.fieldLabel}>{t('Add photos (optional)')}</Text>
       <TouchableOpacity style={styles.uploadBtn} onPress={pickPhotos} activeOpacity={0.85}>
         <Ionicons name="camera-outline" size={22} color={theme.colors.muted} />
-        <Text style={styles.uploadText}>Upload photos</Text>
+        <Text style={styles.uploadText}>{t('Upload photos')}</Text>
       </TouchableOpacity>
 
       {photos.length > 0 ? (
@@ -146,7 +154,7 @@ export default function RateExperienceScreen({
           disabled={rating < 1}
           style={{ marginTop: 20 }}
         >
-          {existingReview ? 'Update review' : 'Submit review'}
+          {existingReview ? t('Update review') : t('Submit review')}
         </PrimaryButton>
       )}
     </ScrollScreen>

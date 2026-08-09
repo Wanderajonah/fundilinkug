@@ -1,4 +1,11 @@
+const fs = require("fs");
+const path = require("path");
+const { guessTradeFromText } = require("../utils/trades");
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const VISION_MODEL = process.env.GROQ_VISION_MODEL || "qwen/qwen3.6-27b";
+
+// Trade categories the platform supports (matches mobile browse categories)
+const TRADE_CATEGORIES = ["plumber", "electrician", "carpenter", "painter"];
 
 function isConfigured() {
   return !!(process.env.GROQ_API_KEY && process.env.GROQ_MODEL);
@@ -28,9 +35,201 @@ Common issues:
 - Prices can be negotiated between client and fundi after acceptance
 - Cancellations can be made by either party before the job starts`;
 
-async function getBotResponse(messages) {
+const VISION_SYSTEM_PROMPT = `You are the FundiLink problem-detection assistant. A customer uploads a photo of a home or property problem (e.g. a leaking pipe, broken socket, cracked wall, damaged furniture).
+
+Look at the image carefully and:
+1. Identify what is wrong in plain, friendly language.
+2. Detect which skilled fundi (artisan) category can fix it. Use exactly one of: plumbing, electrical, carpentry, painting, or general if unsure.
+
+Respond with ONLY a JSON object in this exact shape (no markdown, no commentary):
+{
+  "category": "plumbing",
+  "summary": "A short, friendly explanation of the problem and which kind of fundi can help."
+}`;
+
+async function groqChat(body, maxAttempts = 3) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    let res;
+    try {
+      res = await fetch(GROQ_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${process.env.GROQ_API_KEY}`
+        },
+        body: JSON.stringify(body)
+      });
+    } catch (err) {
+      // transient network failure
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 2000 * attempt));
+        continue;
+      }
+      console.error(`Groq network error: ${err.message}`);
+      return null;
+    }
+
+    if (res.status === 429 || res.status >= 500) {
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 2000 * attempt));
+        continue;
+      }
+    }
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "Unknown error");
+      console.error(`Groq API error (${res.status}): ${errText}`);
+      return null;
+    }
+
+    const json = await res.json();
+    let reply = json?.choices?.[0]?.message?.content?.trim();
+    if (!reply) return null;
+    return reply.replace(/^["']+|["']+$/g, "");
+  }
+  return null;
+}
+
+/** Read an uploaded chat image from local disk and return a base64 data URL. */
+function readUploadAsDataUrl(imageUrl) {
+  if (!imageUrl) return null;
+  if (imageUrl.startsWith("data:")) return imageUrl;
+  if (imageUrl.startsWith("http")) return imageUrl; // already a remote URL
+
+  const uploadRoot = path.join(__dirname, "../../uploads");
+  const rel = imageUrl.replace(/^\/uploads\//, "").split("?")[0];
+  const filePath = path.join(uploadRoot, rel);
+  if (!fs.existsSync(filePath)) return null;
+
+  const mime = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp"
+  }[path.extname(filePath).toLowerCase()] || "image/jpeg";
+
+  return `data:${mime};base64,${fs.readFileSync(filePath).toString("base64")}`;
+}
+
+function parseCategory(raw) {
+  if (!raw) return null;
+  const value = String(raw).toLowerCase().replace(/[^a-z]/g, "");
+  return TRADE_CATEGORIES.includes(value) ? value : null;
+}
+
+/** Extract a JSON object from a model response (handles <think> blocks, code fences, stray text). */
+function extractJson(raw) {
+  if (!raw) return null;
+  let cleaned = raw;
+  // pull out fenced json blocks
+  const fence = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence && fence[1]) cleaned = fence[1];
+  // strip closed think/reasoning blocks (their braces can pollute parsing)
+  cleaned = cleaned.replace(/<think>[\s\S]*?<\/think>/gi, " ").replace(/<thought>[\s\S]*?<\/thought>/gi, " ");
+  // scan every brace-balanced span and keep the last one that parses
+  let last = null;
+  for (let i = 0; i < cleaned.length; i++) {
+    if (cleaned[i] !== "{") continue;
+    let depth = 0;
+    for (let j = i; j < cleaned.length; j++) {
+      if (cleaned[j] === "{") depth++;
+      else if (cleaned[j] === "}") {
+        depth--;
+        if (depth === 0) {
+          try {
+            last = JSON.parse(cleaned.slice(i, j + 1));
+          } catch (e) {
+            // not valid JSON; keep scanning
+          }
+          break;
+        }
+      }
+    }
+  }
+  if (last) return last;
+  // last resort: regex keys
+  const cat = cleaned.match(/"category"\s*:\s*"([^"]+)"/);
+  const sum = cleaned.match(/"summary"\s*:\s*"([^"]*)"/);
+  if (cat || sum) return { category: cat && cat[1], summary: sum && sum[1] };
+  return null;
+}
+
+/** Analyze an uploaded problem photo with the Groq vision model. */
+async function analyzeProblemImage(imageUrl, userText) {
+  const imageData = readUploadAsDataUrl(imageUrl);
+  if (!imageData) return { reply: null, category: null };
+
+  const content = [
+    {
+      type: "text",
+      text:
+        "Look at this photo of a home or property problem. " +
+        (userText ? `The customer added: "${userText}". ` : "") +
+        "Describe what is wrong and identify which fundi can fix it. " +
+        'Think briefly, then respond with a JSON object only: {"category": "plumbing|electrical|carpentry|painting|general", "summary": "short friendly description of the problem and which fundi can help"}.'
+    },
+    { type: "image_url", image_url: { url: imageData } }
+  ];
+
+  const body = {
+    model: VISION_MODEL,
+    messages: [
+      { role: "system", content: VISION_SYSTEM_PROMPT },
+      { role: "user", content }
+    ],
+    max_tokens: 1200,
+    temperature: 0.2
+  };
+
+  const raw = await groqChat(body);
+  if (!raw) return { reply: null, category: null };
+
+  const parsed = extractJson(raw);
+  if (!parsed) {
+    console.error("Could not parse vision response:", raw.slice(0, 300));
+    return { reply: null, category: null };
+  }
+
+  const summary = String(parsed.summary || "").trim();
+  const category = parseCategory(parsed.category);
+  if (!summary) return { reply: null, category };
+  return { reply: summary, category };
+}
+
+async function getBotResponse({ messages, imageUrl, userText } = {}) {
+  const lastUser = [...(messages || [])]
+    .reverse()
+    .find((m) => m?.role === "user")?.content;
+
+  // Image analysis path
+  if (imageUrl) {
+    if (isConfigured()) {
+      const vision = await analyzeProblemImage(imageUrl, userText || lastUser);
+      if (vision.reply) {
+        return { reply: vision.reply, category: vision.category };
+      }
+    }
+    // Fallback: no AI or analysis failed
+    const fallbackCategory = guessTradeFromText(lastUser);
+    if (fallbackCategory) {
+      return {
+        reply:
+          "I wasn't able to fully analyze that photo right now, but based on your message it looks like a job for a " +
+          `${fallbackCategory}. Here are nearby fundis who can help.`,
+        category: fallbackCategory,
+      };
+    }
+    return {
+      reply:
+        "I got your photo, but I couldn't analyze it automatically right now. Tell me what the problem is (e.g. leaking pipe, broken socket) and I'll find a nearby fundi for you.",
+      category: null,
+    };
+  }
+
+  // Text-only path
   if (!isConfigured()) {
-    return fallbackResponse(messages);
+    return { reply: fallbackResponse(messages), category: null };
   }
 
   const model = process.env.GROQ_MODEL;
@@ -39,76 +238,93 @@ async function getBotResponse(messages) {
     model,
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
-      ...messages.slice(-10)
+      ...(messages || []).slice(-10)
     ],
     max_tokens: 300,
     temperature: 0.7
   };
 
-  try {
-    const res = await fetch(GROQ_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.GROQ_API_KEY}`
-      },
-      body: JSON.stringify(body)
-    });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "Unknown error");
-      console.error(`Groq API error (${res.status}): ${errText}`);
-      return fallbackResponse(messages);
-    }
-
-    const json = await res.json();
-    let reply = json?.choices?.[0]?.message?.content?.trim();
-    if (!reply) return fallbackResponse(messages);
-
-    reply = reply.replace(/^["']+|["']+$/g, "");
-    return reply;
-  } catch (error) {
-    console.error("Groq support bot request failed:", error.message);
-    return fallbackResponse(messages);
-  }
+  const reply = await groqChat(body);
+  if (!reply) return { reply: fallbackResponse(messages), category: null };
+  return { reply, category: null };
 }
 
 function fallbackResponse(messages) {
   const lastMsg = messages[messages.length - 1]?.content?.toLowerCase() || "";
   const m = lastMsg;
 
-  if (m.includes("cancel") || m.includes("cancel")) {
-    return "To cancel a booking, go to the booking details and tap Cancel. Both clients and fundis can cancel before the job starts.";
-  }
-  if (m.includes("price") || m.includes("cost") || m.includes("fee") || m.includes("how much")) {
-    return "Prices are negotiated between you and the fundi after a booking is accepted. You can discuss and agree on a fair price through the app.";
-  }
-  if (m.includes("payment") || m.includes("pay") || m.includes("mpesa") || m.includes("mobile money")) {
-    return "Payments are handled between you and the fundi. The app helps you connect; payment terms are agreed upon directly.";
-  }
-  if (m.includes("fundi") || m.includes("artisan") || m.includes("worker")) {
-    return "Fundis are skilled workers available on FundiLink. Browse by category like plumbing, electrical, carpentry, and painting to find the right expert near you.";
-  }
-  if (m.includes("booking") || m.includes("request") || m.includes("hire")) {
-    return "To create a booking, browse fundis by category, select one near you, describe your job, and send the request. The fundi will respond within 5 minutes.";
-  }
-  if (m.includes("hello") || m.includes("hi ") || m.includes("hey") || m.includes("good")) {
-    return "Hello! Welcome to FundiLink. I'm here to help you with any questions about using the platform. How can I assist you today?";
-  }
-  if (m.includes("time") || m.includes("minute") || m.includes("how long") || m.includes("wait")) {
-    return "Fundis have 5 minutes to respond to a booking request. If no response, the request moves to the next available fundi.";
-  }
-  if (m.includes("location") || m.includes("near") || m.includes("distance") || m.includes("far")) {
-    return "FundiLink matches you with fundis near your location. You can see the distance to each fundi before selecting one.";
-  }
-  if (m.includes("safe") || m.includes("secure") || m.includes("trust") || m.includes("scam")) {
-    return "FundiLink profiles show ratings, reviews, and completed jobs to help you choose trusted fundis. Always communicate through the app.";
-  }
-  if (m.includes("thank")) {
-    return "You're welcome! Feel free to ask if you need anything else. Happy using FundiLink!";
+  const rules = [
+    {
+      keys: ["human agent", "real person", "talk to someone", "customer care", "contact support", "reach support", "support team"],
+      reply: "For direct help, open Help & Support from your profile and describe your issue — our team will get back to you. I can also point you in the right direction now if you tell me what's wrong.",
+    },
+    {
+      keys: ["how do i book", "how to book", "book a fundi", "book fundi", "make a booking", "create a booking", "hire a fundi", "find a fundi", "request a fundi"],
+      reply: "To book a fundi: go to Browse, choose a category (plumbing, electrical, carpentry, painting...), pick a fundi near you, describe your job, and send the request. They'll respond within 5 minutes.",
+    },
+    {
+      keys: ["become a fundi", "join as fundi", "sign up as fundi", "register as fundi", "work with fundilink", "earn money", "how do i earn"],
+      reply: "You can register as a fundi during sign up or switch roles in the app. Complete your profile, add your skills and portfolio, then go online to start receiving booking requests from clients nearby.",
+    },
+    {
+      keys: ["cancel"],
+      reply: "To cancel a booking, open the booking details and tap Cancel. Both clients and fundis can cancel before the job starts.",
+    },
+    {
+      keys: ["price", "cost", "fee", "how much", "negotiate", "negotiation", "charge"],
+      reply: "Prices are negotiated between you and the fundi after a booking is accepted. Discuss the work and agree on a fair price in the app before the job starts.",
+    },
+    {
+      keys: ["payment", "pay", "mobile money", "mpesa", "mtn", "airtel", "refund"],
+      reply: "Payments are arranged between you and the fundi directly. Agree on the amount and method before work begins, and confirm the job is complete before paying.",
+    },
+    {
+      keys: ["plumber", "plumbing", "electrician", "electrical", "carpenter", "carpentry", "painter", "painting", "mechanic", "welder", "tiles", "masonry"],
+      reply: "FundiLink has skilled fundis across categories like plumbing, electrical, carpentry, and painting. Go to Browse, pick the category you need, and choose a verified fundi near you.",
+    },
+    {
+      keys: ["fundi", "artisan", "worker", "skilled"],
+      reply: "Fundis are vetted skilled workers on FundiLink. Browse them by category, compare ratings and reviews, and pick the best fit near you.",
+    },
+    {
+      keys: ["how long", "how fast", "response time", "minute", "wait", "quickly", "respond"],
+      reply: "Fundis have 5 minutes to respond to a booking request. If there's no response, the request automatically moves to the next available fundi.",
+    },
+    {
+      keys: ["location", "near", "distance", "far", "nearby"],
+      reply: "FundiLink matches you with fundis near your location. You'll see each fundi's distance before you choose, so you can pick the closest one.",
+    },
+    {
+      keys: ["forgot password", "reset password", "can't log in", "cannot log in", "login", "otp", "verification code", "code not working"],
+      reply: "If you're having trouble logging in, use the phone number you registered with to request a new OTP. The 4-digit code arrives by SMS and expires after a short time.",
+    },
+    {
+      keys: ["safe", "secure", "trust", "scam", "verified", "verification"],
+      reply: "FundiLink profiles show ratings, reviews, completed jobs, and verification status so you can choose trusted fundis. Always communicate and agree terms inside the app.",
+    },
+    {
+      keys: ["rating", "review", "rate", "stars"],
+      reply: "After a job is completed, you can rate and review your fundi. This helps other clients choose trusted fundis and helps fundis build a strong reputation.",
+    },
+    {
+      keys: ["hello", "hi", "hey", "good morning", "good afternoon", "good evening", "how are you"],
+      reply: "Hello! Welcome to FundiLink. I'm here to help with bookings, pricing, payments, and anything else about the platform. What can I do for you?",
+    },
+    {
+      keys: ["help", "menu", "options", "what can you do", "what do you do", "how does it work", "how it works"],
+      reply: "I can help with: booking a fundi, how prices and payments work, fundi response times, safety and verification, and becoming a fundi. Just ask!",
+    },
+    {
+      keys: ["thank", "thanks", "appreciate"],
+      reply: "You're welcome! If you need anything else, just ask. Enjoy using FundiLink!",
+    },
+  ];
+
+  for (const rule of rules) {
+    if (rule.keys.some((k) => m.includes(k))) return rule.reply;
   }
 
-  return "I'm not sure I understand. Could you rephrase your question? You can ask me about bookings, pricing, payments, fundis, or how the platform works.";
+  return "I'm not sure I understand. You can ask me about booking a fundi, pricing and payments, response times, safety, or how to become a fundi.";
 }
 
 module.exports = { getBotResponse, isConfigured };

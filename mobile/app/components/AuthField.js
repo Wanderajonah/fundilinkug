@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function AuthField({
   label,
@@ -12,16 +13,17 @@ export default function AuthField({
   keyboardType,
   autoCapitalize = 'none',
 }) {
+  const { t } = useLanguage();
   const [visible, setVisible] = useState(false);
   const isPassword = secureTextEntry;
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label}>{t(label)}</Text>
       <View style={styles.inputRow}>
         <TextInput
           style={[styles.input, isPassword && styles.inputWithIcon]}
-          placeholder={placeholder}
+          placeholder={placeholder ? t(placeholder) : placeholder}
           placeholderTextColor={theme.colors.mutedDark}
           value={value}
           onChangeText={onChangeText}

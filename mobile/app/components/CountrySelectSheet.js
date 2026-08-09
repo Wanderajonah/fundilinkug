@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export const COUNTRIES = [
   { code: 'UG', name: 'Uganda', dial: '+256', flag: '🇺🇬' },
@@ -31,6 +32,7 @@ export const COUNTRIES = [
 export const DEFAULT_COUNTRY = COUNTRIES[0];
 
 export default function CountrySelectSheet({ visible, selected, onSelect, onClose }) {
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(600)).current;
 
@@ -57,7 +59,7 @@ export default function CountrySelectSheet({ visible, selected, onSelect, onClos
           ]}
         >
           <View style={styles.handle} />
-          <Text style={styles.title}>Select country</Text>
+          <Text style={styles.title}>{t('Select country')}</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
             {COUNTRIES.map((country) => {
               const active = country.code === selected?.code;

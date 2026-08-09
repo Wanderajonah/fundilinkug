@@ -3,6 +3,7 @@ import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import { ratingLabel } from '../utils/ratings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function StarRating({
   value = 0,
@@ -11,6 +12,7 @@ export default function StarRating({
   showLabel = true,
   disabled = false,
 }) {
+  const { t } = useLanguage();
   return (
     <View style={styles.wrap}>
       <View style={styles.row}>
@@ -35,7 +37,7 @@ export default function StarRating({
       </View>
       {showLabel ? (
         <Text style={[styles.label, value > 0 && styles.labelActive]}>
-          {value > 0 ? ratingLabel(value) : 'Tap a star to rate'}
+          {value > 0 ? t(ratingLabel(value)) : t('Tap a star to rate')}
         </Text>
       ) : null}
     </View>

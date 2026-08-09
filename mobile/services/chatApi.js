@@ -12,8 +12,8 @@ export const getMessages = (conversationId) =>
 export const sendMessage = (conversationId, text) =>
   api.post(`/chat/conversations/${conversationId}/messages`, { text });
 
-export const sendSupportMessage = (message, history = []) =>
-  api.post('/chat/support', { message, history });
+export const sendSupportMessage = (message, history = [], options = {}) =>
+  api.post('/chat/support', { message, history, ...options });
 
 export const markConversationRead = (conversationId) =>
   api.post(`/chat/conversations/${conversationId}/read`);

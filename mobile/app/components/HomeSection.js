@@ -1,15 +1,17 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function HomeSection({ title, actionLabel = 'See all', onAction, children, style }) {
+  const { t } = useLanguage();
   return (
     <View style={[styles.wrap, style]}>
       <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.title}>{t(title)}</Text>
         {onAction ? (
           <TouchableOpacity onPress={onAction} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Text style={styles.action}>{actionLabel}</Text>
+            <Text style={styles.action}>{t(actionLabel)}</Text>
           </TouchableOpacity>
         ) : null}
       </View>

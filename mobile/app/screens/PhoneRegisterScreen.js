@@ -5,14 +5,16 @@ import AuthHeader from '../components/AuthHeader';
 import PrimaryButton from '../components/PrimaryButton';
 import PhoneInput from '../components/PhoneInput';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function PhoneRegisterScreen({ onSend, onBack, submitting = false }) {
   const [phone, setPhone] = useState('');
   const [focused, setFocused] = useState(false);
+  const { t } = useLanguage();
 
   const handleSend = () => {
     if (!phone.trim()) {
-      Alert.alert('Phone required', 'Enter your phone number.');
+      Alert.alert(t('Phone required'), t('Enter your phone number.'));
       return;
     }
     onSend?.(phone.trim());
@@ -22,8 +24,8 @@ export default function PhoneRegisterScreen({ onSend, onBack, submitting = false
     <ScrollScreen keyboard contentStyle={styles.scroll} bottomPad={32}>
       <AuthHeader
         onBack={onBack}
-        title="Verify your phone"
-        subtitle="We'll send a 4-digit code to confirm your number."
+        title={t('Verify your phone')}
+        subtitle={t("We'll send a 4-digit code to confirm your number.")}
       />
       <View style={styles.form}>
         <PhoneInput
@@ -37,7 +39,7 @@ export default function PhoneRegisterScreen({ onSend, onBack, submitting = false
           <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 16 }} />
         ) : (
           <PrimaryButton onPress={handleSend} style={{ marginTop: 8 }}>
-            Send verification code
+            {t('Send verification code')}
           </PrimaryButton>
         )}
       </View>

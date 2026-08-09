@@ -5,8 +5,10 @@ import ScrollScreen from '../components/ScrollScreen';
 import PrimaryButton from '../components/PrimaryButton';
 import theme from '../theme';
 import { formatUgx, initials } from '../utils/ratings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function JobInProgressScreen({ job = {}, onNavigate, onComplete }) {
+  const { t } = useLanguage();
   const [elapsedMins, setElapsedMins] = useState(job.elapsedMins || 0);
   const firstName = (job.fundiName || 'John').split(' ')[0];
 
@@ -25,12 +27,15 @@ export default function JobInProgressScreen({ job = {}, onNavigate, onComplete }
         <View style={styles.iconDot} />
       </View>
 
-      <Text style={styles.title}>Job in progress</Text>
+      <Text style={styles.title}>{t('Job in progress')}</Text>
       <Text style={styles.sub}>
-        {firstName} is working on your {job.service?.toLowerCase() || 'repair'}.
+        {t('{{name}} is working on your {{service}}.', {
+          name: firstName,
+          service: job.service?.toLowerCase() || t('repair'),
+        })}
       </Text>
 
-      <Text style={styles.section}>BOOKING DETAILS</Text>
+      <Text style={styles.section}>{t('BOOKING DETAILS')}</Text>
       <View style={styles.panel}>
         <Text style={styles.line}>
           {job.service} · {job.fundiName}
@@ -38,37 +43,37 @@ export default function JobInProgressScreen({ job = {}, onNavigate, onComplete }
         <Text style={styles.lineMuted}>{job.address}</Text>
         <View style={styles.twoCol}>
           <View>
-            <Text style={styles.colLabel}>Escrow Amount</Text>
+            <Text style={styles.colLabel}>{t('Escrow Amount')}</Text>
             <Text style={styles.colVal}>{formatUgx(job.amount)}</Text>
           </View>
           <View>
-            <Text style={styles.colLabel}>Time elapsed</Text>
-            <Text style={styles.colVal}>{elapsedMins} mins</Text>
+            <Text style={styles.colLabel}>{t('Time elapsed')}</Text>
+            <Text style={styles.colVal}>{t('{{mins}} mins', { mins: elapsedMins })}</Text>
           </View>
         </View>
         <View style={styles.heldBadge}>
           <Ionicons name="lock-closed" size={12} color={theme.colors.green} />
-          <Text style={styles.heldText}> Held</Text>
+          <Text style={styles.heldText}> {t('Held')}</Text>
         </View>
       </View>
 
       <View style={styles.statusBox}>
         <Ionicons name="navigate" size={20} color={theme.colors.accent} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.statusTitle}>{firstName} is on site working.</Text>
+          <Text style={styles.statusTitle}>{t('{{name}} is on site working.', { name: firstName })}</Text>
           <Text style={styles.statusSub}>
-            You'll be notified the moment the job is marked done.
+            {t("You'll be notified the moment the job is marked done.")}
           </Text>
         </View>
       </View>
 
       <View style={styles.rateDisabled}>
         <Ionicons name="star-outline" size={18} color={theme.colors.mutedDark} />
-        <Text style={styles.rateDisabledText}>Rate this job (available after completion)</Text>
+        <Text style={styles.rateDisabledText}>{t('Rate this job (available after completion)')}</Text>
       </View>
 
       <PrimaryButton style={styles.completeBtn} onPress={() => onComplete?.(job)}>
-        Mark job as complete
+        {t('Mark job as complete')}
       </PrimaryButton>
 
       <TouchableOpacity style={styles.chatFab} onPress={() => onNavigate?.('chat', { targetUserId: job?.fundiId })}>

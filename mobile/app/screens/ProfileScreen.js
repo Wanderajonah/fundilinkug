@@ -16,6 +16,7 @@ import LoadingSkeleton from '../components/LoadingSkeleton';
 import { getProfile } from '../../services/usersApi';
 import { resolveMediaUrl } from '../../utils/image';
 import { initials } from '../utils/ratings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const VERIFY_MAP = {
   verified: {
@@ -61,6 +62,7 @@ function Stat({ value, label, star }) {
 }
 
 function VerificationChip({ status, onPress }) {
+  const { t } = useLanguage();
   const info = VERIFY_MAP[status] || VERIFY_MAP.unverified;
   return (
     <TouchableOpacity
@@ -70,12 +72,13 @@ function VerificationChip({ status, onPress }) {
       activeOpacity={0.8}
     >
       <Ionicons name={info.icon} size={13} color={info.color} />
-      <Text style={[styles.verifyChipText, { color: info.color }]}>{info.label}</Text>
+      <Text style={[styles.verifyChipText, { color: info.color }]}>{t(info.label)}</Text>
     </TouchableOpacity>
   );
 }
 
 function VerifyPromptCard({ status, notes, onPress }) {
+  const { t } = useLanguage();
   if (status === 'verified') return null;
 
   if (status === 'pending') {
@@ -85,9 +88,9 @@ function VerifyPromptCard({ status, notes, onPress }) {
           <Ionicons name="time-outline" size={22} color={theme.colors.accent} />
         </View>
         <View style={styles.verifyCardBody}>
-          <Text style={styles.verifyCardTitle}>Verification in review</Text>
+          <Text style={styles.verifyCardTitle}>{t('Verification in review')}</Text>
           <Text style={styles.verifyCardText}>
-            We're checking your documents. This usually takes 1–2 business days.
+            {t("We're checking your documents. This usually takes 1–2 business days.")}
           </Text>
         </View>
       </View>
@@ -106,16 +109,16 @@ function VerifyPromptCard({ status, notes, onPress }) {
       </View>
       <View style={styles.verifyCardBody}>
         <Text style={styles.verifyCardTitle}>
-          {isRejected ? 'Verification rejected' : 'Get verified'}
+          {isRejected ? t('Verification rejected') : t('Get verified')}
         </Text>
         <Text style={styles.verifyCardText}>
           {isRejected
-            ? notes || 'Your documents were rejected. Submit new ones to get verified.'
-            : 'Verified fundis build trust with clients and rank higher in search.'}
+            ? t('Your documents were rejected. Submit new ones to get verified.')
+            : t('Verified fundis build trust with clients and rank higher in search.')}
         </Text>
       </View>
       <TouchableOpacity style={styles.verifyCardBtn} onPress={onPress} activeOpacity={0.85}>
-        <Text style={styles.verifyCardBtnText}>{isRejected ? 'Re-submit' : 'Verify'}</Text>
+        <Text style={styles.verifyCardBtnText}>{isRejected ? t('Re-submit') : t('Verify')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -130,6 +133,7 @@ export default function ProfileScreen({
   onLogout,
 }) {
   const isFundi = userRole === 'fundi';
+  const { t } = useLanguage();
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -183,7 +187,7 @@ export default function ProfileScreen({
     if (key === 'skills') return onNavigate?.('skillsPortfolio');
     if (key === 'earnings') return onNavigate?.('bookings');
     if (key === 'verification') return onNavigate?.('verification');
-    return Alert.alert('Coming soon', 'This feature is on the way.');
+    return Alert.alert(t('Coming soon'), t('This feature is on the way.'));
   };
 
   const accountItems = isFundi
@@ -235,9 +239,9 @@ export default function ProfileScreen({
               >
                 <View style={styles.heroGlow} />
                 <View style={styles.heroGlowSm} />
-                <Text style={styles.heroTitle}>My Profile</Text>
+                <Text style={styles.heroTitle}>{t('My Profile')}</Text>
                 <Text style={styles.heroSub}>
-                  {isFundi ? 'Fundi account' : 'Client account'}
+                  {isFundi ? t('Fundi account') : t('Client account')}
                 </Text>
               </LinearGradient>
               <TouchableOpacity
@@ -274,7 +278,7 @@ export default function ProfileScreen({
 
               <View style={styles.identity}>
                 <Text style={styles.name}>{displayName}</Text>
-                <Text style={styles.sub}>{email || 'No email added'}</Text>
+                <Text style={styles.sub}>{email || t('No email added')}</Text>
                 {isFundi ? (
                 <View style={styles.metaRow}>
                   <Text style={styles.trade} numberOfLines={1}>{trade}</Text>
@@ -300,17 +304,17 @@ export default function ProfileScreen({
 
               {isFundi ? (
                 <View style={styles.statsRow}>
-                  <Stat value={rating ? rating.toFixed(1) : '—'} label="Rating" star />
+                  <Stat value={rating ? rating.toFixed(1) : '—'} label={t('Rating')} star />
                   <View style={styles.statDivider} />
-                  <Stat value={completedJobs} label="Jobs Done" />
+                  <Stat value={completedJobs} label={t('Jobs Done')} />
                   <View style={styles.statDivider} />
-                  <Stat value={yearsExperience} label="Years" />
+                  <Stat value={yearsExperience} label={t('Years')} />
                 </View>
               ) : null}
 
               {isFundi && skills.length > 0 ? (
                 <View style={styles.skillsCard}>
-                  <Text style={styles.skillsTitle}>Skills</Text>
+                  <Text style={styles.skillsTitle}>{t('Skills')}</Text>
                   <View style={styles.skillRow}>
                     {skills.map((s) => (
                       <View key={s} style={styles.skillChip}>
@@ -322,7 +326,7 @@ export default function ProfileScreen({
               ) : null}
 
               <View style={styles.menuCard}>
-                <Text style={styles.menuHeader}>Quick Actions</Text>
+                <Text style={styles.menuHeader}>{t('Quick Actions')}</Text>
                 <View style={styles.quickGrid}>
                   {accountItems.map((item) => (
                     <QuickActionTile key={item.key} item={item} onPress={handleMenu} />
@@ -331,7 +335,7 @@ export default function ProfileScreen({
               </View>
 
               <View style={styles.menuCard}>
-                <Text style={styles.menuHeader}>General</Text>
+                <Text style={styles.menuHeader}>{t('General')}</Text>
                 {generalItems.map((item, i) => (
                   <MenuRow
                     key={item.key}
@@ -346,14 +350,14 @@ export default function ProfileScreen({
                 style={styles.logoutRow}
                 activeOpacity={0.8}
                 onPress={() => {
-                  Alert.alert('Logout', 'Are you sure you want to logout?', [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Logout', style: 'destructive', onPress: () => onLogout?.() },
+                  Alert.alert(t('Logout'), t('Are you sure you want to logout?'), [
+                    { text: t('Cancel'), style: 'cancel' },
+                    { text: t('Logout'), style: 'destructive', onPress: () => onLogout?.() },
                   ]);
                 }}
               >
                 <Ionicons name="log-out-outline" size={18} color={theme.colors.red} />
-                <Text style={styles.logoutText}>Logout</Text>
+                <Text style={styles.logoutText}>{t('Logout')}</Text>
               </TouchableOpacity>
             </View>
           </>
@@ -364,6 +368,7 @@ export default function ProfileScreen({
 }
 
 function MenuRow({ item, onPress, isLast }) {
+  const { t } = useLanguage();
   return (
     <TouchableOpacity
       style={[styles.menuRow, isLast && styles.menuRowLast]}
@@ -374,7 +379,7 @@ function MenuRow({ item, onPress, isLast }) {
         <View style={styles.menuIconWrap}>
           <Ionicons name={item.icon} size={18} color={theme.colors.accent} />
         </View>
-        <Text style={styles.menuText}>{item.label}</Text>
+        <Text style={styles.menuText}>{t(item.label)}</Text>
       </View>
       <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} />
     </TouchableOpacity>
@@ -382,6 +387,7 @@ function MenuRow({ item, onPress, isLast }) {
 }
 
 function QuickActionTile({ item, onPress }) {
+  const { t } = useLanguage();
   return (
     <TouchableOpacity
       style={styles.tile}
@@ -392,7 +398,7 @@ function QuickActionTile({ item, onPress }) {
         <Ionicons name={item.icon} size={22} color={theme.colors.accent} />
       </View>
       <Text style={styles.tileLabel} numberOfLines={2}>
-        {item.label}
+        {t(item.label)}
       </Text>
     </TouchableOpacity>
   );

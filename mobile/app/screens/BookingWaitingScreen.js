@@ -25,6 +25,7 @@ import { useBooking } from '../../context/BookingContext';
 import { canProceedToPayment, getTimeLeftSeconds } from '../utils/bookings';
 import { formatUgx } from '../utils/ratings';
 import { resolveMediaUrl } from '../../utils/image';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function BookingWaitingScreen({ booking: initialBooking, onNavigate, onBack }) {
   const {
@@ -35,6 +36,7 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
     error: socketError,
     setError,
   } = useBooking();
+  const { t } = useLanguage();
 
   const booking = activeBooking || initialBooking;
   const [loading, setLoading] = useState(false);
@@ -47,10 +49,10 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
 
   const handleCancel = async () => {
     if (!booking?.id) return;
-    Alert.alert('Cancel booking', 'Are you sure you want to cancel this request?', [
-      { text: 'Keep waiting', style: 'cancel' },
+    Alert.alert(t('Cancel booking'), t('Are you sure you want to cancel this request?'), [
+      { text: t('Keep waiting'), style: 'cancel' },
       {
-        text: 'Cancel booking',
+        text: t('Cancel booking'),
         style: 'destructive',
         onPress: async () => {
           setLoading(true);
@@ -110,10 +112,10 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
     return (
       <ScreenWrapper style={styles.safe}>
         <EmptyMessage
-          title="No active booking"
-          message="Start a new booking from the home screen."
+          title={t('No active booking')}
+          message={t('Start a new booking from the home screen.')}
           onAction={() => onNavigate?.('browse')}
-          actionLabel="Browse Fundis"
+          actionLabel={t('Browse Fundis')}
         />
       </ScreenWrapper>
     );
@@ -130,7 +132,7 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <TouchableOpacity onPress={onBack || (() => onNavigate?.('home'))} style={styles.backRow}>
           <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
-          <Text style={styles.backText}>Back</Text>
+          <Text style={styles.backText}>{t('Back')}</Text>
         </TouchableOpacity>
 
         {notification ? (
@@ -145,7 +147,7 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
             <Text style={styles.bannerTitle}>{notification.title}</Text>
             <Text style={styles.bannerMsg}>{notification.message}</Text>
             <TouchableOpacity onPress={clearNotification}>
-              <Text style={styles.bannerDismiss}>Dismiss</Text>
+              <Text style={styles.bannerDismiss}>{t('Dismiss')}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -155,14 +157,14 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
             <View style={styles.iconWrap}>
               <ActivityIndicator size="large" color={theme.colors.accent} />
             </View>
-            <Text style={styles.title}>Waiting for Fundi to respond…</Text>
+            <Text style={styles.title}>{t('Waiting for Fundi to respond…')}</Text>
             <Text style={styles.sub}>
-              We're finding an available fundi near you. You'll be notified when someone accepts.
+              {t("We're finding an available fundi near you. You'll be notified when someone accepts.")}
             </Text>
             <CountdownTimer
               expiresAt={booking.expiresAt}
               initialSeconds={getTimeLeftSeconds(booking)}
-              label="Response timer"
+              label={t('Response timer')}
             />
           </>
         ) : isCancelled ? (
@@ -170,9 +172,9 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
             <View style={[styles.iconWrap, styles.iconError]}>
               <Ionicons name="close-circle" size={48} color={theme.colors.red} />
             </View>
-            <Text style={styles.title}>Booking cancelled</Text>
-            <Text style={styles.sub}>No fundi was available or the request was cancelled.</Text>
-            <PrimaryButton onPress={() => onNavigate?.('browse')}>Book another Fundi</PrimaryButton>
+            <Text style={styles.title}>{t('Booking cancelled')}</Text>
+            <Text style={styles.sub}>{t('No fundi was available or the request was cancelled.')}</Text>
+            <PrimaryButton onPress={() => onNavigate?.('browse')}>{t('Book another Fundi')}</PrimaryButton>
           </>
         ) : (
           <>
@@ -181,32 +183,32 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
             </View>
             <Text style={styles.title}>
               {isAccepted && !booking.priceAgreed
-                ? `${booking.fundiName} accepted!`
-                : 'Booking in progress'}
+                ? t('{{name}} accepted!', { name: booking.fundiName })
+                : t('Booking in progress')}
             </Text>
             <Text style={styles.sub}>
               {canPay
-                ? 'Price agreed. Proceed to payment to confirm your booking.'
-                : 'Agree on a service price with your fundi to continue.'}
+                ? t('Price agreed. Proceed to payment to confirm your booking.')
+                : t('Agree on a service price with your fundi to continue.')}
             </Text>
           </>
         )}
 
         <View style={styles.panel}>
-          <Text style={styles.panelTitle}>Booking details</Text>
+          <Text style={styles.panelTitle}>{t('Booking details')}</Text>
           <Text style={styles.line}>{booking.service || booking.category}</Text>
           <Text style={styles.lineMuted}>{booking.address}</Text>
           {booking.description ? (
             <Text style={styles.lineMuted}>{booking.description}</Text>
           ) : null}
           {booking.fundiName && !isPending ? (
-            <Text style={styles.lineFundi}>Fundi: {booking.fundiName}</Text>
+            <Text style={styles.lineFundi}>{t('Fundi: {{name}}', { name: booking.fundiName })}</Text>
           ) : null}
         </View>
 
         {booking.images?.length > 0 ? (
           <View style={styles.photoSection}>
-            <Text style={styles.photoLabel}>Photos</Text>
+            <Text style={styles.photoLabel}>{t('Photos')}</Text>
             <View style={styles.photoRow}>
               {booking.images.map((img, i) => (
                 <Image key={i} source={{ uri: resolveMediaUrl(img) }} style={styles.photoThumb} />
@@ -231,7 +233,7 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
           <View style={styles.errorBox}>
             <Text style={styles.errorText}>{displayError}</Text>
             <TouchableOpacity onPress={retryRefresh}>
-              <Text style={styles.retryText}>Tap to retry</Text>
+              <Text style={styles.retryText}>{t('Tap to retry')}</Text>
             </TouchableOpacity>
           </View>
         ) : null}
@@ -248,11 +250,11 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
               })
             }
           >
-            Proceed to Payment · {formatUgx(booking.total)}
+            {t('Proceed to Payment')} · {formatUgx(booking.total)}
           </PrimaryButton>
         ) : isAccepted ? (
           <PrimaryButton style={{ marginTop: 20 }} disabled>
-            Proceed to Payment
+            {t('Proceed to Payment')}
           </PrimaryButton>
         ) : null}
 
@@ -261,7 +263,7 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
             {loading ? (
               <ActivityIndicator color={theme.colors.muted} />
             ) : (
-              <Text style={styles.cancelText}>Cancel request</Text>
+              <Text style={styles.cancelText}>{t('Cancel request')}</Text>
             )}
           </TouchableOpacity>
         ) : null}

@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import {
   Modal,
-  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,8 +10,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import theme from '../theme';
 import { SupportChat } from '../screens/ChatScreen';
+import { useLanguage } from '../i18n/LanguageContext';
 
-export default function FloatingSupportChat({ userId }) {
+export default function FloatingSupportChat({ userId, onNavigate }) {
+  const { t } = useLanguage();
   const [open, setOpen] = useState(false);
   const insets = useSafeAreaInsets();
 
@@ -29,40 +30,25 @@ export default function FloatingSupportChat({ userId }) {
         activeOpacity={0.86}
         onPress={() => setOpen(true)}
       >
-        <Ionicons name="headset" size={24} color={theme.colors.black} />
+        <Ionicons name="chatbubble-ellipses" size={24} color={theme.colors.black} />
       </TouchableOpacity>
 
       <Modal
         visible={open}
-        transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setOpen(false)}
       >
         <View style={styles.modalRoot}>
-          <Pressable style={styles.backdrop} onPress={() => setOpen(false)} />
-          <View
-            style={[
-              styles.panel,
-              {
-                right: 12,
-                top: Math.max(insets.top, 20) + 60,
-                bottom: 12,
-              },
-            ]}
-          >
-            <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <View style={styles.botIcon}>
-                  <Ionicons name="sparkles" size={16} color={theme.colors.black} />
-                </View>
-                <Text style={styles.title}>FundiLink Support</Text>
-              </View>
-              <TouchableOpacity style={styles.closeBtn} onPress={() => setOpen(false)}>
-                <Ionicons name="close" size={20} color={theme.colors.white} />
-              </TouchableOpacity>
+          <View style={[styles.header, { paddingTop: insets.top }]}>
+            <View style={styles.headerLeft}>
+              <Ionicons name="headset" size={20} color={theme.colors.accent} />
+              <Text style={styles.title}>{t('FundiLink Support')}</Text>
             </View>
-            <SupportChat userId={userId} />
+            <TouchableOpacity style={styles.closeBtn} onPress={() => setOpen(false)}>
+              <Ionicons name="close" size={22} color={theme.colors.white} />
+            </TouchableOpacity>
           </View>
+          <SupportChat userId={userId} onNavigate={onNavigate} />
         </View>
       </Modal>
     </>
@@ -85,55 +71,36 @@ const styles = StyleSheet.create({
   },
   modalRoot: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.34)',
-  },
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  panel: {
-    position: 'absolute',
-    width: '92%',
-    maxWidth: 420,
-    maxHeight: 640,
-    overflow: 'hidden',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.bg,
-    ...theme.elevation.lg,
+    backgroundColor: theme.colors.black,
   },
   header: {
-    height: 52,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     backgroundColor: theme.colors.panel,
     borderBottomWidth: 1,
-    borderBottomColor: '#24343D',
+    borderBottomColor: theme.colors.border,
   },
   headerLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
   },
-  botIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: theme.colors.accent,
-  },
   title: {
     color: theme.colors.white,
-    fontSize: 15,
-    fontWeight: '800',
+    fontSize: 18,
+    fontWeight: '700',
   },
   closeBtn: {
-    width: 34,
-    height: 34,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: theme.colors.glass,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
 });

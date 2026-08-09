@@ -23,6 +23,7 @@ import { normalizeCategory } from '../utils/bookings';
 import theme from '../theme';
 import PrimaryButton from '../components/PrimaryButton';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function RequestServiceScreen({
   artisan = {},
@@ -31,8 +32,9 @@ export default function RequestServiceScreen({
   onSessionRestored,
 }) {
   const { address, coords } = useLocation();
-  const [service, setService] = useState(artisan.skills?.[0] || artisan.role || 'General Service');
-  const [date, setDate] = useState('Today');
+  const { t } = useLanguage();
+  const [service, setService] = useState(artisan.skills?.[0] || artisan.role || t('General Service'));
+  const [date, setDate] = useState(t('Today'));
   const [time, setTime] = useState('ASAP');
   const [location, setLocation] = useState(address || '');
   const [desc, setDesc] = useState('');
@@ -47,11 +49,11 @@ export default function RequestServiceScreen({
 
   const handleBook = async () => {
     if (!desc.trim()) {
-      setError('Please describe the issue or service needed.');
+      setError(t('Please describe the issue or service needed.'));
       return;
     }
     if (!location.trim()) {
-      setError('Please set your location before booking.');
+      setError(t('Please set your location before booking.'));
       return;
     }
     let canBook = Boolean(authToken || hasApiAuthToken());
@@ -64,9 +66,9 @@ export default function RequestServiceScreen({
     }
 
     if (!canBook) {
-      Alert.alert('Sign in required', 'Please sign in to book a fundi.', [
-        { text: 'Not now', style: 'cancel' },
-        { text: 'Sign In', onPress: () => onNavigate?.('signIn') },
+      Alert.alert(t('Sign in required'), t('Please sign in to book a fundi.'), [
+        { text: t('Not now'), style: 'cancel' },
+        { text: t('Sign In'), onPress: () => onNavigate?.('signIn') },
       ]);
       return;
     }
@@ -89,7 +91,7 @@ export default function RequestServiceScreen({
       } catch (uploadErr) {
         setUploadingPhotos(false);
         setSubmitting(false);
-        setError('Failed to upload photos. Please try again.');
+        setError(t('Failed to upload photos. Please try again.'));
         return;
       }
       setUploadingPhotos(false);
@@ -134,7 +136,7 @@ export default function RequestServiceScreen({
   const handlePickPhoto = useCallback(async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Permission needed', 'Allow access to your photo library to add photos.');
+      Alert.alert(t('Permission needed'), t('Allow access to your photo library to add photos.'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -153,7 +155,7 @@ export default function RequestServiceScreen({
       <ScrollView contentContainerStyle={styles.container}>
         <TouchableOpacity onPress={() => onNavigate?.('artisan')} style={styles.backRow}>
           <Text style={styles.backArrow}>‹</Text>
-          <Text style={styles.backText}>Back</Text>
+          <Text style={styles.backText}>{t('Back')}</Text>
         </TouchableOpacity>
 
         <View style={styles.headerCard}>
@@ -161,16 +163,16 @@ export default function RequestServiceScreen({
             <Text style={styles.avatarText}>{(artisan.name || 'U').slice(0, 2).toUpperCase()}</Text>
           </View>
           <View style={{ flex: 1, marginLeft: 12 }}>
-            <Text style={styles.name}>{artisan.name || 'Nearby Fundi'}</Text>
+            <Text style={styles.name}>{artisan.name || t('Nearby Fundi')}</Text>
             <Text style={styles.role}>{artisan.role || service}</Text>
             <Text style={styles.meta}>★ {artisan.rating?.toFixed?.(1) || artisan.rating || '—'}</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Service Details</Text>
+        <Text style={styles.sectionTitle}>{t('Service Details')}</Text>
 
         <View style={styles.fieldRow}>
-          <Text style={styles.fieldLabel}>Service Type</Text>
+          <Text style={styles.fieldLabel}>{t('Service Type')}</Text>
           <View style={styles.fieldSelect}>
             <Text style={styles.fieldText}>{service}</Text>
           </View>
@@ -178,36 +180,36 @@ export default function RequestServiceScreen({
 
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Date</Text>
+            <Text style={styles.fieldLabel}>{t('Date')}</Text>
             <View style={styles.fieldInput}>
               <Text style={styles.fieldText}>{date}</Text>
             </View>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>Time</Text>
+            <Text style={styles.fieldLabel}>{t('Time')}</Text>
             <View style={styles.fieldInput}>
               <Text style={styles.fieldText}>{time}</Text>
             </View>
           </View>
         </View>
 
-        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Location</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>{t('Location')}</Text>
         <TouchableOpacity style={styles.fieldInput} onPress={() => onNavigate?.('setLocation')}>
-          <Text style={styles.fieldText}>{location || 'Set location'}</Text>
+          <Text style={styles.fieldText}>{location || t('Set location')}</Text>
         </TouchableOpacity>
 
-        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>Description</Text>
+        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>{t('Description')}</Text>
         <TextInput
           value={desc}
           onChangeText={setDesc}
-          placeholder="Describe the issue..."
+          placeholder={t('Describe the issue...')}
           placeholderTextColor="rgba(255,255,255,0.35)"
           style={styles.textArea}
           multiline
         />
 
         <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
-          Photos (optional) <Text style={{ color: 'rgba(255,255,255,0.35)', fontWeight: '400' }}>— show the fundi what needs to be done</Text>
+          {t('Photos (optional)')} <Text style={{ color: 'rgba(255,255,255,0.35)', fontWeight: '400' }}>— {t('show the fundi what needs to be done')}</Text>
         </Text>
 
         {photos.length > 0 ? (
@@ -232,14 +234,14 @@ export default function RequestServiceScreen({
         ) : (
           <TouchableOpacity style={styles.photoPickerBtn} onPress={handlePickPhoto}>
             <Ionicons name="images-outline" size={20} color={theme.colors.mutedDark} style={{ marginRight: 8 }} />
-            <Text style={styles.photoPickerText}>Add photos</Text>
+            <Text style={styles.photoPickerText}>{t('Add photos')}</Text>
           </TouchableOpacity>
         )}
 
         {uploadingPhotos ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 6 }}>
             <ActivityIndicator size="small" color={theme.colors.accent} />
-            <Text style={{ color: theme.colors.muted, fontSize: 12 }}>Uploading photos…</Text>
+            <Text style={{ color: theme.colors.muted, fontSize: 12 }}>{t('Uploading photos…')}</Text>
           </View>
         ) : null}
 
@@ -254,7 +256,7 @@ export default function RequestServiceScreen({
           onPress={handleBook}
           disabled={submitting}
         >
-          {submitting ? 'Sending request…' : 'Book Fundi'}
+          {submitting ? t('Sending request…') : t('Book Fundi')}
         </PrimaryButton>
 
         {submitting ? <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 12 }} /> : null}

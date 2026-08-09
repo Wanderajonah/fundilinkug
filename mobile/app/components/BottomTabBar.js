@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import { TAB_BAR_CONTENT_HEIGHT } from '../hooks/useTabBarHeight';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const CUSTOMER_TABS = [
   { key: 'home', label: 'Home', icon: 'home-outline', activeIcon: 'home' },
@@ -20,29 +21,30 @@ const FUNDI_TABS = [
 ];
 
 export default function BottomTabBar({ active, onTab, role = 'customer' }) {
+  const { t } = useLanguage();
   const insets = useSafeAreaInsets();
   const bottomPad = Math.max(insets.bottom, 10);
   const tabs = role === 'fundi' ? FUNDI_TABS : CUSTOMER_TABS;
 
   return (
     <View style={[styles.bar, { paddingBottom: bottomPad, minHeight: TAB_BAR_CONTENT_HEIGHT + bottomPad }]}>
-      {tabs.map((t) => {
-        const isActive = t.key === active;
+      {tabs.map((tab) => {
+        const isActive = tab.key === active;
         return (
           <TouchableOpacity
-            key={t.key}
+            key={tab.key}
             style={styles.item}
-            onPress={() => onTab?.(t.key)}
+            onPress={() => onTab?.(tab.key)}
             activeOpacity={0.85}
           >
             <View style={[styles.iconWrap, isActive && styles.iconWrapActive]}>
               <Ionicons
-                name={isActive ? t.activeIcon : t.icon}
+                name={isActive ? tab.activeIcon : tab.icon}
                 size={22}
                 color={isActive ? theme.colors.textDark : theme.colors.mutedDark}
               />
             </View>
-            <Text style={[styles.label, isActive && styles.labelActive]}>{t.label}</Text>
+            <Text style={[styles.label, isActive && styles.labelActive]}>{t(tab.label)}</Text>
           </TouchableOpacity>
         );
       })}

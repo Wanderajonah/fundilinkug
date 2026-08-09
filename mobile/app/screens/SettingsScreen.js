@@ -1,10 +1,23 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Modal, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { useLanguage } from '../i18n/LanguageContext';
+import { LANGUAGES } from '../i18n/translations';
 
 export default function SettingsScreen({ onNavigate }) {
+  const { language, setLanguage, t } = useLanguage();
+  const [langModal, setLangModal] = useState(false);
+
+  const current = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
+
+  const handleSelectLanguage = async (code) => {
+    setLangModal(false);
+    await setLanguage(code);
+    Alert.alert(t('Language'), t('Language setting saved'));
+  };
+
   return (
     <ScreenWrapper style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -12,36 +25,67 @@ export default function SettingsScreen({ onNavigate }) {
           <TouchableOpacity onPress={() => onNavigate?.('profile')} style={styles.iconBtn}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
           </TouchableOpacity>
-          <Text style={styles.title}>Settings</Text>
+          <Text style={styles.title}>{t('Settings')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
-        <Text style={styles.sectionLabel}>Notifications</Text>
+        <Text style={styles.sectionLabel}>{t('Notifications')}</Text>
         <View style={styles.card}>
-          <View style={styles.row}><Text style={styles.rowText}>Push Notifications</Text><Switch value trackColor={{ true: theme.colors.accent }} thumbColor={theme.colors.textDark} /></View>
-          <View style={styles.row}><Text style={styles.rowText}>Email Notifications</Text><Switch value={false} trackColor={{ true: theme.colors.accent }} thumbColor={theme.colors.textDark} /></View>
-          <View style={styles.row}><Text style={styles.rowText}>SMS Notifications</Text><Switch value trackColor={{ true: theme.colors.accent }} thumbColor={theme.colors.textDark} /></View>
+          <View style={styles.row}><Text style={styles.rowText}>{t('Push Notifications')}</Text><Switch value trackColor={{ true: theme.colors.accent }} thumbColor={theme.colors.textDark} /></View>
+          <View style={styles.row}><Text style={styles.rowText}>{t('Email Notifications')}</Text><Switch value={false} trackColor={{ true: theme.colors.accent }} thumbColor={theme.colors.textDark} /></View>
+          <View style={styles.row}><Text style={styles.rowText}>{t('SMS Notifications')}</Text><Switch value trackColor={{ true: theme.colors.accent }} thumbColor={theme.colors.textDark} /></View>
         </View>
 
-        <Text style={styles.sectionLabel}>Privacy</Text>
+        <Text style={styles.sectionLabel}>{t('Privacy')}</Text>
         <View style={styles.card}>
-          <View style={styles.row}><Text style={styles.rowText}>Share Location</Text><Switch value trackColor={{ true: theme.colors.accent }} thumbColor={theme.colors.textDark} /></View>
-          <TouchableOpacity style={styles.row}><Text style={styles.rowText}>Profile Visibility</Text><Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} /></TouchableOpacity>
+          <View style={styles.row}><Text style={styles.rowText}>{t('Share Location')}</Text><Switch value trackColor={{ true: theme.colors.accent }} thumbColor={theme.colors.textDark} /></View>
+          <TouchableOpacity style={styles.row}><Text style={styles.rowText}>{t('Profile Visibility')}</Text><Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} /></TouchableOpacity>
         </View>
 
-        <Text style={styles.sectionLabel}>App Settings</Text>
+        <Text style={styles.sectionLabel}>{t('App Settings')}</Text>
         <View style={styles.card}>
-          <TouchableOpacity style={styles.row}><Text style={styles.rowText}>Language</Text><Text style={styles.valueText}>English</Text></TouchableOpacity>
-          <TouchableOpacity style={styles.row}><Text style={styles.rowText}>Currency</Text><Text style={styles.valueText}>UGX</Text></TouchableOpacity>
-          <View style={styles.row}><Text style={styles.rowText}>Dark Mode</Text><Switch value trackColor={{ true: theme.colors.accent }} thumbColor={theme.colors.textDark} /></View>
+          <TouchableOpacity style={styles.row} onPress={() => setLangModal(true)}>
+            <Text style={styles.rowText}>{t('Language')}</Text>
+            <View style={styles.valueRow}>
+              <Text style={styles.valueText}>{current.native}</Text>
+              <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} />
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.row}><Text style={styles.rowText}>{t('Currency')}</Text><Text style={styles.valueText}>UGX</Text></TouchableOpacity>
+          <View style={styles.row}><Text style={styles.rowText}>{t('Dark Mode')}</Text><Switch value trackColor={{ true: theme.colors.accent }} thumbColor={theme.colors.textDark} /></View>
         </View>
 
-        <Text style={styles.sectionLabel}>Legal</Text>
+        <Text style={styles.sectionLabel}>{t('Legal')}</Text>
         <View style={styles.card}>
-          <TouchableOpacity style={styles.row}><Text style={styles.rowText}>Terms & Conditions</Text><Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} /></TouchableOpacity>
-          <TouchableOpacity style={styles.row}><Text style={styles.rowText}>Privacy Policy</Text><Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} /></TouchableOpacity>
+          <TouchableOpacity style={styles.row}><Text style={styles.rowText}>{t('Terms & Conditions')}</Text><Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} /></TouchableOpacity>
+          <TouchableOpacity style={styles.row}><Text style={styles.rowText}>{t('Privacy Policy')}</Text><Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} /></TouchableOpacity>
         </View>
       </ScrollView>
+
+      <Modal visible={langModal} transparent animationType="fade" onRequestClose={() => setLangModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('Language')}</Text>
+            {LANGUAGES.map((lang) => {
+              const active = lang.code === language;
+              return (
+                <TouchableOpacity
+                  key={lang.code}
+                  style={[styles.langRow, active && styles.langRowActive]}
+                  onPress={() => handleSelectLanguage(lang.code)}
+                >
+                  <Text style={[styles.langLabel, active && styles.langLabelActive]}>{lang.native}</Text>
+                  <Text style={styles.langSub}>{lang.label}</Text>
+                  {active ? <Ionicons name="checkmark-circle" size={20} color={theme.colors.accent} /> : null}
+                </TouchableOpacity>
+              );
+            })}
+            <TouchableOpacity style={styles.modalCancel} onPress={() => setLangModal(false)}>
+              <Text style={styles.modalCancelText}>{t('Cancel')}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScreenWrapper>
   );
 }
@@ -57,5 +101,17 @@ const styles = StyleSheet.create({
   card: { backgroundColor: theme.colors.panel, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, ...theme.elevation.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   rowText: { color: theme.colors.white, fontWeight: '700', fontSize: 14 },
+  valueRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   valueText: { color: theme.colors.mutedDark, fontSize: 14 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', padding: 24 },
+  modalCard: { backgroundColor: theme.colors.panel, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 20, padding: 20 },
+  modalTitle: { color: theme.colors.white, fontSize: 18, fontWeight: '800', marginBottom: 12 },
+  langRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.colors.border, marginBottom: 8 },
+  langRowActive: { borderColor: theme.colors.accent },
+  langLabel: { color: theme.colors.white, fontWeight: '800', fontSize: 15 },
+  langLabelActive: { color: theme.colors.accent },
+  langSub: { color: theme.colors.mutedDark, fontSize: 12, flex: 1, marginLeft: 8 },
+  modalCancel: { marginTop: 8, alignItems: 'center', paddingVertical: 12 },
+  modalCancelText: { color: theme.colors.muted, fontWeight: '700', fontSize: 14 },
 });

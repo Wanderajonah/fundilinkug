@@ -7,6 +7,7 @@ import StarRating from '../components/StarRating';
 import EmptyState from '../components/EmptyState';
 import theme from '../theme';
 import { formatUgx, formatBookingDate, ratingLabel } from '../utils/ratings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function BookingHistoryScreen({
   bookings = [],
@@ -15,6 +16,7 @@ export default function BookingHistoryScreen({
   onEditReview,
 }) {
   const insets = useSafeAreaInsets();
+  const { t } = useLanguage();
 
   return (
     <ScreenWrapper style={styles.safe}>
@@ -22,7 +24,7 @@ export default function BookingHistoryScreen({
         <TouchableOpacity style={styles.backBtn} onPress={onBack}>
           <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
         </TouchableOpacity>
-        <Text style={styles.title}>Booking History</Text>
+        <Text style={styles.title}>{t('Booking History')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -33,7 +35,7 @@ export default function BookingHistoryScreen({
         </View>
       ) : null}
 
-      <Text style={styles.section}>PAST BOOKINGS</Text>
+      <Text style={styles.section}>{t('PAST BOOKINGS')}</Text>
 
       <ScrollView
         contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 24) + 80, flexGrow: 1 }}
@@ -42,8 +44,8 @@ export default function BookingHistoryScreen({
         {bookings.length === 0 ? (
           <EmptyState
             icon="receipt-outline"
-            title="No booking history yet"
-            message="Completed bookings and reviews will appear here."
+            title={t('No booking history yet')}
+            message={t('Completed bookings and reviews will appear here.')}
           />
         ) : (
           bookings.map((item) => (
@@ -53,7 +55,7 @@ export default function BookingHistoryScreen({
                 {item.service} - {item.fundiName}
               </Text>
               <View style={styles.paidBadge}>
-                <Text style={styles.paidText}>Paid</Text>
+                <Text style={styles.paidText}>{t('Paid')}</Text>
               </View>
             </View>
             <Text style={styles.meta}>
@@ -65,19 +67,19 @@ export default function BookingHistoryScreen({
               <View style={styles.reviewBlock}>
                 <View style={styles.ratingRow}>
                   <StarRating value={item.rating} showLabel={false} size={18} disabled />
-                  <Text style={styles.ratingLabel}>{ratingLabel(item.rating)}</Text>
+                  <Text style={styles.ratingLabel}>{t(ratingLabel(item.rating))}</Text>
                 </View>
                 {item.comment ? (
                   <Text style={styles.comment}>"{item.comment}"</Text>
                 ) : null}
                 {item.reviewId ? (
                   <TouchableOpacity onPress={() => onEditReview?.(item)}>
-                    <Text style={styles.editLink}>Edit review</Text>
+                    <Text style={styles.editLink}>{t('Edit review')}</Text>
                   </TouchableOpacity>
                 ) : null}
               </View>
             ) : (
-              <Text style={styles.noReview}>No review yet</Text>
+              <Text style={styles.noReview}>{t('No review yet')}</Text>
             )}
           </View>
         ))

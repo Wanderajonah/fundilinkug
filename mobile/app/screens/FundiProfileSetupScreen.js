@@ -5,10 +5,12 @@ import ScrollScreen from '../components/ScrollScreen';
 import PrimaryButton from '../components/PrimaryButton';
 import theme from '../theme';
 import { updateProfile } from '../../services/usersApi';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const SKILL_OPTIONS = ['plumbing', 'electrical', 'carpentry', 'masonry', 'painting', 'cleaning'];
 
 export default function FundiProfileSetupScreen({ onBack, onComplete, authToken }) {
+  const { t } = useLanguage();
   const [skills, setSkills] = useState([]);
   const [experience, setExperience] = useState('');
   const [bio, setBio] = useState('');
@@ -22,7 +24,7 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
 
   const handleSave = async () => {
     if (skills.length === 0) {
-      Alert.alert('Skills required', 'Select at least one skill.');
+      Alert.alert(t('Skills required'), t('Select at least one skill.'));
       return;
     }
     setLoading(true);
@@ -35,7 +37,7 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
       });
       onComplete?.();
     } catch (error) {
-      Alert.alert('Could not save profile', error?.response?.data?.message || error.message);
+      Alert.alert(t('Could not save profile'), error?.response?.data?.message || error.message);
     } finally {
       setLoading(false);
     }
@@ -47,12 +49,12 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
         <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
       </TouchableOpacity>
 
-      <Text style={styles.title}>Set up your Fundi profile</Text>
+      <Text style={styles.title}>{t('Set up your Fundi profile')}</Text>
       <Text style={styles.subtitle}>
-        Tell clients what you do best. You can update this later.
+        {t('Tell clients what you do best. You can update this later.')}
       </Text>
 
-      <Text style={styles.label}>Your skills</Text>
+      <Text style={styles.label}>{t('Your skills')}</Text>
       <View style={styles.skillRow}>
         {SKILL_OPTIONS.map((s) => {
           const on = skills.includes(s);
@@ -70,28 +72,28 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
         })}
       </View>
 
-      <Text style={styles.label}>Years of experience</Text>
+      <Text style={styles.label}>{t('Years of experience')}</Text>
       <TextInput
         style={styles.input}
         value={experience}
         onChangeText={setExperience}
         keyboardType="number-pad"
-        placeholder="e.g. 5"
+        placeholder={t('e.g. 5')}
         placeholderTextColor={theme.colors.mutedDark}
       />
 
-      <Text style={styles.label}>Short bio (optional)</Text>
+      <Text style={styles.label}>{t('Short bio (optional)')}</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
         value={bio}
         onChangeText={setBio}
         multiline
-        placeholder="Describe your expertise..."
+        placeholder={t('Describe your expertise...')}
         placeholderTextColor={theme.colors.mutedDark}
       />
 
       <PrimaryButton onPress={handleSave} disabled={loading}>
-        {loading ? 'Saving…' : 'Continue to dashboard '}
+        {loading ? t('Saving…') : t('Continue to dashboard ')}
       </PrimaryButton>
     </ScrollScreen>
   );

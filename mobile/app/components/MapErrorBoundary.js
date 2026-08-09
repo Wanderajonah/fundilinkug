@@ -1,6 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import theme from '../theme';
+import { useLanguage } from '../i18n/LanguageContext';
+
+function MapErrorFallback({ style }) {
+  const { t } = useLanguage();
+  return (
+    <View style={[styles.fallback, style]}>
+      <Text style={styles.fallbackText}>{t('Map unavailable')}</Text>
+    </View>
+  );
+}
 
 export default class MapErrorBoundary extends React.Component {
   constructor(props) {
@@ -14,11 +24,7 @@ export default class MapErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      return (
-        <View style={[styles.fallback, this.props.style]}>
-          <Text style={styles.fallbackText}>Map unavailable</Text>
-        </View>
-      );
+      return <MapErrorFallback style={this.props.style} />;
     }
     return this.props.children;
   }

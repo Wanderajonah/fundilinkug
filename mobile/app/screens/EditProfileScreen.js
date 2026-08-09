@@ -27,6 +27,7 @@ import {
 } from "../../services/usersApi";
 import { resolveMediaUrl } from "../../utils/image";
 import { initials } from "../utils/ratings";
+import { useLanguage } from "../i18n/LanguageContext";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -40,6 +41,7 @@ function Field({ label, children }) {
 }
 
 export default function EditProfileScreen({ onNavigate }) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState(null);
@@ -134,7 +136,7 @@ export default function EditProfileScreen({ onNavigate }) {
       } catch (e) {
         if (cancelled) return;
         setProfile(null);
-        Alert.alert("Could not load profile", "Please try again.");
+        Alert.alert(t("Could not load profile"), t("Please try again."));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -159,8 +161,8 @@ export default function EditProfileScreen({ onNavigate }) {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission required",
-          "Please allow access to your photos.",
+          t("Permission required"),
+          t("Please allow access to your photos."),
         );
         return;
       }
@@ -180,7 +182,7 @@ export default function EditProfileScreen({ onNavigate }) {
       setProfilePhotoUri(uri);
       setPhotoChanged(true);
     } catch (e) {
-      Alert.alert("Photo error", "Could not pick a profile photo.");
+      Alert.alert(t("Photo error"), t("Could not pick a profile photo."));
     }
   };
 
@@ -190,8 +192,8 @@ export default function EditProfileScreen({ onNavigate }) {
         await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== "granted") {
         Alert.alert(
-          "Permission required",
-          "Please allow access to your photos.",
+          t("Permission required"),
+          t("Please allow access to your photos."),
         );
         return;
       }
@@ -211,14 +213,14 @@ export default function EditProfileScreen({ onNavigate }) {
       setCoverPhotoUri(uri);
       setCoverChanged(true);
     } catch (e) {
-      Alert.alert("Photo error", "Could not pick a cover photo.");
+      Alert.alert(t("Photo error"), t("Could not pick a cover photo."));
     }
   };
 
   const handleSave = async () => {
     const err = validate();
     if (err) {
-      Alert.alert("Fix form", err);
+      Alert.alert(t("Fix form"), t(err));
       return;
     }
 
@@ -303,8 +305,8 @@ export default function EditProfileScreen({ onNavigate }) {
         e?.response?.data?.message ||
         e?.response?.data?.error ||
         e?.message ||
-        "Unknown error";
-      Alert.alert("Save failed", message);
+        t("Unknown error");
+      Alert.alert(t("Save failed"), message);
     } finally {
       setSaving(false);
     }
@@ -323,7 +325,7 @@ export default function EditProfileScreen({ onNavigate }) {
           >
             <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
           </TouchableOpacity>
-          <Text style={styles.title}>Edit Profile</Text>
+          <Text style={styles.title}>{t("Edit Profile")}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -348,8 +350,8 @@ export default function EditProfileScreen({ onNavigate }) {
               <Ionicons name="checkmark" size={16} color={theme.colors.textDark} />
             </View>
             <View style={styles.savedBody}>
-              <Text style={styles.savedTitle}>Profile updated</Text>
-              <Text style={styles.savedMsg}>Your changes have been saved.</Text>
+              <Text style={styles.savedTitle}>{t("Profile updated")}</Text>
+              <Text style={styles.savedMsg}>{t("Your changes have been saved.")}</Text>
             </View>
           </Animated.View>
         ) : null}
@@ -357,7 +359,7 @@ export default function EditProfileScreen({ onNavigate }) {
         {loading ? (
           <View style={styles.loadingWrap}>
             <ActivityIndicator color={theme.colors.accent} size="large" />
-            <Text style={styles.loadingText}>Loading profile…</Text>
+            <Text style={styles.loadingText}>{t("Loading profile…")}</Text>
           </View>
         ) : (
           <>
@@ -392,7 +394,7 @@ export default function EditProfileScreen({ onNavigate }) {
                     color={theme.colors.white}
                   />
                   <Text style={styles.coverBtnText}>
-                    {coverPhotoUri ? "Change" : "Add cover"}
+                    {coverPhotoUri ? t("Change") : t("Add cover")}
                   </Text>
                 </TouchableOpacity>
 
@@ -439,9 +441,9 @@ export default function EditProfileScreen({ onNavigate }) {
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Profile Details</Text>
+            <Text style={styles.sectionTitle}>{t("Profile Details")}</Text>
 
-            <Field label="Full Name">
+            <Field label={t("Full Name")}>
               <TextInput
                 style={styles.input}
                 value={fullName}
@@ -452,7 +454,7 @@ export default function EditProfileScreen({ onNavigate }) {
               />
             </Field>
 
-            <Field label="Email Address">
+            <Field label={t("Email Address")}>
               <TextInput
                 style={styles.input}
                 value={email}
@@ -464,7 +466,7 @@ export default function EditProfileScreen({ onNavigate }) {
               />
             </Field>
 
-            <Field label="Phone Number">
+            <Field label={t("Phone Number")}>
               <TextInput
                 style={styles.input}
                 value={phone}
@@ -475,7 +477,7 @@ export default function EditProfileScreen({ onNavigate }) {
               />
             </Field>
 
-            <Field label="Location">
+            <Field label={t("Location")}>
               <TextInput
                 style={styles.input}
                 value={locationText}
@@ -486,13 +488,13 @@ export default function EditProfileScreen({ onNavigate }) {
             </Field>
 
             {isFundi ? (
-              <Field label="Bio (Optional)">
+              <Field label={t("Bio (Optional)")}>
                 <TextInput
                   style={[styles.input, styles.textArea]}
                   multiline
                   value={bio}
                   onChangeText={setBio}
-                  placeholder="Tell clients about your experience..."
+                  placeholder={t("Tell clients about your experience...")}
                   placeholderTextColor={theme.colors.mutedDark}
                 />
               </Field>
@@ -504,7 +506,7 @@ export default function EditProfileScreen({ onNavigate }) {
               icon="checkmark"
               style={styles.saveBtn}
             >
-              Save Changes
+              {t("Save Changes")}
             </PrimaryButton>
           </>
         )}

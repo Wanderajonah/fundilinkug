@@ -5,6 +5,7 @@ import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
 import PrimaryButton from '../components/PrimaryButton';
 import { getWallet, deposit } from '../../services/walletApi';
+import { useLanguage } from '../i18n/LanguageContext';
 
 const PRESETS = [10000, 20000, 50000, 100000, 200000, 500000];
 
@@ -30,6 +31,7 @@ const METHODS = [
 ];
 
 export default function DepositScreen({ onNavigate }) {
+  const { t } = useLanguage();
   const [amount, setAmount] = useState('');
   const [phone, setPhone] = useState('');
   const [method, setMethod] = useState('mtn');
@@ -62,8 +64,8 @@ export default function DepositScreen({ onNavigate }) {
   const handlePreset = (val) => setAmount(val.toLocaleString());
 
   const handleDeposit = async () => {
-    if (numericAmount <= 0) return Alert.alert('Enter amount', 'Please enter the amount you want to deposit.');
-    if (!phoneValid) return Alert.alert('Invalid number', `Enter a valid 9-digit ${selectedMethod.label} number (e.g. 7XX XXX XXX).`);
+    if (numericAmount <= 0) return Alert.alert(t('Enter amount'), t('Please enter the amount you want to deposit.'));
+    if (!phoneValid) return Alert.alert(t('Invalid number'), t('Enter a valid 9-digit {{method}} number (e.g. 7XX XXX XXX).', { method: selectedMethod.label }));
 
     setLoading(true);
     try {
@@ -73,12 +75,15 @@ export default function DepositScreen({ onNavigate }) {
         `+256${cleanPhone}`,
       );
       Alert.alert(
-        'Deposit Successful',
-        `${formatAmount(numericAmount)} was added to your wallet.\n\nNew balance: ${formatAmount(data.balance)}`,
-        [{ text: 'OK', onPress: () => onNavigate?.('wallet') }],
+        t('Deposit Successful'),
+        t('{{amount}} was added to your wallet.\n\nNew balance: {{balance}}', {
+          amount: formatAmount(numericAmount),
+          balance: formatAmount(data.balance),
+        }),
+        [{ text: t('OK'), onPress: () => onNavigate?.('wallet') }],
       );
     } catch (error) {
-      Alert.alert('Deposit failed', error.response?.data?.message || 'Something went wrong. Please try again.');
+      Alert.alert(t('Deposit failed'), error.response?.data?.message || t('Something went wrong. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -91,7 +96,7 @@ export default function DepositScreen({ onNavigate }) {
           <TouchableOpacity style={styles.backBtn} onPress={() => onNavigate?.('wallet')}>
             <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
           </TouchableOpacity>
-          <Text style={styles.title}>Deposit</Text>
+          <Text style={styles.title}>{t('Deposit')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -100,12 +105,12 @@ export default function DepositScreen({ onNavigate }) {
             <View style={styles.balanceIcon}>
               <Ionicons name="wallet-outline" size={18} color={theme.colors.accent} />
             </View>
-            <Text style={styles.balanceLabel}>Available balance</Text>
+            <Text style={styles.balanceLabel}>{t('Available balance')}</Text>
             <Text style={styles.balanceValue}>{formatAmount(wallet.balance)}</Text>
           </View>
         ) : null}
 
-        <Text style={styles.section}>Payment Method</Text>
+        <Text style={styles.section}>{t('Payment Method')}</Text>
         {METHODS.map((m) => {
           const selected = method === m.key;
           return (
@@ -123,7 +128,7 @@ export default function DepositScreen({ onNavigate }) {
                     resizeMode={m.contain ? 'contain' : 'cover'}
                   />
                 </View>
-                <Text style={styles.methodName}>{m.label}</Text>
+                <Text style={styles.methodName}>{t(m.label)}</Text>
               </View>
               <Ionicons
                 name={selected ? 'checkmark-circle' : 'ellipse-outline'}
@@ -134,7 +139,7 @@ export default function DepositScreen({ onNavigate }) {
           );
         })}
 
-        <Text style={styles.section}>Amount</Text>
+        <Text style={styles.section}>{t('Amount')}</Text>
         <View style={styles.amountCard}>
           <Text style={styles.currencyPrefix}>{currency}</Text>
           <TextInput
@@ -165,7 +170,7 @@ export default function DepositScreen({ onNavigate }) {
           })}
         </View>
 
-        <Text style={styles.section}>{selectedMethod.phoneLabel}</Text>
+        <Text style={styles.section}>{t(selectedMethod.phoneLabel)}</Text>
         <View style={styles.phoneInput}>
           <Text style={styles.phonePrefix}>+256</Text>
           <TextInput
@@ -179,8 +184,9 @@ export default function DepositScreen({ onNavigate }) {
           />
         </View>
         <Text style={styles.hint}>
-          Enter the {selectedMethod.key === 'mtn' ? 'MTN MoMo' : 'Airtel Money'} number to
-          receive the deposit from. Your wallet is credited instantly.
+          {t('Enter the {{method}} number to receive the deposit from. Your wallet is credited instantly.', {
+            method: selectedMethod.key === 'mtn' ? 'MTN MoMo' : 'Airtel Money',
+          })}
         </Text>
 
         <PrimaryButton
@@ -188,7 +194,7 @@ export default function DepositScreen({ onNavigate }) {
           loading={loading}
           disabled={numericAmount <= 0}
         >
-          {numericAmount > 0 ? `Deposit ${formatAmount(numericAmount)}` : 'Enter an amount'}
+          {numericAmount > 0 ? t('Deposit {{amount}}', { amount: formatAmount(numericAmount) }) : t('Enter an amount')}
         </PrimaryButton>
       </ScrollView>
     </ScreenWrapper>

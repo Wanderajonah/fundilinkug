@@ -2,8 +2,10 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import theme from '../theme';
 import { initials } from '../utils/ratings';
+import { useLanguage } from '../i18n/LanguageContext';
 
 export default function ServiceCard({ item, onPress, onBook }) {
+  const { t } = useLanguage();
   return (
     <View style={styles.card}>
       <View style={styles.avatar}>
@@ -14,15 +16,15 @@ export default function ServiceCard({ item, onPress, onBook }) {
           {item.name}
         </Text>
         <Text style={styles.sub} numberOfLines={1}>
-          {item.role} · {item.rating ? `${item.rating}★` : 'New'}
+          {item.role} · {item.rating ? `${item.rating}★` : t('New')}
         </Text>
         <Text style={styles.meta} numberOfLines={1}>
-          {item.skills?.[0] || 'Professional'}
-          {item.verified ? ' · Verified' : ''}
+          {item.skills?.[0] || t('Professional')}
+          {item.verified ? ` · ${t('Verified')}` : ''}
         </Text>
       </View>
       <TouchableOpacity style={styles.bookBtn} onPress={() => onBook?.(item)} activeOpacity={0.9}>
-        <Text style={styles.bookText}>Book Fundi</Text>
+        <Text style={styles.bookText}>{t('Book Fundi')}</Text>
       </TouchableOpacity>
     </View>
   );
