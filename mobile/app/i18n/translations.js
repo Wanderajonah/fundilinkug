@@ -653,6 +653,7 @@ export const translations = {
       'Ojja kufuna obubaka bwa MoMo STK okukakasa ku simu yo.',
     'Service (2hrs est.)': 'Emirimu (esaawa 2)',
     'Platform fee (10%)': 'Empewo y\'obumenyekamu (10%)',
+    'Platform fee ({{rate}}%)': 'Empewo y\'obumenyekamu ({{rate}}%)',
     'Proceed to Payment · UGX {{amount}}': 'Genda ku Payment · UGX {{amount}}',
     'Complete price negotiation to enable payment.':
       'Maliriza okunyweza ku bbe okusobozesa okusaasanya.',

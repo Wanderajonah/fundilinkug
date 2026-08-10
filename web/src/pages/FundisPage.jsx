@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RiDeleteBinLine, RiEyeLine, RiShieldCheckLine, RiCloseCircleLine, RiFileLine, RiImageLine } from 'react-icons/ri';
+import { RiAddLine, RiDeleteBinLine, RiEyeLine, RiShieldCheckLine, RiCloseCircleLine, RiFileLine, RiImageLine } from 'react-icons/ri';
 import Badge from '../components/Badge';
 import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
-import { deleteFundi, getFundis, rejectFundi, verifyFundi } from '../services/api';
+import { createUser, deleteFundi, getFundis, rejectFundi, verifyFundi } from '../services/api';
 import { formatDate, getInitials, readList, toastMessage } from '../utils/format';
 
 const API_BASE = 'https://fundilinkug.onrender.com';
@@ -16,6 +16,35 @@ const FundisPage = () => {
   const [status, setStatus] = useState('All');
   const [selected, setSelected] = useState(null);
   const [verdictLoading, setVerdictLoading] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [form, setForm] = useState({ name: '', email: '', phone: '' });
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+
+  const openAddModal = () => {
+    setFormError('');
+    setForm({ name: '', email: '', phone: '' });
+    setAddOpen(true);
+  };
+
+  const handleAddFundi = async () => {
+    if (!form.name.trim() || !form.email.trim() || !form.phone.trim()) {
+      setFormError('Name, email and phone are required.');
+      return;
+    }
+    setSubmitting(true);
+    setFormError('');
+    try {
+      await createUser({ ...form, role: 'fundi' });
+      toastMessage('Fundi created successfully.');
+      setAddOpen(false);
+      loadFundis();
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Unable to create fundi.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   const loadFundis = useCallback(async () => {
     setLoading(true);
@@ -181,7 +210,10 @@ const FundisPage = () => {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-white text-xl font-black">Fundis</h1>
-        <span className="bg-primary/20 text-primary text-xs font-bold px-3 py-1 rounded-pill">{filteredFundis.length} Fundis</span>
+        <div className="flex items-center gap-2">
+          <span className="bg-primary/20 text-primary text-xs font-bold px-3 py-1 rounded-pill">{filteredFundis.length} Fundis</span>
+          <button onClick={openAddModal} className="flex items-center gap-2 bg-primary text-primary-text rounded-input px-4 py-2 text-sm font-bold hover:bg-amber-400 transition-colors"><RiAddLine /> Add Fundi</button>
+        </div>
       </div>
       {error && <div className="bg-red-500/10 border border-danger text-danger text-sm rounded-input px-4 py-3 mb-6">{error}</div>}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
@@ -251,6 +283,31 @@ const FundisPage = () => {
             <VerdictSection fundi={selected} />
           </div>
         )}
+      </Modal>
+
+      <Modal isOpen={addOpen} onClose={() => setAddOpen(false)} title="Add Fundi">
+        <div className="space-y-4">
+          {formError && <div className="bg-red-500/10 border border-danger text-danger text-sm rounded-input px-4 py-3">{formError}</div>}
+          <div>
+            <label className="block text-muted text-xs font-bold uppercase tracking-wider mb-2">Name</label>
+            <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Full name" className="w-full bg-bg-raised border border-border rounded-input px-4 py-3 text-white text-sm outline-none focus:border-primary transition-colors duration-200 placeholder:text-muted" />
+          </div>
+          <div>
+            <label className="block text-muted text-xs font-bold uppercase tracking-wider mb-2">Email</label>
+            <input value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="name@email.com" type="email" className="w-full bg-bg-raised border border-border rounded-input px-4 py-3 text-white text-sm outline-none focus:border-primary transition-colors duration-200 placeholder:text-muted" />
+          </div>
+          <div>
+            <label className="block text-muted text-xs font-bold uppercase tracking-wider mb-2">Phone</label>
+            <input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="7XX XXX XXX" className="w-full bg-bg-raised border border-border rounded-input px-4 py-3 text-white text-sm outline-none focus:border-primary transition-colors duration-200 placeholder:text-muted" />
+          </div>
+          <button
+            onClick={handleAddFundi}
+            disabled={submitting}
+            className="w-full bg-primary text-primary-text rounded-input px-4 py-3 text-sm font-bold hover:bg-amber-400 transition-colors disabled:opacity-50"
+          >
+            {submitting ? 'Creating…' : 'Create Account'}
+          </button>
+        </div>
       </Modal>
     </div>
   );

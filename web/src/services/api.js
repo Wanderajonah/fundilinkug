@@ -35,6 +35,7 @@ export const deleteFundi = (id) => api.delete(`/admin/fundis/${id}`);
 
 export const getClients = (params) => api.get('/admin/users', { params });
 export const suspendClient = (id) => api.patch(`/admin/users/${id}/status`, { status: 'suspended' });
+export const createUser = (data) => api.post('/admin/users', data);
 
 export const getBookings = (params) => api.get('/admin/bookings', { params });
 export const updateBookingStatus = (id, status) => api.patch(`/admin/bookings/${id}/status`, { status });
@@ -48,5 +49,8 @@ export const deleteReview = (id) => api.delete(`/admin/reviews/${id}`);
 export const getNotifications = (params) => api.get('/admin/notifications', { params });
 export const markNotificationRead = (id) => api.patch(`/admin/notifications/${id}/read`);
 export const markAllNotificationsRead = () => api.patch('/admin/notifications/read-all');
+
+export const getSettings = () => api.get('/admin/settings');
+export const updateSettings = (data) => api.put('/admin/settings', data);
 
 export default api;

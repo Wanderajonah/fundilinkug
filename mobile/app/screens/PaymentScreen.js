@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenWrapper from '../components/ScreenWrapper';
@@ -7,13 +7,31 @@ import PhoneInput from '../components/PhoneInput';
 import theme from '../theme';
 import { formatUgx } from '../utils/ratings';
 import { canProceedToPayment } from '../utils/bookings';
+import { getPlatformPricing } from '../../services/api';
 import { useLanguage } from '../i18n/LanguageContext';
 
 export default function PaymentScreen({ booking = {}, onBack, onPay, loading = false }) {
   const { t } = useLanguage();
   const [method, setMethod] = useState('mtn');
   const [phone, setPhone] = useState('');
-  const total = booking.total || booking.amount || 17600;
+  const [clientFeeRate, setClientFeeRate] = useState(10);
+
+  useEffect(() => {
+    let mounted = true;
+    getPlatformPricing()
+      .then((res) => {
+        if (mounted && res.data?.clientFeeRate != null) setClientFeeRate(res.data.clientFeeRate);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const fallbackTotal = booking.total || booking.amount || 17600;
+  const serviceFee = booking.serviceFee || Math.round(fallbackTotal / (1 + clientFeeRate / 100));
+  const platformFee = Math.round(serviceFee * (clientFeeRate / 100));
+  const total = booking.total || booking.amount || serviceFee + platformFee;
   const canPay = canProceedToPayment(booking) || booking.paid;
 
   return (
@@ -81,11 +99,11 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
         <View style={styles.breakdown}>
           <View style={styles.row}>
             <Text style={styles.rowLabel}>{t('Service (2hrs est.)')}</Text>
-            <Text style={styles.rowVal}>{formatUgx(booking.serviceFee || 16000)}</Text>
+            <Text style={styles.rowVal}>{formatUgx(serviceFee)}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.rowLabel}>{t('Platform fee (10%)')}</Text>
-            <Text style={styles.rowVal}>{formatUgx(booking.platformFee || 1600)}</Text>
+            <Text style={styles.rowLabel}>{t('Platform fee ({{rate}}%)', { rate: clientFeeRate })}</Text>
+            <Text style={styles.rowVal}>{formatUgx(platformFee)}</Text>
           </View>
           <View style={[styles.row, styles.rowTotal]}>
             <Text style={styles.totalLabel}>{t('Total')}</Text>

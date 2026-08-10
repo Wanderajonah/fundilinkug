@@ -68,6 +68,25 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.get("/api/platform-settings", async (req, res, next) => {
+  try {
+    const PlatformSettings = require("./models/PlatformSettings");
+    let settings = await PlatformSettings.findOne();
+    if (!settings) {
+      settings = await PlatformSettings.create({});
+    }
+    res.json({
+      commissionRate: settings.commissionRate,
+      clientFeeRate: settings.clientFeeRate,
+      minJobAmount: settings.minJobAmount,
+      serviceRadius: settings.serviceRadius,
+      currency: "UGX",
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/fundis", fundiRoutes);

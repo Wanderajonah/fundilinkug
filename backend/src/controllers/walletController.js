@@ -186,6 +186,9 @@ const payBooking = async (req, res, next) => {
 
     const fundiWallet = await getOrCreateWallet(booking.fundiId);
 
+    const platformFee = await getPlatformFee(amount);
+    const fundiPayout = amount - platformFee;
+
     const reference = generateRef("PAY");
 
     const clientTransaction = await Transaction.create({
@@ -208,7 +211,7 @@ const payBooking = async (req, res, next) => {
       walletId: fundiWallet._id,
       userId: booking.fundiId,
       type: "payment_received",
-      amount,
+      amount: fundiPayout,
       currency: fundiWallet.currency,
       reference: generateRef("REC"),
       description: `Payment received for booking #${bookingId}`,
@@ -216,11 +219,29 @@ const payBooking = async (req, res, next) => {
       relatedBooking: bookingId,
       relatedUser: req.user._id,
       balanceBefore: fundiWallet.balance,
-      balanceAfter: fundiWallet.balance + amount,
+      balanceAfter: fundiWallet.balance + fundiPayout,
     });
 
+    if (platformFee > 0) {
+      await Transaction.create({
+        walletId: wallet._id,
+        userId: req.user._id,
+        type: "platform_fee",
+        amount: platformFee,
+        currency: wallet.currency,
+        reference: generateRef("FEE"),
+        description: `Platform fee for booking #${bookingId}`,
+        status: "completed",
+        relatedBooking: bookingId,
+        relatedUser: booking.fundiId,
+        balanceBefore: wallet.balance,
+        balanceAfter: wallet.balance - amount,
+        metadata: { fundiPayout, platformFee },
+      });
+    }
+
     wallet.balance -= amount;
-    fundiWallet.balance += amount;
+    fundiWallet.balance += fundiPayout;
 
     await Promise.all([wallet.save(), fundiWallet.save()]);
 
@@ -228,7 +249,7 @@ const payBooking = async (req, res, next) => {
       success: true,
       transaction: clientTransaction,
       balance: wallet.balance,
-      message: "Payment successful",
+      message: `Payment successful. UGX ${fundiPayout.toLocaleString()} sent to fundi, UGX ${platformFee.toLocaleString()} platform fee.`,
     });
   } catch (error) {
     return next(error);
@@ -325,6 +346,16 @@ const getPlatformFee = async (amount) => {
   }
 };
 
+const getClientFee = async (amount) => {
+  try {
+    const settings = await PlatformSettings.findOne();
+    const rate = settings?.clientFeeRate != null ? settings.clientFeeRate : 10;
+    return Math.round(amount * (rate / 100));
+  } catch {
+    return Math.round(amount * 0.1);
+  }
+};
+
 const holdPayment = async (req, res, next) => {
   try {
     const { bookingId } = req.body;
@@ -353,18 +384,20 @@ const holdPayment = async (req, res, next) => {
     if (booking.paymentStatus !== "unpaid") {
       return res.status(400).json({ success: false, message: `Payment already ${booking.paymentStatus}` });
     }
-
     const amount = booking.agreedPrice;
+    const clientFee = await getClientFee(amount);
+    const escrowTotal = amount + clientFee;
 
     const wallet = await getOrCreateWallet(req.user._id);
+
     if (wallet.status === "frozen") {
       return res.status(403).json({ success: false, message: "Wallet is frozen" });
     }
 
-    if (wallet.balance < amount) {
+    if (wallet.balance < escrowTotal) {
       return res.status(400).json({
         success: false,
-        message: `Insufficient balance. Need UGX ${amount.toLocaleString()}. Please deposit first.`,
+        message: `Insufficient balance. Need UGX ${escrowTotal.toLocaleString()}. Please deposit first.`,
       });
     }
 
@@ -374,7 +407,7 @@ const holdPayment = async (req, res, next) => {
       walletId: wallet._id,
       userId: req.user._id,
       type: "escrow_hold",
-      amount,
+      amount: escrowTotal,
       currency: wallet.currency,
       reference,
       description: `Escrow hold for booking #${bookingId}`,
@@ -382,16 +415,18 @@ const holdPayment = async (req, res, next) => {
       relatedBooking: bookingId,
       relatedUser: booking.fundiId,
       balanceBefore: wallet.balance,
-      balanceAfter: wallet.balance - amount,
-      metadata: { heldBalanceBefore: wallet.heldBalance, heldBalanceAfter: wallet.heldBalance + amount },
+      balanceAfter: wallet.balance - escrowTotal,
+      metadata: { heldBalanceBefore: wallet.heldBalance, heldBalanceAfter: wallet.heldBalance + escrowTotal, clientFee },
     });
 
-    wallet.balance -= amount;
-    wallet.heldBalance += amount;
+    wallet.balance -= escrowTotal;
+    wallet.heldBalance += escrowTotal;
     await wallet.save();
 
     booking.paymentStatus = "held";
     booking.escrowHeldAt = new Date();
+    booking.escrowAmount = escrowTotal;
+    booking.clientFee = clientFee;
     await booking.save();
 
     return res.json({
@@ -399,7 +434,7 @@ const holdPayment = async (req, res, next) => {
       transaction,
       balance: wallet.balance,
       heldBalance: wallet.heldBalance,
-      message: "Payment held in escrow",
+      message: `Payment held in escrow. UGX ${escrowTotal.toLocaleString()} held (incl. UGX ${clientFee.toLocaleString()} platform fee).`,
     });
   } catch (error) {
     return next(error);
@@ -424,14 +459,17 @@ const releasePayment = async (req, res, next) => {
     }
 
     const amount = booking.agreedPrice;
+    const escrowTotal = booking.escrowAmount || amount;
+    const clientFee = booking.clientFee ?? 0;
 
     const platformFee = await getPlatformFee(amount);
     const fundiPayout = amount - platformFee;
+    const platformRevenue = clientFee + platformFee;
 
     const clientWallet = await getOrCreateWallet(booking.clientId);
     const fundiWallet = await getOrCreateWallet(booking.fundiId);
 
-    if (clientWallet.heldBalance < amount) {
+    if (clientWallet.heldBalance < escrowTotal) {
       return res.status(400).json({ success: false, message: "Insufficient held balance" });
     }
 
@@ -441,7 +479,7 @@ const releasePayment = async (req, res, next) => {
       walletId: clientWallet._id,
       userId: booking.clientId,
       type: "escrow_release",
-      amount,
+      amount: escrowTotal,
       currency: clientWallet.currency,
       reference: releaseRef,
       description: `Escrow released for booking #${bookingId}`,
@@ -452,9 +490,11 @@ const releasePayment = async (req, res, next) => {
       balanceAfter: clientWallet.balance,
       metadata: {
         heldBalanceBefore: clientWallet.heldBalance,
-        heldBalanceAfter: clientWallet.heldBalance - amount,
+        heldBalanceAfter: clientWallet.heldBalance - escrowTotal,
         fundiPayout,
         platformFee,
+        clientFee,
+        platformRevenue,
       },
     });
 
@@ -477,13 +517,13 @@ const releasePayment = async (req, res, next) => {
     });
 
     // Platform fee transaction
-    if (platformFee > 0) {
+    if (platformRevenue > 0) {
       const feeRef = generateRef("FEE");
       await Transaction.create({
         walletId: clientWallet._id,
         userId: booking.clientId,
         type: "platform_fee",
-        amount: platformFee,
+        amount: platformRevenue,
         currency: clientWallet.currency,
         reference: feeRef,
         description: `Platform fee for booking #${bookingId}`,
@@ -493,12 +533,14 @@ const releasePayment = async (req, res, next) => {
         balanceAfter: clientWallet.balance,
         metadata: {
           heldBalanceBefore: clientWallet.heldBalance,
-          heldBalanceAfter: clientWallet.heldBalance - amount,
+          heldBalanceAfter: clientWallet.heldBalance - escrowTotal,
+          clientFee,
+          commission: platformFee,
         },
       });
     }
 
-    clientWallet.heldBalance -= amount;
+    clientWallet.heldBalance -= escrowTotal;
     fundiWallet.balance += fundiPayout;
 
     await Promise.all([clientWallet.save(), fundiWallet.save()]);
@@ -509,7 +551,7 @@ const releasePayment = async (req, res, next) => {
 
     return res.json({
       success: true,
-      message: `Payment released to fundi. UGX ${fundiPayout.toLocaleString()} sent, UGX ${platformFee.toLocaleString()} platform fee.`,
+      message: `Payment released to fundi. UGX ${fundiPayout.toLocaleString()} sent, UGX ${platformRevenue.toLocaleString()} platform fee.`,
     });
   } catch (error) {
     return next(error);

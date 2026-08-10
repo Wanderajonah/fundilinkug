@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Area, AreaChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { RiCalendarLine, RiGroupLine, RiMoneyDollarCircleLine, RiUserStarLine } from 'react-icons/ri';
@@ -7,6 +7,16 @@ import Badge from '../components/Badge';
 import { getAnalytics, getFundis, getStats } from '../services/api';
 import { formatDate, formatUGX, getInitials } from '../utils/format';
 
+const categoryColors = {
+  electrical: '#FACC15',
+  plumbing: '#3B82F6',
+  mechanics: '#6B7280',
+  mechanical: '#6B7280',
+  welding: '#F97316',
+  painting: '#A855F7',
+  carpentry: '#92400E',
+  cleaning: '#06B6D4',
+};
 const pieColors = ['#F5A623', '#3B82F6', '#22C55E', '#E11D48', '#8B5CF6'];
 
 const DashboardPage = () => {
@@ -16,26 +26,26 @@ const DashboardPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        const [statsRes, analyticsRes, fundisRes] = await Promise.all([
-          getStats(),
-          getAnalytics(),
-          getFundis({ status: 'pending', limit: 5 }),
-        ]);
-        setStatsData(statsRes.data);
-        setAnalytics(analyticsRes.data);
-        setPendingFundis(fundisRes.data.fundis || []);
-      } catch (err) {
-        setError(err.response?.data?.message || 'Unable to load dashboard data.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadData();
+  const loadData = useCallback(async () => {
+    try {
+      const [statsRes, analyticsRes, fundisRes] = await Promise.all([
+        getStats(),
+        getAnalytics(),
+        getFundis({ status: 'pending', limit: 5 }),
+      ]);
+      setStatsData(statsRes.data);
+      setAnalytics(analyticsRes.data);
+      setPendingFundis(fundisRes.data.fundis || []);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Unable to load dashboard data.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
   const bookingsChart = (analytics?.weeklyData || []).map((d) => ({ month: d.name, bookings: d.jobs }));
   const servicesChart = (analytics?.serviceDistribution || []).map((d) => ({ name: d.name, value: d.count }));
   const recentBookings = statsData?.recentBookings || [];
@@ -98,7 +108,7 @@ const DashboardPage = () => {
               <PieChart>
                 <Pie data={servicesChart} dataKey="value" nameKey="name" innerRadius={55} outerRadius={90} paddingAngle={3}>
                   {servicesChart.map((entry, index) => (
-                    <Cell key={entry.name || index} fill={pieColors[index % pieColors.length]} />
+                    <Cell key={entry.name || index} fill={categoryColors[entry.name] || pieColors[index % pieColors.length]} />
                   ))}
                 </Pie>
                 <Tooltip contentStyle={{ backgroundColor: '#1A1A1A', border: '1px solid #2C2C2C', borderRadius: '8px', color: '#fff' }} />
@@ -108,7 +118,7 @@ const DashboardPage = () => {
           <div className="grid grid-cols-2 gap-2 mt-2">
             {servicesChart.map((item, index) => (
               <div key={item.name || index} className="flex items-center gap-2 text-muted text-xs">
-                <span className="w-2 h-2 rounded-full bg-primary" />
+                <span className="w-2 h-2 rounded-full" style={{ backgroundColor: categoryColors[item.name] || pieColors[index % pieColors.length] }} />
                 <span className="truncate">{item.name}</span>
               </div>
             ))}

@@ -33,5 +33,7 @@ export const setAuthToken = (token) => {
   api.defaults.headers.common.Authorization = token ? `Bearer ${token}` : "";
 };
 
+export const getPlatformPricing = () => api.get("/platform-settings");
+
 export default api;
 export { BASE_URL };

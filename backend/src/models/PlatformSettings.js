@@ -6,6 +6,7 @@ const platformSettingsSchema = new mongoose.Schema(
     adminEmail: { type: String, default: "admin@fundilink.com" },
     adminRole: { type: String, default: "Super Admin" },
     commissionRate: { type: Number, default: 12.5 },
+    clientFeeRate: { type: Number, default: 10 },
     minJobAmount: { type: Number, default: 500 },
     serviceRadius: { type: Number, default: 25 },
     autoApprovalFundis: { type: String, default: "10 successful jobs" },

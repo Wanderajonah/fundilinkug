@@ -65,7 +65,9 @@ const bookingSchema = new mongoose.Schema(
       default: "unpaid"
     },
     escrowHeldAt: { type: Date, default: null },
-    escrowReleasedAt: { type: Date, default: null }
+    escrowReleasedAt: { type: Date, default: null },
+    escrowAmount: { type: Number, default: null },
+    clientFee: { type: Number, default: 0 }
   },
   { timestamps: true }
 );
