@@ -40,6 +40,9 @@ export const createUser = (data) => api.post('/admin/users', data);
 export const getBookings = (params) => api.get('/admin/bookings', { params });
 export const updateBookingStatus = (id, status) => api.patch(`/admin/bookings/${id}/status`, { status });
 
+export const getDisputes = (params) => api.get('/admin/disputes', { params });
+export const resolveDispute = (id, resolution) => api.patch(`/admin/disputes/${id}/resolve`, { resolution });
+
 export const getPayments = (params) => api.get('/admin/payments', { params });
 export const releaseEscrow = (id) => api.patch(`/admin/payments/${id}/release`);
 

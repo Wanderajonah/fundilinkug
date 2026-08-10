@@ -2,13 +2,17 @@ import { useCallback, useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   RiBankCardLine,
+  RiBarChartBoxLine,
+  RiBriefcaseLine,
   RiCalendarCheckLine,
   RiDashboardLine,
   RiGroupLine,
   RiLogoutBoxRLine,
   RiMenuLine,
   RiNotification3Line,
+  RiScalesLine,
   RiSettings4Line,
+  RiShieldCheckLine,
   RiShieldStarLine,
   RiStarLine,
   RiUserStarLine,
@@ -18,9 +22,13 @@ import { getInitials } from '../utils/format';
 
 const navItems = [
   { icon: RiDashboardLine, label: 'Dashboard', to: '/dashboard' },
+  { icon: RiBarChartBoxLine, label: 'Analytics', to: '/analytics' },
   { icon: RiUserStarLine, label: 'Fundis', to: '/fundis' },
+  { icon: RiShieldCheckLine, label: 'Verification', to: '/verification' },
   { icon: RiGroupLine, label: 'Clients', to: '/clients' },
   { icon: RiCalendarCheckLine, label: 'Bookings', to: '/bookings' },
+  { icon: RiBriefcaseLine, label: 'Jobs', to: '/jobs' },
+  { icon: RiScalesLine, label: 'Disputes', to: '/disputes' },
   { icon: RiBankCardLine, label: 'Payments', to: '/payments' },
   { icon: RiStarLine, label: 'Reviews', to: '/reviews' },
   { icon: RiNotification3Line, label: 'Notifications', to: '/notifications' },

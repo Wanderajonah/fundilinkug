@@ -18,8 +18,11 @@ const CATEGORIES = [
 ];
 
 const FIRST_NAMES = ["James", "Mary", "John", "Sarah", "Peter", "Esther", "David", "Grace", "Samuel", "Ruth",
-  "Joseph", "Deborah", "Daniel", "Martha", "Isaac", "Rebecca", "Simon", "Agnes", "Paul", "Naomi"];
-const LAST_NAMES = ["Mukasa", "Nakato", "Ssali", "Nambi", "Kintu", "Nakibuule", "Wasswa", "Nalule", "Kato", "Nansubuga"];
+  "Joseph", "Deborah", "Daniel", "Martha", "Isaac", "Rebecca", "Simon", "Agnes", "Paul", "Naomi",
+  "Brian", "Joy", "Kevin", "Faith", "Musa", "Alice", "Ivan", "Sophia", "Patrick", "Doreen",
+  "Alex", "Maria", "Robert", "Cynthia", "Tony", "Gladys", "Edward", "Lydia", "Frank", "Priscilla"];
+const LAST_NAMES = ["Mukasa", "Nakato", "Ssali", "Nambi", "Kintu", "Nakibuule", "Wasswa", "Nalule", "Kato", "Nansubuga",
+  "Ochieng", "Akello", "Okello", "Namuddu", "Byaruhanga", "Achieng", "Ssemanda", "Nanyonjo", "Opio", "Ndagire"];
 
 const FUNDI_SKILLS = {
   plumbing: ["plumbing", "pipe fitting", "water heater installation"],
@@ -32,6 +35,37 @@ const FUNDI_SKILLS = {
   welding: ["welding", "metal fabrication", "gate installation"],
   gardening: ["gardening", "landscaping", "lawn mowing"],
   tiling: ["tiling", "floor installation", "wall tiling"],
+};
+
+const DISTRICTS = ["Kampala", "Wakiso", "Entebbe", "Mukono", "Jinja"];
+const STREETS = ["Main St", "Market Rd", "Hill Ave", "Lake Dr", "Park Ln"];
+
+const REVIEW_COMMENTS = [
+  "Excellent work!",
+  "Very professional",
+  "Great job",
+  "Good service",
+  "Would recommend",
+  "On time and quality work",
+  "Fair price, good quality",
+  "Satisfied with the service",
+  "Neat and tidy workmanship",
+  "Arrived early and finished fast",
+  "Very skilled and friendly",
+  "Clean work, great results",
+];
+
+const BOOKING_DESCRIPTIONS = {
+  plumbing: ["Fix leaking kitchen sink", "Replace bathroom tap", "Unblock toilet drain", "Install water heater", "Repair burst water pipe"],
+  electrical: ["Install ceiling lights", "Fix electrical short circuit", "Rewire living room sockets", "Install security floodlight", "Replace faulty circuit breaker"],
+  carpentry: ["Build custom wardrobe", "Repair wooden door", "Install kitchen cabinets", "Fix broken chair", "Build wooden bookshelf"],
+  masonry: ["Repair cracked wall", "Build boundary wall", "Plaster bedroom wall", "Repair floor grout", "Construct concrete slab"],
+  painting: ["Paint living room walls", "Repaint bedroom interior", "Waterproof exterior wall", "Paint office space", "Decorative wall finishing"],
+  cleaning: ["Deep clean office premises", "Home sanitization", "Post-renovation clean-up", "Carpet and sofa shampoo", "Window and floor cleaning"],
+  mechanical: ["Car engine service", "Fix car brake system", "Auto electrical repair", "Vehicle suspension check", "Engine oil change"],
+  welding: ["Weld metal gate", "Fabricate steel window grilles", "Repair broken metal railing", "Build metal shelf", "Weld water tank stand"],
+  gardening: ["Mow lawn and trim hedges", "Landscape backyard garden", "Plant flower beds", "Tree pruning", "Garden cleanup and weeding"],
+  tiling: ["Install floor tiles", "Tile bathroom walls", "Fix loose tiles", "Grout kitchen tiles", "Waterproof bathroom tiling"],
 };
 
 function randomInt(min, max) {
@@ -52,14 +86,32 @@ function daysAgo(days) {
   return d;
 }
 
+// Bias user signups toward recent months so the analytics growth chart trends upward.
+function weightedDaysAgo() {
+  const roll = Math.random();
+  if (roll < 0.45) return randomInt(1, 40);
+  if (roll < 0.75) return randomInt(41, 100);
+  if (roll < 0.92) return randomInt(101, 150);
+  return randomInt(151, 180);
+}
+
+// Weighted random pick for status distributions.
+function weightedStatus(values, weights) {
+  const roll = Math.random();
+  let cum = 0;
+  for (let j = 0; j < weights.length; j++) {
+    cum += weights[j];
+    if (roll <= cum) return values[j];
+  }
+  return values[values.length - 1];
+}
+
 const seed = async () => {
   if (mongoose.connection.readyState !== 1) {
     await connectDB();
   }
-  const now = new Date();
-  const sixMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 5, 1);
 
-  // Clear existing data
+  // Clear existing data (keep admin users)
   await Promise.all([
     User.deleteMany({ role: { $ne: "admin" } }),
     FundiProfile.deleteMany({}),
@@ -72,177 +124,160 @@ const seed = async () => {
   ]);
 
   const password = await bcrypt.hash("password123", 10);
+  const ObjectId = mongoose.Types.ObjectId;
 
-  // === CREATE CUSTOMERS (20 spread over 6 months) ===
-  const customerIds = [];
-  for (let i = 0; i < 20; i++) {
-    const name = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
-    const user = await User.create({
-      name,
+  // === CUSTOMERS (50) ===
+  const customers = [];
+  for (let i = 0; i < 50; i++) {
+    customers.push({
+      _id: new ObjectId(),
+      name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
       email: `customer${i}@example.com`,
       phone: `256700${100010 + i}`,
       password,
       role: "customer",
       phoneVerified: true,
-      district: pick(["Kampala", "Wakiso", "Entebbe", "Mukono", "Jinja"]),
-      createdAt: daysAgo(randomInt(1, 180)),
+      district: pick(DISTRICTS),
+      createdAt: daysAgo(weightedDaysAgo()),
     });
-    customerIds.push(user._id);
   }
+  await User.insertMany(customers);
+  const customerIds = customers.map((c) => c._id);
 
-  // === CREATE FUNDIS (15 spread over 6 months) ===
-  const fundiData = [];
-  for (let i = 0; i < 15; i++) {
-    const cat = pick(CATEGORIES);
-    const name = `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`;
-    const monthsAgo = randomInt(1, 180);
+  // === FUNDIS (40) ===
+  const fundis = [];
+  for (let i = 0; i < 40; i++) {
+    const category = pick(CATEGORIES);
+    const createdAt = daysAgo(weightedDaysAgo());
     const statusRoll = Math.random();
-    const vStatus = statusRoll < 0.6 ? "verified" : statusRoll < 0.85 ? "pending" : "rejected";
-    const user = await User.create({
-      name,
+    const verificationStatus = statusRoll < 0.6 ? "verified" : statusRoll < 0.85 ? "pending" : "rejected";
+    fundis.push({
+      _id: new ObjectId(),
+      name: `${pick(FIRST_NAMES)} ${pick(LAST_NAMES)}`,
       email: `fundi${i}@fundi.com`,
       phone: `256700${200010 + i}`,
       password,
       role: "fundi",
       phoneVerified: true,
-      district: pick(["Kampala", "Wakiso", "Entebbe", "Mukono", "Jinja"]),
-      createdAt: daysAgo(monthsAgo),
+      district: pick(DISTRICTS),
+      createdAt,
+      _meta: { category, verificationStatus, createdAt },
     });
-    fundiData.push({ id: user._id, category: cat, createdAt: daysAgo(monthsAgo), status: vStatus });
   }
+  await User.insertMany(fundis);
 
-  for (const f of fundiData) {
-    await FundiProfile.create({
-      userId: f.id,
-      skills: FUNDI_SKILLS[f.category] || [f.category],
-      experience: randomInt(1, 15),
-      rating: Number((3.5 + Math.random() * 1.5).toFixed(1)),
-      verified: f.status === "verified",
-      verificationStatus: f.status,
-      requestedAt: f.createdAt,
-      reviewedAt: f.status !== "pending" ? daysAgo(randomInt(0, 5)) : null,
-      isAvailable: true,
-    });
+  // === FUNDI PROFILES ===
+  const profiles = fundis.map((f) => ({
+    userId: f._id,
+    skills: FUNDI_SKILLS[f._meta.category] || [f._meta.category],
+    experience: randomInt(1, 15),
+    rating: Number((3.5 + Math.random() * 1.5).toFixed(1)),
+    verified: f._meta.verificationStatus === "verified",
+    verificationStatus: f._meta.verificationStatus,
+    requestedAt: f._meta.createdAt,
+    reviewedAt: f._meta.verificationStatus !== "pending" ? daysAgo(randomInt(0, 5)) : null,
+    isAvailable: true,
+  }));
+  await FundiProfile.insertMany(profiles);
 
-    await Wallet.create({
-      userId: f.id,
+  // === WALLETS ===
+  const wallets = [
+    ...fundis.map((f) => ({
+      userId: f._id,
       balance: randomInt(10000, 200000),
       heldBalance: randomInt(0, 50000),
       currency: "UGX",
-    });
-  }
-
-  for (const c of customerIds) {
-    await Wallet.create({
-      userId: c,
+    })),
+    ...customers.map((c) => ({
+      userId: c._id,
       balance: randomInt(50000, 500000),
       heldBalance: 0,
       currency: "UGX",
-    });
-  }
+    })),
+  ];
+  await Wallet.insertMany(wallets);
 
-  // === CREATE JOBS (100 spread over 6 months) ===
-  const jobIds = [];
-  for (let i = 0; i < 100; i++) {
-    const jobDate = daysAgo(randomInt(1, 180));
-    const jobStatuses = ["open", "quoted", "accepted", "in_progress", "completed", "cancelled"];
-    const weights = [0.1, 0.1, 0.1, 0.1, 0.4, 0.2];
-    const roll = Math.random();
-    let cum = 0;
-    let jobStatus = "open";
-    for (let j = 0; j < weights.length; j++) {
-      cum += weights[j];
-      if (roll <= cum) { jobStatus = jobStatuses[j]; break; }
-    }
-    const cat = pick(CATEGORIES);
-    const job = await Job.create({
-      customerId: pick(customerIds),
-      fundiId: jobStatus !== "open" ? pick(fundiData).id : undefined,
-      description: `${cat} service at ${pick(["home", "office", "shop", "school"])}`,
-      category: cat,
+  // === JOBS (130) ===
+  const jobStatuses = ["open", "quoted", "accepted", "in_progress", "completed", "cancelled"];
+  const jobWeights = [0.1, 0.1, 0.1, 0.1, 0.45, 0.15];
+  const jobs = [];
+  for (let i = 0; i < 130; i++) {
+    const category = pick(CATEGORIES);
+    const customerId = pick(customerIds);
+    const status = weightedStatus(jobStatuses, jobWeights);
+    jobs.push({
+      _id: new ObjectId(),
+      customerId,
+      fundiId: status !== "open" ? pick(fundis)._id : undefined,
+      description: pick(BOOKING_DESCRIPTIONS[category] || [category]),
+      category,
       location: { lat: -1.28 + Math.random() * 0.04, lng: 36.81 + Math.random() * 0.04 },
       quoteAmount: randomInt(30000, 200000),
-      status: jobStatus,
-      address: `${randomInt(1, 100)} ${pick(["Main St", "Market Rd", "Hill Ave", "Lake Dr", "Park Ln"])}`,
+      status,
+      address: `${randomInt(1, 100)} ${pick(STREETS)}`,
       amount: randomInt(30000, 200000),
-      createdAt: jobDate,
+      createdAt: daysAgo(randomInt(1, 180)),
     });
-    jobIds.push(job._id);
   }
+  await Job.insertMany(jobs);
 
-  // === CREATE BOOKINGS (60 spread over 7 days for weekly trend) ===
+  // === BOOKINGS (50 in the last 7 days for weekly trend) ===
   const bookingStatuses = ["PENDING", "ACCEPTED", "ON_THE_WAY", "ARRIVED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "DISPUTED"];
   const bookingWeights = [0.05, 0.05, 0.05, 0.05, 0.1, 0.5, 0.1, 0.1];
-  for (let i = 0; i < 60; i++) {
+  const paymentStatusMap = {
+    COMPLETED: "released",
+    DISPUTED: "held",
+    CANCELLED: "refunded",
+  };
+  const bookings = [];
+  for (let i = 0; i < 50; i++) {
     const daysBack = randomInt(0, 6);
     const bDate = daysAgo(daysBack);
     bDate.setHours(randomInt(6, 22), randomInt(0, 59));
 
-    const roll = Math.random();
-    let cum = 0;
-    let bStatus = "PENDING";
-    for (let j = 0; j < bookingWeights.length; j++) {
-      cum += bookingWeights[j];
-      if (roll <= cum) { bStatus = bookingStatuses[j]; break; }
-    }
-
-    const cat = pick(CATEGORIES);
-    const fundi = pick(fundiData);
-    const customer = pick(customerIds);
+    const status = weightedStatus(bookingStatuses, bookingWeights);
+    const category = pick(CATEGORIES);
+    const fundi = pick(fundis);
     const price = randomInt(30000, 250000);
+    const payStatus = paymentStatusMap[status] || (Math.random() > 0.5 ? "held" : "unpaid");
 
-    const paymentStatusMap = {
-      COMPLETED: "released",
-      DISPUTED: "held",
-      CANCELLED: "refunded",
-    };
-    const payStatus = paymentStatusMap[bStatus] || (Math.random() > 0.5 ? "held" : "unpaid");
-
-    await Booking.create({
-      clientId: customer,
-      fundiId: fundi.id,
-      category: cat,
-      description: `${cat} service booking`,
-      address: `${randomInt(1, 100)} ${pick(["Main St", "Market Rd", "Hill Ave"])}`,
+    bookings.push({
+      _id: new ObjectId(),
+      clientId: pick(customerIds),
+      fundiId: fundi._id,
+      category,
+      description: pick(BOOKING_DESCRIPTIONS[category] || [category]),
+      address: `${randomInt(1, 100)} ${pick(STREETS)}`,
       location: { lat: -1.28 + Math.random() * 0.04, lng: 36.81 + Math.random() * 0.04 },
-      status: bStatus,
+      status,
       proposedPrice: price,
-      agreedPrice: bStatus !== "PENDING" && bStatus !== "CANCELLED" ? price : null,
-      priceAgreed: bStatus !== "PENDING",
+      agreedPrice: status !== "PENDING" && status !== "CANCELLED" ? price : null,
+      priceAgreed: status !== "PENDING",
       paymentStatus: payStatus,
       escrowHeldAt: payStatus === "held" || payStatus === "released" ? bDate : null,
       escrowReleasedAt: payStatus === "released" ? new Date(bDate.getTime() + 3600000) : null,
       createdAt: bDate,
     });
   }
+  await Booking.insertMany(bookings);
 
-  // === CREATE TRANSACTIONS (80 spread over last 7 days) ===
+  // === TRANSACTIONS (100 in the last 7 days) ===
   const txTypes = ["escrow_hold", "escrow_release", "escrow_refund", "platform_fee", "payment_received", "deposit", "withdrawal"];
   const txWeights = [0.2, 0.2, 0.05, 0.2, 0.15, 0.1, 0.1];
-  for (let i = 0; i < 80; i++) {
-    const daysBack = randomInt(0, 6);
-    const txDate = daysAgo(daysBack);
-
-    const roll = Math.random();
-    let cum = 0;
-    let txType = "deposit";
-    for (let j = 0; j < txWeights.length; j++) {
-      cum += txWeights[j];
-      if (roll <= cum) { txType = txTypes[j]; break; }
-    }
-
-    const fundi = pick(fundiData);
-    const customer = pick(customerIds);
+  const transactions = [];
+  for (let i = 0; i < 100; i++) {
+    const txType = weightedStatus(txTypes, txWeights);
+    const fundi = pick(fundis);
     const isFundiTx = ["escrow_release", "platform_fee", "payment_received"].includes(txType);
-    const userId = isFundiTx ? fundi.id : customer;
-
+    const userId = isFundiTx ? fundi._id : pick(customerIds);
     const amount = txType === "platform_fee"
       ? randomInt(3000, 20000)
       : txType === "escrow_refund"
       ? randomInt(30000, 100000)
       : randomInt(30000, 250000);
 
-    await Transaction.create({
+    transactions.push({
+      _id: new ObjectId(),
       walletId: userId,
       userId,
       type: txType,
@@ -250,23 +285,23 @@ const seed = async () => {
       currency: "UGX",
       status: "completed",
       description: txType.replace(/_/g, " "),
-      createdAt: txDate,
+      createdAt: daysAgo(randomInt(0, 6)),
     });
   }
+  await Transaction.insertMany(transactions);
 
-  // === CREATE REVIEWS (30 spread over time) ===
-  for (let i = 0; i < 30; i++) {
-    const fundi = pick(fundiData);
-    if (fundi.status !== "verified") continue;
-    const customer = pick(customerIds);
-    await Review.create({
-      fundiId: fundi.id,
-      customerId: customer,
-      rating: randomInt(3, 5),
-      comment: pick(["Excellent work!", "Very professional", "Great job", "Good service", "Would recommend", "On time and quality work", "Fair price, good quality", "Satisfied with the service"]),
-      createdAt: daysAgo(randomInt(1, 90)),
-    });
-  }
+  // === REVIEWS (from completed jobs, up to 30) ===
+  const reviewJobs = jobs.filter((j) => j.status === "completed" && j.fundiId).slice(0, 30);
+  const reviews = reviewJobs.map((job) => ({
+    _id: new ObjectId(),
+    fundiId: job.fundiId,
+    customerId: job.customerId,
+    jobId: job._id,
+    rating: randomInt(3, 5),
+    comment: pick(REVIEW_COMMENTS),
+    createdAt: daysAgo(randomInt(1, 90)),
+  }));
+  await Review.insertMany(reviews);
 
   // === PLATFORM SETTINGS ===
   await PlatformSettings.findOneAndUpdate(
@@ -284,12 +319,12 @@ const seed = async () => {
   );
 
   console.log("Seed complete:");
-  console.log(`  - 20 customers`);
-  console.log(`  - 15 fundis`);
-  console.log(`  - 100 jobs`);
-  console.log(`  - 60 bookings`);
-  console.log(`  - 80 transactions`);
-  console.log(`  - 30 reviews`);
+  console.log(`  - 50 customers`);
+  console.log(`  - 40 fundis`);
+  console.log(`  - 130 jobs`);
+  console.log(`  - 50 bookings`);
+  console.log(`  - 100 transactions`);
+  console.log(`  - ${reviews.length} reviews`);
 };
 
 module.exports = seed;

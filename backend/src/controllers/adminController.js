@@ -89,7 +89,7 @@ const getStats = async (req, res, next) => {
       .limit(5)
       .populate("clientId", "name")
       .populate("fundiId", "name")
-      .select("description status createdAt");
+      .select("category description status agreedPrice proposedPrice createdAt");
 
     return res.json({
       totalUsers,
@@ -105,7 +105,17 @@ const getStats = async (req, res, next) => {
       pendingVerifications,
       verifiedFundis,
       recentUsers,
-      recentBookings,
+      recentBookings: recentBookings.map((b) => ({
+        id: b._id,
+        service: b.category ? b.category.charAt(0).toUpperCase() + b.category.slice(1) : b.description,
+        category: b.category,
+        description: b.description,
+        client: b.clientId,
+        fundi: b.fundiId,
+        amount: b.agreedPrice || b.proposedPrice || 0,
+        status: b.status,
+        createdAt: b.createdAt,
+      })),
     });
   } catch (error) {
     return next(error);
