@@ -5,13 +5,6 @@ const config = getDefaultConfig(__dirname);
 const originalResolveRequest = config.resolver.resolveRequest;
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (platform === "web" && (moduleName === "react-native-maps" || moduleName.startsWith("react-native-maps/"))) {
-    return {
-      filePath: path.resolve(__dirname, "metro-stubs/react-native-maps.js"),
-      type: "sourceFile"
-    };
-  }
-
   if (
     moduleName === "../Utilities/Platform" &&
     context.originModulePath &&

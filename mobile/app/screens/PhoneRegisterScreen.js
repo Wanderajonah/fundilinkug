@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import ScrollScreen from '../components/ScrollScreen';
 import AuthHeader from '../components/AuthHeader';
 import PrimaryButton from '../components/PrimaryButton';

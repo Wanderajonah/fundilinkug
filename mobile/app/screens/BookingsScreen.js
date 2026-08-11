@@ -1,24 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   FlatList,
-  Alert,
-  ActivityIndicator,
   RefreshControl,
 } from 'react-native';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
-import StarRating from '../components/StarRating';
-import PrimaryButton from '../components/PrimaryButton';
 import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
-import { getJobsForUser, updateJobStatus, getErrorMessage } from '../../services/jobsApi';
 import { useBookingOptional } from '../../context/BookingContext';
-import { partitionJobs } from '../utils/jobs';
-import { formatUgx, formatBookingDate, ratingLabel, initials } from '../utils/ratings';
+import { formatUgx, formatBookingDate, initials } from '../utils/ratings';
 import { useLanguage } from '../i18n/LanguageContext';
 
 function FundiBookingsView({ bookings, tab, setTab, onNavigate, loading, onRefresh, refreshing }) {
@@ -108,161 +102,38 @@ function FundiBookingsView({ bookings, tab, setTab, onNavigate, loading, onRefre
   );
 }
 
-function FundiJobsView({ jobs, completed, cancelled, tab, setTab, onNavigate, loading, onRefresh, refreshing }) {
-  const { t } = useLanguage();
-  const list =
-    tab === 'active' ? jobs : tab === 'completed' ? completed : tab === 'cancelled' ? cancelled : [];
-
-  return (
-    <>
-      <View style={styles.tabRow}>
-        {[
-          { key: 'active', label: t('Active ({{count}})', { count: jobs.length }) },
-          { key: 'completed', label: t('Completed ({{count}})', { count: completed.length }) },
-          { key: 'cancelled', label: t('Cancelled ({{count}})', { count: cancelled.length }) },
-        ].map((t) => (
-          <TouchableOpacity
-            key={t.key}
-            style={[styles.topTab, tab === t.key && styles.topTabActive]}
-            onPress={() => setTab(t.key)}
-          >
-            <Text style={[styles.topTabText, tab === t.key && styles.topTabTextActive]}>{t.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {loading ? (
-        <LoadingSkeleton count={3} />
-      ) : (
-        <FlatList
-          data={list}
-          keyExtractor={(item) => String(item.id)}
-          contentContainerStyle={{ paddingBottom: 16, flexGrow: 1 }}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.accent} />
-          }
-          ListEmptyComponent={
-            <EmptyState
-              icon="briefcase-outline"
-              title={
-                tab === 'cancelled'
-                  ? t('No cancelled jobs')
-                  : tab === 'completed'
-                    ? t('No completed jobs yet')
-                    : t('No jobs available yet')
-              }
-              message={
-                tab === 'active'
-                  ? t('Jobs posted by clients will appear here.')
-                  : tab === 'completed'
-                    ? t('Complete your first job to see it here.')
-                    : t('Cancelled jobs will appear here.')
-              }
-            />
-          }
-          renderItem={({ item }) => (
-            <View style={styles.card}>
-              <View style={styles.cardRow}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{initials(item.customerName)}</Text>
-                </View>
-                <View style={{ flex: 1, marginLeft: 12 }}>
-                  <Text style={styles.name}>{item.customerName}</Text>
-                  <Text style={styles.service}>{item.service}</Text>
-                  <Text style={styles.meta}>{item.address || item.time}</Text>
-                </View>
-                <View style={[styles.statusPill, styles[`status_${item.status}`]]}>
-                  <Text style={styles.statusText}>{t(item.statusLabel)}</Text>
-                </View>
-              </View>
-              <Text style={styles.amount}>{formatUgx(item.amount)}</Text>
-              <View style={styles.actionsRow}>
-                <PrimaryButton
-                  style={styles.fundiAction}
-                  onPress={async () => {
-                    try {
-                      if (item.status === 'in_progress') {
-                        await updateJobStatus(item.id, 'completed');
-                        Alert.alert(t('Job complete'), t('Customer will be asked to confirm.'));
-                        onRefresh?.();
-                      } else if (item.status === 'accepted') {
-                        await updateJobStatus(item.id, 'in_progress');
-                        Alert.alert(t('Job started'), t('Navigate to customer location.'));
-                        onRefresh?.();
-                      } else {
-                        onNavigate?.('chat');
-                      }
-                    } catch (e) {
-                      Alert.alert(t('Error'), getErrorMessage(e));
-                    }
-                  }}
-                >
-                  {t(item.action)}
-                </PrimaryButton>
-                <TouchableOpacity style={styles.secondaryBtn} onPress={() => onNavigate?.('chat', { targetUserId: item.clientId })}>
-                  <Text style={styles.secondaryText}>{t('Message')}</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        />
-      )}
-    </>
-  );
-}
-
 export default function BookingsScreen({
   userRole = 'customer',
-  userId,
   onNavigate,
-  reviewHistory = [],
-  onStartRatingFlow,
   onViewHistory,
 }) {
   const [activeTab, setActiveTab] = useState('active');
   const [fundiTab, setFundiTab] = useState('active');
-  const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
   const { t } = useLanguage();
 
   const bookingCtx = useBookingOptional();
 
-  const loadJobs = useCallback(async () => {
-    if (!userId) {
-      setJobs([]);
-      setLoading(false);
-      return;
-    }
-    try {
-      const { data } = await getJobsForUser(userId);
-      setJobs(Array.isArray(data) ? data : []);
-      setError('');
-    } catch (e) {
-      setJobs([]);
-      setError(getErrorMessage(e));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [userId]);
-
   useEffect(() => {
-    loadJobs();
     bookingCtx?.refreshBookings?.();
-  }, [loadJobs, bookingCtx?.refreshBookings]);
+  }, [bookingCtx?.refreshBookings]);
 
-  const partitioned = useMemo(() => partitionJobs(jobs, userRole), [jobs, userRole]);
   const fundiBookings = bookingCtx?.bookings || [];
+
+  const clientBookings = bookingCtx?.bookings || [];
+  const activeBookings = clientBookings.filter((b) =>
+    ['PENDING', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status)
+  );
+  const completedBookings = clientBookings.filter((b) => b.status === 'COMPLETED');
+  const cancelledBookings = clientBookings.filter((b) => b.status === 'CANCELLED');
 
   const customerTabs = useMemo(
     () => [
-      { key: 'active', label: t('Active ({{count}})', { count: partitioned.active.length }) },
-      { key: 'completed', label: t('Completed ({{count}})', { count: reviewHistory.length }) },
-      { key: 'cancelled', label: t('Cancelled ({{count}})', { count: partitioned.cancelled.length }) },
+      { key: 'active', label: t('Active ({{count}})', { count: activeBookings.length }) },
+      { key: 'completed', label: t('Completed ({{count}})', { count: completedBookings.length }) },
+      { key: 'cancelled', label: t('Cancelled ({{count}})', { count: cancelledBookings.length }) },
     ],
-    [partitioned.active.length, partitioned.cancelled.length, reviewHistory.length, t]
+    [activeBookings.length, completedBookings.length, cancelledBookings.length, t]
   );
 
   if (userRole === 'fundi') {
@@ -275,33 +146,32 @@ export default function BookingsScreen({
             tab={fundiTab}
             setTab={setFundiTab}
             onNavigate={onNavigate}
-            loading={bookingCtx?.loading || loading}
+            loading={bookingCtx?.loading}
             refreshing={refreshing}
             onRefresh={() => {
               setRefreshing(true);
-              bookingCtx?.refreshBookings?.();
-              loadJobs().finally(() => setRefreshing(false));
+              bookingCtx?.refreshBookings?.().finally?.(() => setRefreshing(false));
             }}
           />
-          {error || bookingCtx?.error ? (
+          {bookingCtx?.error ? (
             <EmptyState
               icon="cloud-offline-outline"
               title={t('Could not load bookings')}
-              message={error || bookingCtx?.error}
+              message={bookingCtx.error}
             />
           ) : null}
         </View>
-    </ScreenWrapper>
+      </ScreenWrapper>
     );
   }
 
   const listData =
     activeTab === 'completed'
-      ? reviewHistory
+      ? completedBookings
       : activeTab === 'active'
-        ? partitioned.active
+        ? activeBookings
         : activeTab === 'cancelled'
-          ? partitioned.cancelled
+          ? cancelledBookings
           : [];
 
   return (
@@ -330,7 +200,7 @@ export default function BookingsScreen({
           </TouchableOpacity>
         ) : null}
 
-        {loading ? (
+        {bookingCtx?.loading ? (
           <LoadingSkeleton count={3} />
         ) : (
           <FlatList
@@ -342,7 +212,7 @@ export default function BookingsScreen({
                 refreshing={refreshing}
                 onRefresh={() => {
                   setRefreshing(true);
-                  loadJobs();
+                  bookingCtx?.refreshBookings?.().finally?.(() => setRefreshing(false));
                 }}
                 tintColor={theme.colors.accent}
               />
@@ -354,12 +224,12 @@ export default function BookingsScreen({
                   activeTab === 'cancelled'
                     ? t('No cancelled bookings')
                     : activeTab === 'completed'
-                      ? t('No reviews yet')
+                      ? t('No completed bookings yet')
                       : t('No active bookings')
                 }
                 message={
                   activeTab === 'completed'
-                    ? t('Complete your first job to start receiving reviews.')
+                    ? t('Your completed bookings will appear here.')
                     : activeTab === 'active'
                       ? t('Book a fundi to see your bookings here.')
                       : t('Cancelled bookings will appear here.')
@@ -367,80 +237,69 @@ export default function BookingsScreen({
               />
             }
             renderItem={({ item }) => {
-              if (activeTab === 'completed') {
-                return (
-                  <TouchableOpacity
-                    style={styles.card}
-                    onPress={() => onNavigate?.('rateExperience', { review: item, job: item.job })}
-                  >
-                    <Text style={styles.name}>
-                      {item.service} · {item.fundiName}
-                    </Text>
-                    <Text style={styles.time}>
-                      {formatBookingDate(item.date)} · {formatUgx(item.amount)}
-                    </Text>
-                    {item.rating ? (
-                      <View style={styles.ratingRow}>
-                        <StarRating value={item.rating} showLabel={false} size={16} disabled />
-                        <Text style={styles.ratingLabel}>{t(ratingLabel(item.rating))}</Text>
-                      </View>
-                    ) : (
-                      <Text style={styles.rateLink}>{t('Leave a review →')}</Text>
-                    )}
-                  </TouchableOpacity>
-                );
-              }
+              const statusKey = (item.status || '').toLowerCase();
+              const isActive = ['pending', 'accepted', 'on_the_way', 'arrived', 'in_progress'].includes(statusKey);
 
               return (
-                <View style={styles.card}>
+                <TouchableOpacity
+                  style={styles.card}
+                  onPress={() =>
+                    statusKey === 'in_progress'
+                      ? onNavigate?.('jobInProgress')
+                      : statusKey === 'completed'
+                        ? onViewHistory?.()
+                        : isActive
+                          ? onNavigate?.('bookingWaiting', { booking: item })
+                          : undefined
+                  }
+                >
                   <View style={styles.cardRow}>
                     <View style={styles.avatar}>
-                      <Text style={styles.avatarText}>{initials(item.name)}</Text>
+                      <Text style={styles.avatarText}>{initials(item.fundiName || item.name)}</Text>
                     </View>
                     <View style={{ flex: 1, marginLeft: 12 }}>
-                      <Text style={styles.name}>{item.name}</Text>
-                      <Text style={styles.service}>{item.service}</Text>
+                      <Text style={styles.name}>{item.fundiName || item.name}</Text>
+                      <Text style={styles.service}>{item.service || item.category}</Text>
+                      <Text style={styles.meta} numberOfLines={1}>
+                        {item.address || (item.createdAt ? formatBookingDate(item.createdAt) : '')}
+                      </Text>
                     </View>
-                    <View style={[styles.statusPill, styles[`status_${item.status}`]]}>
+                    <View style={[styles.statusPill, styles[`status_${statusKey}`]]}>
                       <Text style={styles.statusText}>{t(item.statusLabel)}</Text>
                     </View>
                   </View>
 
                   <View style={styles.metaRow}>
-                    <Text style={styles.time}>{item.time}</Text>
-                    <Text style={styles.extra}>{formatUgx(item.amount)}</Text>
+                    <Text style={styles.time}>
+                      {item.createdAt ? formatBookingDate(item.createdAt) : ''}
+                    </Text>
+                    {item.amount ? <Text style={styles.extra}>{formatUgx(item.amount)}</Text> : null}
                   </View>
 
-                  <View style={styles.actionsRow}>
-                    <TouchableOpacity
-                      style={styles.actionBtn}
-                      onPress={() =>
-                        item.status === 'in_progress'
-                          ? onStartRatingFlow?.()
-                          : onNavigate?.('chat', { targetUserId: item.raw?.fundiId?._id || item.raw?.fundiId })
-                      }
-                    >
-                      <Text style={styles.actionText}>
-                        {item.status === 'in_progress' ? t('Open job') : t('Message')}
-                      </Text>
-                    </TouchableOpacity>
-                    {item.status === 'in_progress' ? (
+                  {isActive ? (
+                    <View style={styles.actionsRow}>
                       <TouchableOpacity
-                        style={styles.secondaryBtn}
-                        onPress={() => onNavigate?.('jobInProgress')}
+                        style={styles.actionBtn}
+                        onPress={() =>
+                          statusKey === 'in_progress'
+                            ? onNavigate?.('jobInProgress')
+                            : onNavigate?.('bookingWaiting', { booking: item })
+                        }
                       >
-                        <Text style={styles.secondaryText}>{t('Track')}</Text>
+                        <Text style={styles.actionText}>
+                          {statusKey === 'in_progress' ? t('Track') : t('View')}
+                        </Text>
                       </TouchableOpacity>
-                    ) : null}
-                  </View>
-                </View>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
               );
             }}
           />
         )}
 
-        {error ? (
-          <EmptyState icon="cloud-offline-outline" title={t('Could not load bookings')} message={error} />
+        {bookingCtx?.error ? (
+          <EmptyState icon="cloud-offline-outline" title={t('Could not load bookings')} message={bookingCtx.error} />
         ) : null}
       </View>
     </ScreenWrapper>
@@ -488,19 +347,17 @@ const styles = StyleSheet.create({
   name: { color: theme.colors.white, fontWeight: '900' },
   service: { color: theme.colors.muted, fontSize: 11, marginTop: 2 },
   meta: { color: theme.colors.muted, fontSize: 11, marginTop: 2 },
-  ratingRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 },
-  ratingLabel: { color: theme.colors.accent, fontWeight: '700', fontSize: 13 },
-  rateLink: { color: theme.colors.accent, fontWeight: '700', marginTop: 10 },
   amount: { color: theme.colors.accent, fontWeight: '800', marginTop: 10, fontSize: 14 },
   statusPill: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
   statusText: { fontSize: 10, fontWeight: '800', color: theme.colors.white },
-  status_confirmed: { backgroundColor: 'rgba(34,197,94,0.15)' },
   status_accepted: { backgroundColor: 'rgba(34,197,94,0.15)' },
+  status_pending: { backgroundColor: 'rgba(59,130,246,0.15)' },
+  status_on_the_way: { backgroundColor: 'rgba(59,130,246,0.15)' },
+  status_arrived: { backgroundColor: 'rgba(59,130,246,0.15)' },
   status_in_progress: { backgroundColor: 'rgba(255,184,0,0.18)' },
-  status_open: { backgroundColor: 'rgba(59,130,246,0.15)' },
-  status_quoted: { backgroundColor: 'rgba(59,130,246,0.15)' },
   status_completed: { backgroundColor: 'rgba(34,197,94,0.15)' },
   status_cancelled: { backgroundColor: 'rgba(239,68,68,0.15)' },
+  status_disputed: { backgroundColor: 'rgba(239,68,68,0.15)' },
   metaRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
   time: { color: theme.colors.mutedDark, fontSize: 11 },
   extra: { color: theme.colors.accent, fontSize: 11, fontWeight: '800' },
@@ -513,15 +370,4 @@ const styles = StyleSheet.create({
     ...theme.elevation.sm,
   },
   actionText: { color: theme.colors.textDark, fontWeight: '900', fontSize: 11 },
-  fundiAction: { flex: 1, height: 44, marginRight: 8 },
-  secondaryBtn: {
-    backgroundColor: theme.colors.glass,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    justifyContent: 'center',
-  },
-  secondaryText: { color: theme.colors.white, fontWeight: '800', fontSize: 11 },
 });

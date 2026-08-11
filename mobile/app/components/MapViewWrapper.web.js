@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import theme from '../theme';
 import { useLanguage } from '../i18n/LanguageContext';
 
-/** Web fallback — react-native-maps is native-only */
+/** Web fallback — MapLibre GL JS is not wired up; render a static preview */
 export default function MapViewWrapper({
   style,
   currentLocation,
@@ -38,7 +38,7 @@ export default function MapViewWrapper({
         </Text>
       ) : null}
       <Text style={styles.meta}>{t('{{count}} fundis shown', { count: fundis.length })}</Text>
-      <Text style={styles.hint}>{t('Use Expo Go on Android/iOS for live Google Maps.')}</Text>
+      <Text style={styles.hint}>{t('Install the Android/iOS app for the live map.')}</Text>
     </TouchableOpacity>
   );
 }

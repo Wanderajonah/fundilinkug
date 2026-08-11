@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { View, StatusBar, Alert, BackHandler, Platform } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import * as NavigationBar from "expo-navigation-bar";
+import * as SystemUI from "expo-system-ui";
 import theme from "./app/theme";
 
 import SplashScreen from "./app/screens/SplashScreen";
@@ -59,7 +60,6 @@ import {
 } from "./services/reviewsApi";
 import { updateJobStatus } from "./services/jobsApi";
 import { defaultActiveJob, buildBookingFromRequest } from "./app/utils/ratings";
-import BookingSubmittedScreen from "./app/screens/BookingSubmittedScreen";
 import BookingWaitingScreen from "./app/screens/BookingWaitingScreen";
 import FundiBookingDetailScreen from "./app/screens/FundiBookingDetailScreen";
 import SkillsPortfolioScreen from "./app/screens/SkillsPortfolioScreen";
@@ -79,7 +79,6 @@ const CLIENT_ONLY_SCREENS = new Set([
   "browse",
   "artisan",
   "request",
-  "bookingSubmitted",
   "bookingWaiting",
   "payment",
   "confirm",
@@ -283,13 +282,6 @@ function AppContent() {
       );
       return pushAndNavigate("confirm");
     }
-    if (key === "bookingSubmitted") {
-      if (params?.booking) {
-        setClientBookingDraft(params.booking);
-        setPendingBooking(params.booking);
-      }
-      return pushAndNavigate("bookingSubmitted");
-    }
     if (key === "bookingWaiting") {
       if (params?.booking) {
         setClientBookingDraft(params.booking);
@@ -344,7 +336,7 @@ function AppContent() {
   // Make the Android system navigation bar dark so no light strip shows
   useEffect(() => {
     if (Platform.OS === "android") {
-      NavigationBar.setBackgroundColorAsync("#000000");
+      SystemUI.setBackgroundColorAsync("#000000");
       NavigationBar.setButtonStyleAsync("light");
     }
   }, []);
@@ -834,13 +826,6 @@ function AppContent() {
       bookingWrap(
         <BookingsScreen
           {...tabProps}
-          reviewHistory={reviewHistory}
-          onStartRatingFlow={() => {
-            const job =
-              activeJob || defaultActiveJob(pendingBooking, selectedArtisan);
-            setActiveJob(job);
-            pushAndNavigate("jobInProgress");
-          }}
           onViewHistory={() => pushAndNavigate("bookingHistory")}
         />
       ),
@@ -925,15 +910,6 @@ function AppContent() {
         authToken={authToken}
         onNavigate={handleNavigate}
         onSessionRestored={(session) => applySession(session)}
-      />
-    );
-  }
-
-  if (screen === "bookingSubmitted") {
-    return bookingWrap(
-      <BookingSubmittedScreen
-        booking={clientBookingDraft || pendingBooking}
-        onNavigate={handleNavigate}
       />
     );
   }

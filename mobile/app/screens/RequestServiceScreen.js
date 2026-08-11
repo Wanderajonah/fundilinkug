@@ -22,6 +22,7 @@ import { compressImage } from '../../utils/image';
 import { normalizeCategory } from '../utils/bookings';
 import theme from '../theme';
 import PrimaryButton from '../components/PrimaryButton';
+import BookingSentAlert from '../components/BookingSentAlert';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -42,6 +43,8 @@ export default function RequestServiceScreen({
   const [error, setError] = useState('');
   const [photos, setPhotos] = useState([]);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [sentAlertVisible, setSentAlertVisible] = useState(false);
+  const [sentBooking, setSentBooking] = useState(null);
 
   useEffect(() => {
     if (address) setLocation(address);
@@ -110,22 +113,21 @@ export default function RequestServiceScreen({
       });
 
       const booking = data.booking;
-      onNavigate?.('bookingSubmitted', {
-        booking: {
-          id: booking._id,
-          _id: booking._id,
-          status: booking.status,
-          service: category,
-          category,
-          description: desc.trim(),
-          address: location.trim(),
-          location: booking.location,
-          expiresAt: booking.expiresAt,
-          date,
-          time,
-          artisanName: artisan.name,
-        },
+      setSentBooking({
+        id: booking._id,
+        _id: booking._id,
+        status: booking.status,
+        service: category,
+        category,
+        description: desc.trim(),
+        address: location.trim(),
+        location: booking.location,
+        expiresAt: booking.expiresAt,
+        date,
+        time,
+        artisanName: artisan.name,
       });
+      setSentAlertVisible(true);
     } catch (e) {
       setError(getErrorMessage(e));
     } finally {
@@ -153,16 +155,15 @@ export default function RequestServiceScreen({
   return (
     <ScreenWrapper style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container}>
-        <TouchableOpacity onPress={() => onNavigate?.('artisan')} style={styles.backRow}>
-          <Text style={styles.backArrow}>‹</Text>
-          <Text style={styles.backText}>{t('Back')}</Text>
+        <TouchableOpacity onPress={() => onNavigate?.('artisan')} style={styles.backBtn}>
+          <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
         </TouchableOpacity>
 
         <View style={styles.headerCard}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{(artisan.name || 'U').slice(0, 2).toUpperCase()}</Text>
           </View>
-          <View style={{ flex: 1, marginLeft: 12 }}>
+          <View style={styles.headerInfo}>
             <Text style={styles.name}>{artisan.name || t('Nearby Fundi')}</Text>
             <Text style={styles.role}>{artisan.role || service}</Text>
             <Text style={styles.meta}>★ {artisan.rating?.toFixed?.(1) || artisan.rating || '—'}</Text>
@@ -173,43 +174,49 @@ export default function RequestServiceScreen({
 
         <View style={styles.fieldRow}>
           <Text style={styles.fieldLabel}>{t('Service Type')}</Text>
-          <View style={styles.fieldSelect}>
+          <View style={styles.fieldBox}>
             <Text style={styles.fieldText}>{service}</Text>
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={styles.twoCol}>
           <View style={{ flex: 1 }}>
             <Text style={styles.fieldLabel}>{t('Date')}</Text>
-            <View style={styles.fieldInput}>
+            <View style={styles.fieldBox}>
               <Text style={styles.fieldText}>{date}</Text>
             </View>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.fieldLabel}>{t('Time')}</Text>
-            <View style={styles.fieldInput}>
+            <View style={styles.fieldBox}>
               <Text style={styles.fieldText}>{time}</Text>
             </View>
           </View>
         </View>
 
-        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>{t('Location')}</Text>
-        <TouchableOpacity style={styles.fieldInput} onPress={() => onNavigate?.('setLocation')}>
-          <Text style={styles.fieldText}>{location || t('Set location')}</Text>
+        <Text style={styles.fieldLabel}>{t('Location')}</Text>
+        <TouchableOpacity style={styles.fieldBox} onPress={() => onNavigate?.('setLocation')}>
+          <View style={styles.fieldRowInner}>
+            <Ionicons name="location-outline" size={16} color={theme.colors.mutedDark} />
+            <Text style={[styles.fieldText, !location && styles.placeholderText]}>
+              {location || t('Set location')}
+            </Text>
+          </View>
         </TouchableOpacity>
 
-        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>{t('Description')}</Text>
+        <Text style={styles.fieldLabel}>{t('Description')}</Text>
         <TextInput
           value={desc}
           onChangeText={setDesc}
           placeholder={t('Describe the issue...')}
-          placeholderTextColor="rgba(255,255,255,0.35)"
+          placeholderTextColor={theme.colors.mutedDark}
           style={styles.textArea}
           multiline
         />
 
-        <Text style={[styles.fieldLabel, { marginTop: 12 }]}>
-          {t('Photos (optional)')} <Text style={{ color: 'rgba(255,255,255,0.35)', fontWeight: '400' }}>— {t('show the fundi what needs to be done')}</Text>
+        <Text style={styles.fieldLabel}>
+          {t('Photos (optional)')}{' '}
+          <Text style={styles.photosHint}>— {t('show the fundi what needs to be done')}</Text>
         </Text>
 
         {photos.length > 0 ? (
@@ -232,16 +239,16 @@ export default function RequestServiceScreen({
             ) : null}
           </View>
         ) : (
-          <TouchableOpacity style={styles.photoPickerBtn} onPress={handlePickPhoto}>
-            <Ionicons name="images-outline" size={20} color={theme.colors.mutedDark} style={{ marginRight: 8 }} />
+          <TouchableOpacity style={styles.photoPickerBtn} onPress={handlePickPhoto} activeOpacity={0.85}>
+            <Ionicons name="images-outline" size={18} color={theme.colors.accent} style={styles.photoPickerIcon} />
             <Text style={styles.photoPickerText}>{t('Add photos')}</Text>
           </TouchableOpacity>
         )}
 
         {uploadingPhotos ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 6 }}>
+          <View style={styles.uploadingRow}>
             <ActivityIndicator size="small" color={theme.colors.accent} />
-            <Text style={{ color: theme.colors.muted, fontSize: 12 }}>{t('Uploading photos…')}</Text>
+            <Text style={styles.uploadingText}>{t('Uploading photos…')}</Text>
           </View>
         ) : null}
 
@@ -252,109 +259,151 @@ export default function RequestServiceScreen({
         ) : null}
 
         <PrimaryButton
-          style={{ marginTop: 18, borderRadius: 22, paddingVertical: 14 }}
           onPress={handleBook}
           disabled={submitting}
+          loading={submitting}
+          icon="hammer-outline"
+          style={styles.mainBtn}
         >
           {submitting ? t('Sending request…') : t('Book Fundi')}
         </PrimaryButton>
-
-        {submitting ? <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 12 }} /> : null}
       </ScrollView>
+
+      <BookingSentAlert
+        visible={sentAlertVisible}
+        onAutoClose={() => {
+          setSentAlertVisible(false);
+          onNavigate?.('bookingWaiting', { booking: sentBooking });
+        }}
+      />
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.black },
-  container: { paddingHorizontal: 16, paddingBottom: 120 },
-  backRow: { flexDirection: 'row', alignItems: 'center', marginTop: 12, marginBottom: 6 },
-  backArrow: { color: '#F3F3F3', fontSize: 22, marginRight: 8 },
-  backText: { color: 'rgba(255,255,255,0.65)', fontWeight: '800' },
+  container: { paddingHorizontal: 20, paddingBottom: 120 },
+  backBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: theme.colors.input,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+  },
   headerCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 12,
-    borderRadius: 12,
+    backgroundColor: theme.colors.input,
+    padding: 14,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
-    marginTop: 8,
+    borderColor: theme.colors.border,
+    marginBottom: 8,
   },
+  headerInfo: { flex: 1, marginLeft: 12 },
   avatar: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(245,158,11,0.28)',
+    backgroundColor: theme.colors.accentDim,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: { color: '#F3F3F3', fontWeight: '900' },
-  name: { color: '#F3F3F3', fontWeight: '900' },
-  role: { color: 'rgba(255,255,255,0.6)' },
-  meta: { color: 'rgba(255,255,255,0.55)', marginTop: 4 },
-  sectionTitle: { color: '#F3F3F3', fontWeight: '900', marginTop: 14, marginBottom: 8 },
-  fieldRow: { marginBottom: 8 },
-  fieldLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 6 },
-  fieldSelect: {
+  avatarText: { color: theme.colors.accent, fontWeight: '900', fontSize: 16 },
+  name: { color: theme.colors.white, fontWeight: '900', fontSize: 16 },
+  role: { color: theme.colors.muted, fontSize: 13, marginTop: 2 },
+  meta: { color: theme.colors.accent, fontSize: 13, marginTop: 4, fontWeight: '700' },
+  sectionTitle: {
+    color: theme.colors.white,
+    fontWeight: '800',
+    fontSize: 18,
+    marginTop: 20,
+    marginBottom: 12,
+  },
+  fieldRow: { marginBottom: 12 },
+  twoCol: { flexDirection: 'row', gap: 10, marginBottom: 12 },
+  fieldLabel: {
+    color: theme.colors.muted,
+    fontSize: theme.typography.caps,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    marginBottom: 8,
+    marginTop: 12,
+  },
+  fieldBox: {
+    backgroundColor: theme.colors.input,
+    padding: 14,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  fieldRowInner: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
+    gap: 8,
   },
-  fieldText: { color: '#F3F3F3' },
-  fieldInput: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
-  },
+  fieldText: { color: theme.colors.white, fontSize: 15 },
+  placeholderText: { color: theme.colors.mutedDark },
   textArea: {
-    minHeight: 90,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 12,
-    borderRadius: 10,
-    color: '#F3F3F3',
+    minHeight: 100,
+    backgroundColor: theme.colors.input,
+    padding: 14,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
+    borderColor: theme.colors.border,
+    color: theme.colors.white,
+    fontSize: 15,
+    textAlignVertical: 'top',
   },
+  photosHint: { color: theme.colors.mutedDark, fontWeight: '400' },
   photoPickerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    padding: 12,
-    borderRadius: 10,
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: theme.colors.input,
+    paddingVertical: 14,
+    borderRadius: theme.radius.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.04)',
-    marginTop: 6,
+    borderColor: theme.colors.border,
+    marginTop: 4,
   },
-  photoPickerText: { color: theme.colors.mutedDark, fontSize: 13 },
+  photoPickerIcon: { marginRight: 0 },
+  photoPickerText: { color: theme.colors.muted, fontSize: 14, fontWeight: '600' },
   photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
   photoThumbWrap: { position: 'relative' },
-  photoThumb: { width: 64, height: 64, borderRadius: 8 },
+  photoThumb: { width: 64, height: 64, borderRadius: theme.radius.sm },
   photoRemove: { position: 'absolute', top: -6, right: -6 },
   photoAdd: {
     width: 64,
     height: 64,
-    borderRadius: 8,
+    borderRadius: theme.radius.sm,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: theme.colors.borderLight,
     borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  uploadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    gap: 8,
+  },
+  uploadingText: { color: theme.colors.muted, fontSize: 13 },
   errorBox: {
     marginTop: 12,
     padding: 12,
-    borderRadius: 10,
+    borderRadius: theme.radius.md,
     backgroundColor: 'rgba(239,68,68,0.1)',
     borderWidth: 1,
     borderColor: 'rgba(239,68,68,0.25)',
   },
-  errorText: { color: theme.colors.red, fontSize: 13 },
+  errorText: { color: theme.colors.red, fontSize: 13, lineHeight: 18 },
+  mainBtn: { marginTop: 24 },
 });

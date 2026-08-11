@@ -469,7 +469,7 @@ async function cancelBooking(bookingId, userId, role, reason) {
     }
     
     booking.status = "CANCELLED";
-    booking.cancelledBy = role.toUpperCase();
+    booking.cancelledBy = role === "fundi" ? "FUNDI" : "CLIENT";
     booking.cancellationReason = reason || "Not specified";
     booking.cancelledAt = new Date();
     booking.expiresAt = null;

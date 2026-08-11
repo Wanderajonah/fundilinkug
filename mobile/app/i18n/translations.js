@@ -253,6 +253,9 @@ export const translations = {
     'Edit': 'Kyusa',
     'Save': 'Kuuma',
     'Add': 'Tongera',
+    'Add a skill not listed above': 'Tongera kaayi akatali mu walugulu',
+    'e.g. welding, tiling...': 'nga welding, tiling...',
+    'Custom skills show on your public profile so clients can find you.': 'Emirimu gy\'ogattako giriraka ku pulofayiro yo okusobola okufunibwa aba client.',
     'Submit': 'Tuma',
     'Total': 'Mu byonna',
     'Subtotal': 'Katambi',
@@ -300,6 +303,7 @@ export const translations = {
       'Kiki ekyagenda bulungi? Waliwo ekiriyinza okukola bulungi?',
     'Add photos (optional)': 'Tongera ebifaananyi (ebitali bya buwanzivu)',
     'Upload photos': 'Wandiika ebifaananyi',
+    'Rate your experience': 'Laga engeri gy\'osanyiddwa',
     'Allow photo access to attach images.': 'Kkiriza okutuuka ku bifaananyi okusobola okubyongera.',
     'Released': 'Kireerekeddwa',
     '{{amount}} released to {{firstName}} · {{time}}': '{{amount}} kireerekeddwa ewa {{firstName}} · {{time}}',
@@ -442,6 +446,7 @@ export const translations = {
     "We're notifying nearby fundis. You'll see live updates while we find someone for you.":
       'Tugeza abatambuwala abali okumpi. Ojja kulaba ebibaawo buli kiseera nga tufuna omu kuwo.',
     'REQUEST DETAILS': 'EBIFA KU BUSABA',
+    'Notifying fundis nearby…': 'Tugeza abatambuwala abali okumpi…',
     'View booking status': 'Raba embeera y\'okusaba',
     'Back to home →': 'Ddayo ewaka →',
     'Cancel booking': 'Sasula okusaba',
@@ -777,8 +782,8 @@ export const translations = {
     'Search radius: {{distance}} km': 'Okunoonya mu nsonda {{distance}} km',
     'Destination: {{lat}}, {{lng}}': 'Okutuuka: {{lat}}, {{lng}}',
     '{{count}} fundis shown': '{{count}} bafundi bali mu kulabika',
-    'Use Expo Go on Android/iOS for live Google Maps.':
-      'Kozesa Expo Go ku Android/iOS okulaba Google Maps omulamu.',
+    'Install the Android/iOS app for the live map.':
+      'Tekka app ya Android/iOS okirabe maapu omulamu.',
     'or': 'oba',
     'Price Negotiation': 'Okunyweza ku Bbe',
     'Agreed price: {{amount}}': 'Bbe ly\'ekkirizibwako: {{amount}}',

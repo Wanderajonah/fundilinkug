@@ -12,6 +12,8 @@ const SKILL_OPTIONS = ['plumbing', 'electrical', 'carpentry', 'masonry', 'painti
 export default function FundiProfileSetupScreen({ onBack, onComplete, authToken }) {
   const { t } = useLanguage();
   const [skills, setSkills] = useState([]);
+  const [customSkill, setCustomSkill] = useState('');
+  const [customSkillFocused, setCustomSkillFocused] = useState(false);
   const [experience, setExperience] = useState('');
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,6 +23,27 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
       prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill]
     );
   };
+
+  const addCustomSkill = () => {
+    const value = customSkill.trim().replace(/\s+/g, ' ');
+    if (!value) return;
+    setSkills((prev) => {
+      const normalized = value.toLowerCase();
+      const exists = prev.some(
+        (s) => s.toLowerCase() === normalized || SKILL_OPTIONS.includes(normalized)
+      );
+      if (exists) return prev;
+      return [...prev, value];
+    });
+    setCustomSkill('');
+  };
+
+  const canAddCustom = customSkill.trim().length > 0;
+
+  const allSkillChips = [
+    ...SKILL_OPTIONS,
+    ...skills.filter((s) => !SKILL_OPTIONS.includes(s.toLowerCase())),
+  ];
 
   const handleSave = async () => {
     if (skills.length === 0) {
@@ -56,8 +79,8 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
 
       <Text style={styles.label}>{t('Your skills')}</Text>
       <View style={styles.skillRow}>
-        {SKILL_OPTIONS.map((s) => {
-          const on = skills.includes(s);
+        {allSkillChips.map((s) => {
+          const on = skills.some((x) => x.toLowerCase() === s.toLowerCase());
           return (
             <TouchableOpacity
               key={s}
@@ -71,6 +94,41 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
           );
         })}
       </View>
+
+      <Text style={styles.label}>
+        <Ionicons name="add-circle-outline" size={16} color={theme.colors.accent} />
+        {'  '}
+        {t('Add a skill not listed above')}
+      </Text>
+      <View style={[styles.customSkillRow, customSkillFocused && styles.customSkillRowFocused]}>
+        <TextInput
+          style={styles.customSkillInput}
+          value={customSkill}
+          onChangeText={setCustomSkill}
+          onFocus={() => setCustomSkillFocused(true)}
+          onBlur={() => setCustomSkillFocused(false)}
+          placeholder={t('e.g. welding, tiling...')}
+          placeholderTextColor={theme.colors.mutedDark}
+          onSubmitEditing={addCustomSkill}
+          returnKeyType="done"
+          autoCorrect={false}
+          maxLength={40}
+        />
+        <TouchableOpacity
+          style={[styles.addBtn, !canAddCustom && styles.addBtnDisabled]}
+          onPress={addCustomSkill}
+          disabled={!canAddCustom}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="add" size={18} color={theme.colors.textDark} />
+          <Text style={styles.addBtnText}>{t('Add')}</Text>
+        </TouchableOpacity>
+      </View>
+      {skills.some((s) => !SKILL_OPTIONS.includes(s.toLowerCase())) && (
+        <Text style={styles.customHint}>
+          {t('Custom skills show on your public profile so clients can find you.')}
+        </Text>
+      )}
 
       <Text style={styles.label}>{t('Years of experience')}</Text>
       <TextInput
@@ -100,7 +158,7 @@ export default function FundiProfileSetupScreen({ onBack, onComplete, authToken 
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: 4 },
+  scroll: { paddingHorizontal: 20 },
   backRow: {
     width: 40,
     height: 40,
@@ -110,19 +168,72 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
   title: { color: theme.colors.white, fontSize: 26, fontWeight: '800', marginBottom: 8 },
-  subtitle: { color: theme.colors.muted, fontSize: 14, lineHeight: 20, marginBottom: 24 },
+  subtitle: {
+    color: theme.colors.muted,
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 32,
+  },
   label: {
     color: theme.colors.muted,
     fontSize: theme.typography.caps,
     fontWeight: '700',
     letterSpacing: 0.6,
-    marginBottom: 10,
-    marginTop: 8,
+    marginBottom: 12,
+    marginTop: 24,
   },
-  skillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 },
+  skillRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
+  customSkillRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 10,
+    backgroundColor: theme.colors.input,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    paddingLeft: 16,
+    paddingVertical: 4,
+  },
+  customSkillRowFocused: {
+    borderColor: theme.colors.accent,
+    backgroundColor: '#232323',
+  },
+  customSkillInput: {
+    flex: 1,
+    paddingVertical: 12,
+    color: theme.colors.white,
+    fontSize: 15,
+  },
+  addBtn: {
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    backgroundColor: theme.colors.accent,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginRight: 4,
+  },
+  addBtnDisabled: {
+    backgroundColor: theme.colors.borderLight,
+    opacity: 0.6,
+  },
+  addBtnText: {
+    color: theme.colors.textDark,
+    fontWeight: '800',
+    fontSize: 14,
+  },
+  customHint: {
+    color: theme.colors.muted,
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 24,
+  },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 10,
@@ -145,5 +256,5 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginBottom: 8,
   },
-  textArea: { minHeight: 100, textAlignVertical: 'top' },
+  textArea: { minHeight: 110, textAlignVertical: 'top', marginBottom: 16 },
 });

@@ -1,6 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { DARK_MAP_STYLE, DEFAULT_REGION } from '../config/mapStyle';
+import {
+  Map,
+  Camera,
+  Marker,
+  GeoJSONSource,
+  Layer,
+} from '@maplibre/maplibre-react-native';
+import {
+  DARK_MAP_STYLE_URL,
+  DEFAULT_REGION,
+  deltaToZoom,
+  zoomToDelta,
+  circlePolygonFeature,
+} from '../config/mapStyle';
 import theme from '../theme';
 import { useLanguage } from '../i18n/LanguageContext';
 
@@ -15,104 +28,104 @@ export default function MapViewWrapper({
   onRegionChange,
   onPressCoordinate,
 }) {
-  const [MapComponents, setMapComponents] = useState(null);
-  const [mapError, setMapError] = useState(false);
-  const mapRef = useRef(null);
   const { t } = useLanguage();
+  const [mapError, setMapError] = useState(false);
+  const prevCameraKey = useRef('');
+
+  const lat = region?.latitude ?? currentLocation?.lat ?? DEFAULT_REGION.latitude;
+  const lng = region?.longitude ?? currentLocation?.lng ?? DEFAULT_REGION.longitude;
+  const zoom = deltaToZoom(region?.latitudeDelta ?? DEFAULT_REGION.latitudeDelta);
+
+  const cameraKey = `${lng.toFixed(6)},${lat.toFixed(6)},${zoom}`;
+  const [camera, setCamera] = useState(() => ({ center: [lng, lat], zoom }));
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const maps = await import('react-native-maps');
-        if (!cancelled) setMapComponents(() => maps);
-      } catch {
-        if (!cancelled) setMapError(true);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    if (prevCameraKey.current !== cameraKey) {
+      prevCameraKey.current = cameraKey;
+      setCamera({ center: [lng, lat], zoom });
+    }
+  }, [cameraKey, lng, lat, zoom]);
 
-  const lat = currentLocation?.lat ?? DEFAULT_REGION.latitude;
-  const lng = currentLocation?.lng ?? DEFAULT_REGION.longitude;
+  const handleRegionDidChange = useCallback(
+    (e) => {
+      const [clng, clat] = e.nativeEvent?.center || [];
+      const z = e.nativeEvent?.zoom;
+      if (clat == null || clng == null || z == null) return;
+      const d = zoomToDelta(z);
+      onRegionChange?.({ lat: clat, lng: clng, latitudeDelta: d, longitudeDelta: d });
+    },
+    [onRegionChange],
+  );
 
-  if (mapError || !MapComponents) {
+  const handlePress = useCallback(
+    (e) => {
+      const [plng, plat] = e.nativeEvent?.lngLat || [];
+      if (plat == null || plng == null) return;
+      onPressCoordinate?.({ lat: plat, lng: plng });
+    },
+    [onPressCoordinate],
+  );
+
+  if (mapError) {
     return (
       <View style={[styles.fallback, style]}>
-        <Text style={styles.fallbackText}>
-          {mapError ? t('Map unavailable') : t('Loading map…')}
-        </Text>
+        <Text style={styles.fallbackText}>{t('Map unavailable')}</Text>
       </View>
     );
   }
 
-  const { default: MapView, Marker, Circle } = MapComponents;
-
-  const mapRegion = region || {
-    latitude: lat,
-    longitude: lng,
-    latitudeDelta: 0.06,
-    longitudeDelta: 0.06,
-  };
-
   return (
-    <MapView
-      ref={mapRef}
+    <Map
       style={style}
-      customMapStyle={DARK_MAP_STYLE}
-      initialRegion={mapRegion}
-      region={mapRegion}
-      showsUserLocation
-      showsMyLocationButton={false}
-      onRegionChangeComplete={(r) => {
-        onRegionChange?.({
-          lat: r.latitude,
-          lng: r.longitude,
-          latitudeDelta: r.latitudeDelta,
-          longitudeDelta: r.longitudeDelta,
-        });
-      }}
-      onPress={(e) => {
-        const { latitude, longitude } = e.nativeEvent.coordinate;
-        onPressCoordinate?.({ lat: latitude, lng: longitude });
-      }}
+      mapStyle={DARK_MAP_STYLE_URL}
+      onDidFailLoadingMap={() => setMapError(true)}
+      onRegionDidChange={handleRegionDidChange}
+      onPress={handlePress}
     >
-      <Marker
-        coordinate={{ latitude: lat, longitude: lng }}
-        title={t('You')}
-        pinColor={theme.colors.accent}
-      />
+      <Camera center={camera.center} zoom={camera.zoom} duration={300} />
 
       {showRadiusCircle ? (
-        <Circle
-          center={{ latitude: lat, longitude: lng }}
-          radius={radiusKm * 1000}
-          strokeColor="rgba(255,184,0,0.6)"
-          fillColor="rgba(255,184,0,0.12)"
-        />
+        <GeoJSONSource
+          id="searchRadius"
+          data={circlePolygonFeature(lat, lng, radiusKm)}
+        >
+          <Layer
+            id="searchRadiusFill"
+            type="fill"
+            paint={{
+              fillColor: 'rgba(255,184,0,0.12)',
+              fillOutlineColor: 'rgba(255,184,0,0.6)',
+            }}
+          />
+        </GeoJSONSource>
       ) : null}
+
+      <Marker id="you" lngLat={[lng, lat]} anchor="center">
+        <View style={styles.youPin} />
+      </Marker>
 
       {destination ? (
         <Marker
-          coordinate={{ latitude: destination.lat, longitude: destination.lng }}
-          title={destination.title || t('Destination')}
-          pinColor="#EF4444"
-        />
+          id="destination"
+          lngLat={[destination.lng, destination.lat]}
+          anchor="center"
+        >
+          <View style={styles.destPin} />
+        </Marker>
       ) : null}
 
-      {fundis.map((f) => {
+      {fundis.map((f, index) => {
         const uid = f.userId;
-        if (!uid?.location?.lat) return null;
+        const loc = uid?.location;
+        if (!loc?.lat) return null;
+        const key = f._id || uid._id || `fundi-${index}`;
         return (
-          <Marker
-            key={f._id || uid._id}
-            coordinate={{ latitude: uid.location.lat, longitude: uid.location.lng }}
-            title={uid.name}
-            description={`${(f.skills || []).join(', ')} · ${f.distanceKm?.toFixed?.(1) || '?'} km · ★${f.rating || '-'}`}
-          />
+          <Marker key={key} id={String(key)} lngLat={[loc.lng, loc.lat]} anchor="center">
+            <View style={styles.fundiPin} />
+          </Marker>
         );
       })}
-    </MapView>
+    </Map>
   );
 }
 
@@ -124,4 +137,28 @@ const styles = StyleSheet.create({
     borderRadius: theme.radius.lg,
   },
   fallbackText: { color: theme.colors.muted },
+  youPin: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: theme.colors.accent,
+    borderWidth: 3,
+    borderColor: '#000000',
+  },
+  fundiPin: {
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#EF4444',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+  },
+  destPin: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#EF4444',
+    borderWidth: 3,
+    borderColor: '#FFFFFF',
+  },
 });

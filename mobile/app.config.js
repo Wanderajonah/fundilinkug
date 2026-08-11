@@ -21,17 +21,19 @@ module.exports = {
     orientation: 'portrait',
     userInterfaceStyle: 'dark',
     scheme: 'fundilink',
+    icon: './assets/icon.png',
     assetBundlePatterns: ['**/*'],
     runtimeVersion: '1.0.1',
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.fundilink.uganda',
-      config: {
-        googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
-      },
     },
     android: {
       package: 'com.fundilink.uganda',
+      adaptiveIcon: {
+        foregroundImage: './assets/icon.png',
+        backgroundColor: '#FFFFFF',
+      },
       permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION'],
       softwareKeyboardLayoutMode: 'resize',
       navigationBar: {
@@ -46,11 +48,6 @@ module.exports = {
           category: ['BROWSABLE', 'DEFAULT'],
         },
       ],
-      config: {
-        googleMaps: {
-          apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
-        },
-      },
     },
     plugins: [
       [
@@ -62,17 +59,17 @@ module.exports = {
       ],
       'expo-web-browser',
       'expo-video',
+      '@maplibre/maplibre-react-native',
     ],
     extra: {
       eas: {
-        projectId: 'a1bbe60a-a9d4-4dc8-95d1-92e8a6fe7cba',
+        projectId: 'b75918f7-f03a-4f72-8367-2c014bec8215',
       },
       apiUrl: process.env.EXPO_PUBLIC_API_URL,
-      googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
     },
-    owner: '2300813409',
+    owner: 'finalyear2026',
     updates: {
-      url: 'https://u.expo.dev/a1bbe60a-a9d4-4dc8-95d1-92e8a6fe7cba',
+      url: 'https://u.expo.dev/b75918f7-f03a-4f72-8367-2c014bec8215',
     },
   },
 };

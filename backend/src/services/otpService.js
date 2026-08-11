@@ -7,8 +7,9 @@ const OTP_TTL_MS = 10 * 60 * 1000;
 const RESEND_COOLDOWN_MS = 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
-const isDevMode = () =>
-  process.env.COMMS_DEV_MODE === "true" || process.env.NODE_ENV === "development";
+// Dev mode is strictly opt-in via COMMS_DEV_MODE=true so codes are never
+// logged (or returned to the client) by accident in production.
+const isDevMode = () => process.env.COMMS_DEV_MODE === "true";
 
 const generateCode = () => String(Math.floor(1000 + Math.random() * 9000));
 

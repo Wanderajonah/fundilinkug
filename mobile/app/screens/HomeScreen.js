@@ -45,9 +45,6 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
       {/* 1. Header Row — logo + bell + balance below bell */}
       <View style={styles.headerRow}>
         <View style={styles.brandWrap}>
-          <View style={styles.logoIcon}>
-            <Ionicons name="flash" size={20} color={theme.colors.textDark} />
-          </View>
           <Text style={styles.brandName}>FundiLink</Text>
         </View>
         <View style={styles.headerRight}>
@@ -260,7 +257,7 @@ export default function HomeScreen({
         seen.add(b.fundiId);
         return true;
       })
-      .slice(0, 5);
+      .slice(0, 3);
   }, [bookingCtx?.bookings]);
 
   useEffect(() => {
@@ -331,16 +328,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     marginBottom: 16,
-  },
-  brandWrap: { flexDirection: "row", alignItems: "center", gap: 10 },
-  logoIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: theme.colors.accent,
-    justifyContent: "center",
-    alignItems: "center",
-    ...theme.elevation.md,
   },
   brandName: {
     color: theme.colors.white,
