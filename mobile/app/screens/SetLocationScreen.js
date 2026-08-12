@@ -185,7 +185,7 @@ const styles = StyleSheet.create({
   searchInput: { flex: 1, color: theme.colors.white, fontSize: 14 },
   gps: { color: theme.colors.accent, fontWeight: '800', fontSize: 12 },
   scroll: { paddingBottom: 28 },
-  map: { width: '100%', height: 180, borderRadius: theme.radius.lg },
+  map: { width: '100%', height: 320, borderRadius: theme.radius.lg },
   badge: {
     alignSelf: 'flex-end',
     marginTop: -36,

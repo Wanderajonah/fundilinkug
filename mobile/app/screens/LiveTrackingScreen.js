@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   etaText: { color: theme.colors.textDark, fontWeight: '800', fontSize: 12 },
-  map: { width: '100%', height: 280, borderRadius: theme.radius.lg, marginBottom: 8 },
+  map: { width: '100%', height: 380, borderRadius: theme.radius.lg, marginBottom: 8 },
   distance: { textAlign: 'center', color: theme.colors.accent, fontWeight: '700', marginBottom: 8 },
   status: { color: theme.colors.white, textAlign: 'center', fontWeight: '700', marginBottom: 16 },
   stepper: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },

@@ -1,29 +1,10 @@
 const multer = require("multer");
 const path = require("path");
-const fs = require("fs");
+const { gridFsStorage } = require("../services/gridfsStorage");
 
-const UPLOAD_ROOT = path.join(__dirname, "../../uploads");
-
-// Ensure a subdirectory exists and return its path
-function ensureDir(subdir) {
-  const dir = path.join(UPLOAD_ROOT, subdir);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-  return dir;
-}
-
-// Create a multer instance for a given subdirectory
+// Create a multer instance for a given subdirectory. Files are stored in
+// MongoDB GridFS (durable across restarts/redeploys) instead of the local disk.
 function createUpload(subdir, allowPdf = false) {
-  const dest = ensureDir(subdir);
-  const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, dest),
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1E9);
-      const ext = path.extname(file.originalname);
-      cb(null, req.user._id + "-" + uniqueSuffix + ext);
-    }
-  });
   const fileFilter = (req, file, cb) => {
     const ext = path.extname(file.originalname).toLowerCase();
     const allowedImageTypes = /jpeg|jpg|png|gif|webp/;
@@ -39,7 +20,7 @@ function createUpload(subdir, allowPdf = false) {
     }
   };
   return multer({
-    storage,
+    storage: gridFsStorage({ bucketName: subdir }),
     limits: { fileSize: 10 * 1024 * 1024 },
     fileFilter
   });

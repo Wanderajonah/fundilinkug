@@ -19,6 +19,7 @@ const bookingRoutes = require("./routes/bookingRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const walletRoutes = require("./routes/walletRoutes");
 const adminRoutes = require("./routes/adminRoutes");
+const { streamGridFsFile } = require("./services/gridfsStorage");
 
 const app = express();
 
@@ -48,7 +49,10 @@ app.use(cors());
 app.use(express.json({ limit: "5mb" }));
 app.use(morgan("dev"));
 
-// Serve static files from uploads directory
+// Serve static files from uploads directory. New uploads live in MongoDB
+// GridFS (durable across restarts/redeploys); disk is kept as a fallback for
+// legacy files uploaded before GridFS.
+app.use("/uploads/:subdir/:fileId", streamGridFsFile);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.get("/api/health", (req, res) => {

@@ -60,6 +60,13 @@ module.exports = {
       'expo-web-browser',
       'expo-video',
       '@maplibre/maplibre-react-native',
+      [
+        'expo-navigation-bar',
+        {
+          backgroundColor: '#000000',
+          barStyle: 'light-content',
+        },
+      ],
     ],
     extra: {
       eas: {

@@ -829,7 +829,7 @@ const styles = StyleSheet.create({
   completedAmount: { color: theme.colors.accent, fontWeight: '800', fontSize: 13 },
 
   /* Map */
-  map: { width: '100%', height: 140, borderRadius: theme.radius.lg, ...theme.elevation.sm },
+  map: { width: '100%', height: 220, borderRadius: theme.radius.lg, ...theme.elevation.sm },
   locRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10, marginBottom: 16 },
   locText: { color: theme.colors.muted, fontSize: 12, flex: 1 },
 });

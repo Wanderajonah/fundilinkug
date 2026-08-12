@@ -336,8 +336,19 @@ function AppContent() {
   // Make the Android system navigation bar dark so no light strip shows
   useEffect(() => {
     if (Platform.OS === "android") {
-      SystemUI.setBackgroundColorAsync("#000000");
-      NavigationBar.setButtonStyleAsync("light");
+      (async () => {
+        try {
+          await NavigationBar.setBackgroundColorAsync("#000000");
+          await NavigationBar.setButtonStyleAsync("light");
+        } catch {
+          /* non-blocking */
+        }
+        try {
+          await SystemUI.setBackgroundColorAsync("#000000");
+        } catch {
+          /* non-blocking */
+        }
+      })();
     }
   }, []);
 

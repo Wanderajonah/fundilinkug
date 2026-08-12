@@ -22,7 +22,7 @@ import { resolveMediaUrl } from "../../utils/image";
 import theme from "../theme";
 import { useLanguage } from "../i18n/LanguageContext";
 
-const MAP_H = Dimensions.get("window").height * 0.4;
+const MAP_H = Dimensions.get("window").height * 0.55;
 const CARD_W = Dimensions.get("window").width * 0.62;
 
 const FILTERS = [

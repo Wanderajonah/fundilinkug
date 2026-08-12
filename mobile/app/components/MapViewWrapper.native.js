@@ -30,27 +30,67 @@ export default function MapViewWrapper({
 }) {
   const { t } = useLanguage();
   const [mapError, setMapError] = useState(false);
-  const prevCameraKey = useRef('');
+  const cameraRef = useRef(null);
+  const interactingRef = useRef(false);
+  const appliedRef = useRef(null);
+  const prevRequestRef = useRef(null);
+  const desiredRef = useRef({ center: [0, 0], zoom: 0 });
 
   const lat = region?.latitude ?? currentLocation?.lat ?? DEFAULT_REGION.latitude;
   const lng = region?.longitude ?? currentLocation?.lng ?? DEFAULT_REGION.longitude;
   const zoom = deltaToZoom(region?.latitudeDelta ?? DEFAULT_REGION.latitudeDelta);
 
-  const cameraKey = `${lng.toFixed(6)},${lat.toFixed(6)},${zoom}`;
-  const [camera, setCamera] = useState(() => ({ center: [lng, lat], zoom }));
+  const applyCamera = useCallback((target, animated) => {
+    const cam = cameraRef.current;
+    if (!cam) return;
+    if (animated) {
+      cam.easeTo({ center: target.center, zoom: target.zoom, duration: 300 });
+    } else {
+      cam.jumpTo({ center: target.center, zoom: target.zoom });
+    }
+    appliedRef.current = target;
+  }, []);
+
+  // Position the camera once the map view has loaded.
+  const handleMapReady = useCallback(() => {
+    applyCamera(desiredRef.current, false);
+  }, [applyCamera]);
 
   useEffect(() => {
-    if (prevCameraKey.current !== cameraKey) {
-      prevCameraKey.current = cameraKey;
-      setCamera({ center: [lng, lat], zoom });
+    handleMapReady();
+  }, [handleMapReady]);
+
+  // Follow genuine region changes from the parent (search / geolocation / new
+  // location) but never fight the user's own pan/zoom gestures.
+  useEffect(() => {
+    const prev = prevRequestRef.current;
+    const request = { center: [lng, lat], zoom };
+    const isNew =
+      !prev ||
+      Math.abs(prev.center[0] - lng) > 1e-7 ||
+      Math.abs(prev.center[1] - lat) > 1e-7 ||
+      Math.abs(prev.zoom - zoom) > 0.01;
+    prevRequestRef.current = request;
+    desiredRef.current = request;
+    if (isNew && !interactingRef.current && appliedRef.current) {
+      applyCamera(request, true);
     }
-  }, [cameraKey, lng, lat, zoom]);
+  }, [lng, lat, zoom, applyCamera]);
+
+  const handleRegionIsChanging = useCallback(() => {
+    interactingRef.current = true;
+  }, []);
 
   const handleRegionDidChange = useCallback(
     (e) => {
+      const wasInteracting = interactingRef.current;
+      interactingRef.current = false;
       const [clng, clat] = e.nativeEvent?.center || [];
       const z = e.nativeEvent?.zoom;
       if (clat == null || clng == null || z == null) return;
+      if (wasInteracting || !appliedRef.current) {
+        appliedRef.current = { center: [clng, clat], zoom: z };
+      }
       const d = zoomToDelta(z);
       onRegionChange?.({ lat: clat, lng: clng, latitudeDelta: d, longitudeDelta: d });
     },
@@ -79,10 +119,18 @@ export default function MapViewWrapper({
       style={style}
       mapStyle={DARK_MAP_STYLE_URL}
       onDidFailLoadingMap={() => setMapError(true)}
+      onDidFinishLoadingMap={handleMapReady}
+      onRegionIsChanging={handleRegionIsChanging}
       onRegionDidChange={handleRegionDidChange}
       onPress={handlePress}
+      dragPan
+      touchZoom
+      doubleTapZoom
+      doubleTapHoldZoom
+      touchRotate
+      touchPitch
     >
-      <Camera center={camera.center} zoom={camera.zoom} duration={300} />
+      <Camera ref={cameraRef} />
 
       {showRadiusCircle ? (
         <GeoJSONSource
