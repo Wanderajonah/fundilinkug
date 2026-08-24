@@ -41,23 +41,26 @@ function initializeSocket(httpServer) {
             status: "PENDING",
             "notifiedFundis.fundiId": userId
           }).populate("clientId");
-          
-          if (pendingBookings.length > 0) {
-            pendingBookings.forEach(booking => {
-              const timeLeft = booking.expiresAt ? new Date(booking.expiresAt) - new Date() : 0;
-              socket.emit("booking_request", {
-                bookingId: booking._id,
-                category: booking.category,
-                description: booking.description,
-                address: booking.address,
-                location: booking.location,
-                clientName: booking.clientId.name,
-                clientPhone: booking.clientId.phone,
-                expiresAt: booking.expiresAt,
-                timeLeft: Math.max(0, Math.floor(timeLeft / 1000))
-              });
+
+          pendingBookings.forEach(booking => {
+            // Only re-deliver the request if THIS fundi is still the one being
+            // notified. If the request already moved on (expired/declined), the
+            // offline fundi must not be able to act on a stale request.
+            const current = booking.notifiedFundis[booking.notifiedFundis.length - 1];
+            if (!current || current.fundiId.toString() !== userId) return;
+            const timeLeft = booking.expiresAt ? new Date(booking.expiresAt) - new Date() : 0;
+            socket.emit("booking_request", {
+              bookingId: booking._id,
+              category: booking.category,
+              description: booking.description,
+              address: booking.address,
+              location: booking.location,
+              clientName: booking.clientId.name,
+              clientPhone: booking.clientId.phone,
+              expiresAt: booking.expiresAt,
+              timeLeft: Math.max(0, Math.floor(timeLeft / 1000))
             });
-          }
+          });
         }
       } catch (error) {
         console.error("Error handling user_connect:", error);
@@ -109,7 +112,24 @@ function initializeSocket(httpServer) {
         if (!socket.userId || !bookingId) return;
         
         const booking = await Booking.findById(bookingId);
-        if (!booking || booking.status !== "PENDING") {
+        if (!booking) {
+          socket.emit("error", { message: "Booking not found" });
+          return;
+        }
+
+        // Idempotent: if the booking was already accepted by this fundi (e.g.
+        // the REST accept fired first and this socket event is the duplicate),
+        // do not treat it as an error and do not re-notify the client.
+        if (
+          booking.status === "ACCEPTED" &&
+          booking.fundiId &&
+          booking.fundiId.toString() === socket.userId
+        ) {
+          socket.emit("booking_accepted", { bookingId: booking._id });
+          return;
+        }
+
+        if (booking.status !== "PENDING") {
           socket.emit("error", { message: "Booking not available" });
           return;
         }

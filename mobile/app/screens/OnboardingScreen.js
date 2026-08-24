@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Animated,
   StatusBar,
 } from 'react-native';
@@ -16,7 +15,7 @@ import { useLanguage } from '../i18n/LanguageContext';
 
 const HERO_VIDEO = require('../../assets/hero-bg.mp4');
 
-export default function OnboardingScreen({ onSelectRole, onSignIn, onSkip }) {
+export default function OnboardingScreen({ onSelectRole }) {
   const insets = useSafeAreaInsets();
   const { t } = useLanguage();
   const fade = useRef(new Animated.Value(0)).current;
@@ -79,15 +78,6 @@ export default function OnboardingScreen({ onSelectRole, onSignIn, onSkip }) {
             onPress={() => onSelectRole?.('fundi')}
           />
         </View>
-
-        <View style={styles.footer}>
-          <TouchableOpacity onPress={onSkip} hitSlop={12}>
-            <Text style={styles.footerLink}>{t('Skip')}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={onSignIn} hitSlop={12}>
-            <Text style={styles.footerLinkBold}>{t('Sign In')}</Text>
-          </TouchableOpacity>
-        </View>
       </Animated.View>
     </View>
   );
@@ -133,13 +123,5 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 20,
   },
-  cardsRow: { flexDirection: 'row', marginBottom: 20 },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 8,
-    paddingTop: 4,
-  },
-  footerLink: { color: theme.colors.muted, fontSize: 15, fontWeight: '600' },
-  footerLinkBold: { color: theme.colors.accent, fontSize: 15, fontWeight: '800' },
+  cardsRow: { flexDirection: 'row', marginBottom: 8 },
 });

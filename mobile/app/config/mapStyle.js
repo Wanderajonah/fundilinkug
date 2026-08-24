@@ -1,13 +1,38 @@
 /**
- * MapLibre map configuration.
- * Dark vector style is used across the app. Override the style URL at build
- * time with EXPO_PUBLIC_MAP_STYLE_URL (e.g. a self-hosted or commercial style).
+ * Map provider configuration.
+ *   google             — development/testing with react-native-maps (needs a
+ *                        Google Maps API key at build time).
+ *   maplibre           — production, free vector tiles via CARTO.
+ * Switch with EXPO_PUBLIC_MAP_PROVIDER=google|maplibre in mobile/.env.
  */
+const explicitProvider = process.env.EXPO_PUBLIC_MAP_PROVIDER;
+const isProductionBuild = process.env.EAS_BUILD_PROFILE === 'production';
+
+export const MAP_PROVIDER =
+  explicitProvider === 'google' || explicitProvider === 'maplibre'
+    ? explicitProvider
+    : isProductionBuild
+      ? 'maplibre'
+      : 'google';
+
+// MapLibre — dark vector style. Override the style URL at build time with
+// EXPO_PUBLIC_MAP_STYLE_URL (e.g. a self-hosted or commercial style).
 export const DEFAULT_DARK_STYLE_URL =
   'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
 export const DARK_MAP_STYLE_URL =
   process.env.EXPO_PUBLIC_MAP_STYLE_URL || DEFAULT_DARK_STYLE_URL;
+
+// Google Maps — equivalent dark styling for customMapStyle.
+export const DARK_MAP_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#1a1a1a' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#8a8a8a' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a1a' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2c2c2c' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#1f1f1f' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e0e0e' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#242424' }] },
+];
 
 export const DEFAULT_REGION = {
   latitude: -1.286389,

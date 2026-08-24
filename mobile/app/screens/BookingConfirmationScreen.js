@@ -16,7 +16,12 @@ export default function BookingConfirmationScreen({ booking = {}, onNavigate }) 
   const artisanName = booking.artisan?.name || booking.artisanName || t('Fundi');
   const firstName = artisanName.split(' ')[0];
   const service = booking.service || t('Service');
-  const address = booking.address || booking.location || '';
+  const address =
+    typeof booking.address === 'string'
+      ? booking.address
+      : typeof booking.location === 'string'
+        ? booking.location
+        : '';
   const total = booking.total || booking.amount || 17600;
   const eta = booking.eta || 8;
   const dateTime = [booking.date, booking.time].filter(Boolean).join(' · ') || `${t('Today')} · ${t('ASAP')}`;
@@ -69,34 +74,34 @@ export default function BookingConfirmationScreen({ booking = {}, onNavigate }) 
 
         <Text style={styles.nextLabel}>{t("WHAT'S NEXT")}</Text>
 
-        <PrimaryButton onPress={() => onNavigate?.('tracking')} style={styles.mainBtn}>
-          {t('Track Live')}
-        </PrimaryButton>
+        <View style={styles.actions}>
+          <PrimaryButton onPress={() => onNavigate?.('tracking')} icon="navigate">
+            {t('Track Live')}
+          </PrimaryButton>
 
-        <PrimaryButton
-          filled={false}
-          onPress={() => onNavigate?.('jobInProgress')}
-          style={styles.mainBtn}
-        >
-          {t('Job in progress')}
-        </PrimaryButton>
+          <PrimaryButton
+            filled={false}
+            onPress={() =>
+              onNavigate?.('chat', {
+                targetUserId: booking.artisan?._id || booking.artisan?.id || booking.fundiId,
+              })
+            }
+            icon="chatbubble-outline"
+          >
+            {t('Message {{name}}', { name: firstName })}
+          </PrimaryButton>
+        </View>
 
         <View style={styles.rowActions}>
           <TouchableOpacity style={styles.secondaryBtn} onPress={() => onNavigate?.('bookings')}>
             <Ionicons name="calendar-outline" size={18} color={theme.colors.accent} />
             <Text style={styles.secondaryText}>{t('My Bookings')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.secondaryBtn} onPress={() =>
-            onNavigate?.('chat', { targetUserId: booking.artisan?._id || booking.artisan?.id || booking.fundiId })
-          }>
-            <Ionicons name="chatbubble-outline" size={18} color={theme.colors.accent} />
-            <Text style={styles.secondaryText}>{t('Message {{name}}', { name: firstName })}</Text>
+          <TouchableOpacity style={styles.secondaryBtn} onPress={() => onNavigate?.('home')}>
+            <Ionicons name="home-outline" size={18} color={theme.colors.accent} />
+            <Text style={styles.secondaryText}>{t('Home')}</Text>
           </TouchableOpacity>
         </View>
-
-        <TouchableOpacity onPress={() => onNavigate?.('home')}>
-          <Text style={styles.safety}>{t('Back to home →')}</Text>
-        </TouchableOpacity>
       </ScrollView>
     </ScreenWrapper>
   );
@@ -167,13 +172,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: 12,
   },
-  mainBtn: { marginBottom: 10 },
+  actions: { alignSelf: 'stretch', gap: 10, marginBottom: 12 },
   rowActions: {
     flexDirection: 'row',
     alignSelf: 'stretch',
     gap: 10,
-    marginTop: 4,
-    marginBottom: 16,
   },
   secondaryBtn: {
     flex: 1,
@@ -181,13 +184,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: theme.buttons.radius.md,
     backgroundColor: theme.colors.glass,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
   secondaryText: { color: theme.colors.white, fontWeight: '700', fontSize: 13 },
-  safety: { color: theme.colors.muted, fontSize: 13, textAlign: 'center' },
 });

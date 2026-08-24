@@ -1,16 +1,31 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Alert, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScrollScreen from '../components/ScrollScreen';
 import PrimaryButton from '../components/PrimaryButton';
 import theme from '../theme';
 import { formatUgx, initials } from '../utils/ratings';
 import { useLanguage } from '../i18n/LanguageContext';
+import { useBooking } from '../../context/BookingContext';
+import { completeBooking, getErrorMessage } from '../../services/bookingsApi';
 
 export default function JobInProgressScreen({ job = {}, onNavigate, onComplete }) {
   const { t } = useLanguage();
+  const bookingCtx = useBooking();
   const [elapsedMins, setElapsedMins] = useState(job.elapsedMins || 0);
+  // Server truth: has the fundi already confirmed their side?
+  const fundiConfirmed = Boolean(job.fundiCompleted);
+  const [waitingForFundi, setWaitingForFundi] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  // Server truth for the job status — the local job object can claim
+  // "in_progress" before the fundi actually started on their side.
+  const [serverStatus, setServerStatus] = useState(null);
+  const pollingRef = useRef(null);
   const firstName = (job.fundiName || 'John').split(' ')[0];
+  const isDemo = !job.id || String(job.id).startsWith('demo');
+  const jobStarted = isDemo || serverStatus === null
+    ? String(job.status || '').toLowerCase() === 'in_progress'
+    : serverStatus === 'IN_PROGRESS';
 
   useEffect(() => {
     const start = job.startedAt || Date.now() - (job.elapsedMins || 0) * 60000;
@@ -20,6 +35,86 @@ export default function JobInProgressScreen({ job = {}, onNavigate, onComplete }
     return () => clearInterval(id);
   }, [job.startedAt, job.elapsedMins]);
 
+  // Fetch the real status once, then poll until the fundi starts the job.
+  useEffect(() => {
+    if (isDemo) return undefined;
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const fresh = await bookingCtx?.refreshBookingById?.(job.id);
+        if (!cancelled && fresh?.status) {
+          setServerStatus(fresh.status);
+          return fresh.status;
+        }
+      } catch {
+        /* transient — retry on next tick */
+      }
+      return null;
+    };
+    check();
+    const id = setInterval(async () => {
+      const st = await check();
+      if (!cancelled && st === 'IN_PROGRESS') clearInterval(id);
+    }, 8000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [job.id]);
+
+  useEffect(
+    () => () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    },
+    [],
+  );
+
+  const finishJob = (fresh) => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    onComplete?.({ ...job, status: 'completed', releasedAt: Date.now(), ...(fresh || {}) });
+  };
+
+  const handleMarkComplete = async () => {
+    if (isDemo) {
+      onComplete?.(job);
+      return;
+    }
+    if (!jobStarted) {
+      Alert.alert(
+        t('Job not started'),
+        t('{{name}} has not started the job yet. You can confirm once it begins.', { name: firstName }),
+      );
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const res = await completeBooking(job.id);
+      const booking = res?.data?.booking;
+      if (!booking || booking.status === 'COMPLETED') {
+        finishJob(booking);
+        return;
+      }
+      // Client confirmed; escrow releases once the fundi confirms too.
+      setWaitingForFundi(true);
+      pollingRef.current = setInterval(async () => {
+        try {
+          const fresh = await bookingCtx?.refreshBookingById?.(job.id);
+          if (fresh?.status === 'COMPLETED') finishJob(fresh);
+        } catch {
+          /* transient — keep polling */
+        }
+      }, 8000);
+    } catch (error) {
+      Alert.alert(t('Could not confirm completion'), getErrorMessage(error));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
     <ScrollScreen contentStyle={styles.scroll} bottomPad={32}>
       <View style={styles.iconWrap}>
@@ -27,12 +122,19 @@ export default function JobInProgressScreen({ job = {}, onNavigate, onComplete }
         <View style={styles.iconDot} />
       </View>
 
-      <Text style={styles.title}>{t('Job in progress')}</Text>
+      <Text style={styles.title}>
+        {jobStarted ? t('Job in progress') : t('Job starting soon')}
+      </Text>
       <Text style={styles.sub}>
-        {t('{{name}} is working on your {{service}}.', {
-          name: firstName,
-          service: job.service?.toLowerCase() || t('repair'),
-        })}
+        {jobStarted
+          ? t('{{name}} is working on your {{service}}.', {
+              name: firstName,
+              service: job.service?.toLowerCase() || t('repair'),
+            })
+          : t('Your escrow payment for the {{service}} job is safe. {{name}} will begin shortly.', {
+              name: firstName,
+              service: job.service?.toLowerCase() || t('repair'),
+            })}
       </Text>
 
       <Text style={styles.section}>{t('BOOKING DETAILS')}</Text>
@@ -60,10 +162,23 @@ export default function JobInProgressScreen({ job = {}, onNavigate, onComplete }
       <View style={styles.statusBox}>
         <Ionicons name="navigate" size={20} color={theme.colors.accent} />
         <View style={{ flex: 1 }}>
-          <Text style={styles.statusTitle}>{t('{{name}} is on site working.', { name: firstName })}</Text>
-          <Text style={styles.statusSub}>
-            {t("You'll be notified the moment the job is marked done.")}
-          </Text>
+          {jobStarted ? (
+            <>
+              <Text style={styles.statusTitle}>{t('{{name}} is on site working.', { name: firstName })}</Text>
+              <Text style={styles.statusSub}>
+                {t("You'll be notified the moment the job is marked done.")}
+              </Text>
+            </>
+          ) : (
+            <>
+              <Text style={styles.statusTitle}>
+                {t('Waiting for {{name}} to start the job…', { name: firstName })}
+              </Text>
+              <Text style={styles.statusSub}>
+                {t('The job starts as soon as {{name}} marks it on their side.', { name: firstName })}
+              </Text>
+            </>
+          )}
         </View>
       </View>
 
@@ -72,9 +187,45 @@ export default function JobInProgressScreen({ job = {}, onNavigate, onComplete }
         <Text style={styles.rateDisabledText}>{t('Rate this job (available after completion)')}</Text>
       </View>
 
-      <PrimaryButton style={styles.completeBtn} onPress={() => onComplete?.(job)}>
-        {t('Mark job as complete')}
-      </PrimaryButton>
+      {waitingForFundi ? (
+        <View style={[styles.statusBox, styles.waitingBox]}>
+          <ActivityIndicator size="small" color={theme.colors.accent} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.statusTitle}>
+              {t('Waiting for {{name}} to confirm…', { name: firstName })}
+            </Text>
+            <Text style={styles.statusSub}>
+              {t(
+                'You confirmed the job. Payment is released from escrow once {{name}} confirms too.',
+                { name: firstName },
+              )}
+            </Text>
+          </View>
+        </View>
+      ) : (
+        <>
+          <PrimaryButton
+            style={styles.completeBtn}
+            onPress={handleMarkComplete}
+            disabled={submitting || !jobStarted}
+          >
+            {!jobStarted
+              ? t('Waiting for {{name}} to start…', { name: firstName })
+              : submitting
+                ? t('Confirming…')
+                : fundiConfirmed
+                  ? t('{{name}} is done — release payment', { name: firstName })
+                  : t('Mark job as complete')}
+          </PrimaryButton>
+          <Text style={styles.confirmNote}>
+            {!jobStarted
+              ? t("You can confirm completion once the job has started.")
+              : fundiConfirmed
+                ? t('{{name}} already confirmed. Your confirmation releases the payment.', { name: firstName })
+                : t('Payment is released only after both you and {{name}} confirm.', { name: firstName })}
+          </Text>
+        </>
+      )}
 
       <TouchableOpacity style={styles.chatFab} onPress={() => onNavigate?.('chat', { targetUserId: job?.fundiId })}>
         <Ionicons name="chatbubble-outline" size={24} color={theme.colors.white} />
@@ -169,6 +320,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 24,
     paddingHorizontal: 20,
     marginBottom: 4,
+  },
+  waitingBox: { alignItems: 'center', marginBottom: 20 },
+  confirmNote: {
+    color: theme.colors.mutedDark,
+    fontSize: 12,
+    textAlign: 'center',
+    marginHorizontal: 24,
+    lineHeight: 17,
   },
   chatFab: {
     alignSelf: 'center',

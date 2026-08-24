@@ -47,6 +47,19 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
     if (booking?.id) refreshBookingById(booking.id);
   }, [booking?.id, refreshBookingById]);
 
+  // Safety net: re-fetch while the outcome is still open so a proposal made
+  // by the fundi always shows up even if the socket event was missed. Also
+  // keep polling through the whole ACCEPTED stage so a stale "unpaid" entry
+  // (e.g. entered from an outdated list after a failed refresh) converges to
+  // server truth and stops asking for payment.
+  const stillOpen =
+    booking?.status === 'PENDING' || booking?.status === 'ACCEPTED';
+  useEffect(() => {
+    if (!stillOpen || !booking?.id) return undefined;
+    const id = setInterval(() => refreshBookingById(booking.id), 8000);
+    return () => clearInterval(id);
+  }, [stillOpen, booking?.id, refreshBookingById]);
+
   const handleCancel = async () => {
     if (!booking?.id) return;
     Alert.alert(t('Cancel booking'), t('Are you sure you want to cancel this request?'), [
@@ -189,7 +202,9 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
             <Text style={styles.sub}>
               {canPay
                 ? t('Price agreed. Proceed to payment to confirm your booking.')
-                : t('Agree on a service price with your fundi to continue.')}
+                : booking.paid
+                  ? t('Payment secured in escrow.')
+                  : t('Agree on a service price with your fundi to continue.')}
             </Text>
           </>
         )}
@@ -252,6 +267,15 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
           >
             {t('Proceed to Payment')} · {formatUgx(booking.total)}
           </PrimaryButton>
+        ) : booking.paid ? (
+          <View style={styles.paidNote}>
+            <Ionicons name="shield-checkmark" size={18} color={theme.colors.green} />
+            <Text style={styles.paidText}>
+              {t('Payment held in escrow. {{name}} can start whenever they arrive.', {
+                name: booking.fundiName || t('Your fundi'),
+              })}
+            </Text>
+          </View>
         ) : isAccepted ? (
           <PrimaryButton style={{ marginTop: 20 }} disabled>
             {t('Proceed to Payment')}
@@ -356,6 +380,18 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
   },
   cancelText: { color: theme.colors.white, fontWeight: '700', fontSize: 13 },
+  paidNote: {
+    marginTop: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(34,197,94,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.25)',
+    borderRadius: theme.radius.md,
+    padding: 14,
+  },
+  paidText: { flex: 1, color: theme.colors.green, fontWeight: '700', fontSize: 13, lineHeight: 18 },
   empty: { flex: 1, justifyContent: 'center', padding: 24, gap: 12 },
   photoSection: { marginTop: 16 },
   photoLabel: { color: theme.colors.muted, fontSize: 11, fontWeight: '700', marginBottom: 8 },

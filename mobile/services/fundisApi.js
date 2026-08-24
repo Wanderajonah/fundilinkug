@@ -15,6 +15,8 @@ export function mapFundiItem(item) {
     role: skills[0] || "Professional",
     rating: item.rating || 0,
     reviews: item.reviewCount || 0,
+    reviewCount: item.reviewCount || 0,
+    jobsCompleted: item.jobsCompleted ?? null,
     price: item.hourlyRate || Math.round((item.quoteAmount || 8000) / 1000),
     hourlyRate:
       item.hourlyRate ||

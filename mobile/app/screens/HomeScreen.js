@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   StatusBar,
   ScrollView,
   ImageBackground,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,6 +22,7 @@ import theme from "../theme";
 import { useBookingOptional } from "../../context/BookingContext";
 import { useLocation } from "../../context/LocationContext";
 import { useLanguage } from "../i18n/LanguageContext";
+import { bookingRoute } from "../utils/bookings";
 
 const H_PAD = 20;
 
@@ -37,9 +39,191 @@ const CATEGORIES = [
   { key: "painter", label: "Painter", icon: "color-palette-outline" },
 ];
 
-function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLoading, walletBalance }) {
-  const [showBalance, setShowBalance] = useState(true);
+const HERO_SLIDES = [
+  {
+    key: "trusted",
+    image:
+      "https://images.unsplash.com/photo-1621905251189-08b45d6a269e?w=900&q=75&fm=jpg",
+    title: "Verified fundis you can trust",
+    sub: "ID-checked, skill-tested professionals near you",
+    cta: "Find a Fundi",
+    action: "browse",
+  },
+  {
+    key: "booking",
+    image:
+      "https://images.unsplash.com/photo-1688372198189-de6a51777a81?w=900&q=75&fm=jpg",
+    title: "Book a fundi in minutes",
+    sub: "Plumbing, electrical, carpentry and more on demand",
+    cta: "Request a Service",
+    action: "book",
+  },
+  {
+    key: "escrow",
+    image:
+      "https://images.unsplash.com/photo-1687422811062-a966b55cb217?w=900&q=75&fm=jpg",
+    title: "Pay safely with escrow",
+    sub: "Money is released only when the job is done right",
+    cta: "How It Works",
+    action: "help",
+  },
+];
+
+function HeroSlider({ onNavigate }) {
   const { t } = useLanguage();
+  const { width: screenWidth } = useWindowDimensions();
+  const slideWidth = Math.max(200, screenWidth - H_PAD * 2);
+
+  const N = HERO_SLIDES.length;
+  const BASE = N; // start offset — the middle copy of the tripled list
+  const slides = useMemo(
+    () => [...HERO_SLIDES, ...HERO_SLIDES, ...HERO_SLIDES],
+    [],
+  );
+
+  const scrollRef = useRef(null);
+  const posRef = useRef(BASE);
+  const [index, setIndex] = useState(0);
+
+  // Center on the middle copy (identical visuals to the leftmost, so no flash).
+  useEffect(() => {
+    posRef.current = BASE;
+    setIndex(0);
+    const id = setTimeout(() => {
+      scrollRef.current?.scrollTo({ x: BASE * slideWidth, animated: false });
+    }, 50);
+    return () => clearTimeout(id);
+  }, [slideWidth]);
+
+  const applyPage = (page, animated) => {
+    scrollRef.current?.scrollTo({ x: page * slideWidth, animated });
+  };
+
+  // Silently snap back into the middle copy — the two frames are pixel-identical,
+  // so the swap is invisible and the loop feels endless.
+  const normalizeToBase = () => {
+    const logical = ((posRef.current % N) + N) % N;
+    const basePage = BASE + logical;
+    if (posRef.current !== basePage) {
+      applyPage(basePage, false);
+      posRef.current = basePage;
+    }
+  };
+
+  const step = (dir) => {
+    normalizeToBase();
+    const target = posRef.current + dir;
+    posRef.current = target;
+    setIndex(((target % N) + N) % N);
+    applyPage(target, true);
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => step(1), 4500);
+    return () => clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slideWidth]);
+
+  const handleMomentumEnd = (e) => {
+    const page = Math.round(e.nativeEvent.contentOffset.x / slideWidth);
+    posRef.current = page;
+    setIndex(((page % N) + N) % N);
+    normalizeToBase();
+  };
+
+  return (
+    <View style={[styles.heroBanner, { width: slideWidth }]}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={handleMomentumEnd}
+        decelerationRate="fast"
+      >
+        {slides.map((slide, i) => (
+          <TouchableOpacity
+            key={`${slide.key}-${i}`}
+            activeOpacity={0.95}
+            onPress={() => onNavigate?.(slide.action)}
+          >
+            <ImageBackground
+              source={{ uri: slide.image }}
+              style={[styles.heroImage, { width: slideWidth }]}
+              resizeMode="cover"
+            >
+              <LinearGradient
+                colors={["rgba(0,0,0,0.38)", "rgba(0,0,0,0.6)", "rgba(0,0,0,0.92)"]}
+                locations={[0, 0.45, 1]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 0, y: 1 }}
+                style={styles.heroOverlay}
+              >
+                <View style={styles.heroContent}>
+                  <Text style={styles.heroTitle} numberOfLines={1}>
+                    {t(slide.title)}
+                  </Text>
+                  <Text style={styles.heroSub} numberOfLines={1}>
+                    {t(slide.sub)}
+                  </Text>
+                  <View style={styles.heroFooterRow}>
+                    <View style={styles.heroBtn}>
+                      <Text style={styles.heroBtnText}>{t(slide.cta)}</Text>
+                    </View>
+                    <View style={styles.dotsRow}>
+                      {HERO_SLIDES.map((s, d) => (
+                        <View
+                          key={s.key}
+                          style={[styles.dot, d === index && styles.dotActive]}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                </View>
+              </LinearGradient>
+            </ImageBackground>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      <View style={styles.arrowsWrap} pointerEvents="box-none">
+        <TouchableOpacity
+          style={styles.arrowBtn}
+          activeOpacity={0.8}
+          onPress={() => step(1)}
+        >
+          <Ionicons name="chevron-forward" size={14} color="#fff" />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.arrowBtn}
+          activeOpacity={0.8}
+          onPress={() => step(-1)}
+        >
+          <Ionicons name="chevron-back" size={14} color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLoading, walletBalance }) {
+  const { t } = useLanguage();
+  const bookingCtx = useBookingOptional();
+
+  // Route by the booking's CURRENT server state, not where the banner assumes.
+  const openActiveBooking = async () => {
+    const fresh = activeJob?.id
+      ? await bookingCtx?.refreshBookingById?.(activeJob.id)
+      : null;
+    const route = bookingRoute(fresh || bookingCtx?.activeBooking || null);
+    if (!route) {
+      onNavigate?.("jobInProgress");
+      return;
+    }
+    onNavigate?.(route.key, route.params);
+  };
+
+  const [showBalance, setShowBalance] = useState(true);
   return (
     <View>
       {/* 1. Header Row — logo + bell + balance below bell */}
@@ -100,7 +284,7 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
       {activeJob?.status === "in_progress" || activeJob?.fundiName ? (
         <TouchableOpacity
           style={styles.activeBanner}
-          onPress={() => onNavigate?.("jobInProgress")}
+          onPress={openActiveBooking}
           activeOpacity={0.9}
         >
           <View style={{ flex: 1 }}>
@@ -126,34 +310,8 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
         />
       </View>
 
-      {/* 3. Hero Banner */}
-      <TouchableOpacity
-        style={styles.heroBanner}
-        activeOpacity={0.95}
-        onPress={() => onNavigate?.("browse")}
-      >
-        <ImageBackground
-          source={{ uri: "https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800" }}
-          style={styles.heroImage}
-          resizeMode="cover"
-        >
-          <LinearGradient
-            colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0.75)"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.heroOverlay}
-          >
-            <View style={styles.heroContent}>
-              <Text style={styles.heroTitle}>
-                {t('Get a qualified verified fundi near you')}
-              </Text>
-              <TouchableOpacity style={styles.heroBtn} activeOpacity={0.85}>
-                <Text style={styles.heroBtnText}>{t('Find a Fundi')}</Text>
-              </TouchableOpacity>
-            </View>
-          </LinearGradient>
-        </ImageBackground>
-      </TouchableOpacity>
+      {/* 3. Hero Banner — auto-advancing slider */}
+      <HeroSlider onNavigate={onNavigate} />
 
       {/* 4. Services Section */}
       <HomeSection title={t('Services')} style={styles.sectionGap}>
@@ -422,19 +580,66 @@ const styles = StyleSheet.create({
 
   /* Hero Banner */
   heroBanner: {
-    height: 120,
+    height: 150,
     borderRadius: 14,
     overflow: "hidden",
+    alignSelf: "center",
     marginBottom: 24,
     ...theme.elevation.lg,
   },
-  heroImage: { flex: 1 },
-  heroOverlay: { flex: 1, justifyContent: "flex-end", padding: 20 },
-  heroContent: { gap: 14 },
+  arrowsWrap: {
+    position: "absolute",
+    right: 8,
+    top: 0,
+    bottom: 0,
+    justifyContent: "center",
+    gap: 6,
+  },
+  arrowBtn: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.25)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  heroImage: { height: "100%" },
+  heroOverlay: { flex: 1, justifyContent: "flex-end", padding: 16 },
+  heroContent: { gap: 5 },
   heroTitle: {
     color: theme.colors.white,
     fontSize: 15,
     fontWeight: "800",
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroSub: {
+    color: "rgba(255,255,255,0.88)",
+    fontSize: 11.5,
+    fontWeight: "600",
+    marginBottom: 4,
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  heroFooterRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  dotsRow: { flexDirection: "row", gap: 5 },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "rgba(255,255,255,0.35)",
+  },
+  dotActive: {
+    width: 16,
+    backgroundColor: theme.colors.accent,
   },
   heroBtn: {
     alignSelf: "flex-start",

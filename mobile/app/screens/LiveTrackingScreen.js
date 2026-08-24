@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenWrapper from '../components/ScreenWrapper';
 import FundiMap from '../components/FundiMap';
@@ -19,15 +19,15 @@ export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStar
   const firstName = fundiName.split(' ')[0];
   const { coords, region } = useLocation();
   const bookingCtx = useBookingOptional();
-  const [route, setRoute] = useState({ distanceKm: 1.8, etaMinutes: 8 });
+  const [route, setRoute] = useState(null);
 
-  const fundiCoords = useMemo(() => {
-    const live = bookingCtx?.fundiLocation || job.fundiLocation;
-    if (live?.lat && live?.lng) {
-      return { lat: live.lat, lng: live.lng, title: fundiName };
-    }
-    return { lat: -1.292066, lng: 36.821945, title: fundiName };
-  }, [bookingCtx?.fundiLocation, job.fundiLocation, fundiName]);
+  // Only trust real GPS fixes from the fundi — never guess from a hardcoded
+  // point, otherwise the km/ETA shown would be fiction.
+  const liveFundi = bookingCtx?.fundiLocation || job.fundiLocation;
+  const hasLiveFundi = Boolean(liveFundi?.lat && liveFundi?.lng);
+  const fundiCoords = hasLiveFundi
+    ? { lat: liveFundi.lat, lng: liveFundi.lng, title: fundiName }
+    : null;
 
   const statusMessage = useMemo(() => {
     const status = job.status?.toUpperCase?.() || job.status;
@@ -37,6 +37,10 @@ export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStar
   }, [firstName, job.status, t]);
 
   useEffect(() => {
+    if (!hasLiveFundi) {
+      setRoute(null);
+      return;
+    }
     (async () => {
       try {
         const { data } = await getRoutePreview({
@@ -47,10 +51,10 @@ export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStar
         });
         setRoute(data);
       } catch {
-        /* keep defaults */
+        /* keep previous / none */
       }
     })();
-  }, [fundiCoords.lat, fundiCoords.lng, coords.lat, coords.lng]);
+  }, [hasLiveFundi, fundiCoords?.lat, fundiCoords?.lng, coords.lat, coords.lng]);
 
   const activeStep =
     job.status === 'IN_PROGRESS' || job.status === 'in_progress'
@@ -61,71 +65,95 @@ export default function LiveTrackingScreen({ job = {}, onBack, onChat, onJobStar
 
   return (
     <ScreenWrapper style={styles.safe}>
-      <TouchableOpacity style={styles.backBtn} onPress={onBack}>
-        <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
-      </TouchableOpacity>
+      <ScrollView
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.topBar}>
+          <TouchableOpacity style={styles.backBtn} onPress={onBack}>
+            <Ionicons name="chevron-back" size={22} color={theme.colors.white} />
+          </TouchableOpacity>
 
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>{t('Live Tracking')}</Text>
-        <View style={styles.etaBadge}>
-          <Text style={styles.etaText}>{t('ETA {{mins}} mins', { mins: route.etaMinutes })}</Text>
-        </View>
-      </View>
-
-      <FundiMap
-        style={styles.map}
-        region={region}
-        currentLocation={coords}
-        destination={fundiCoords}
-        fundis={
-          job.fundiId
-            ? [{ _id: job.fundiId, userId: { location: fundiCoords, name: fundiName } }]
-            : []
-        }
-      />
-
-      <Text style={styles.distance}>{route.distanceKm} km</Text>
-      <Text style={styles.status}>{statusMessage}</Text>
-
-      <View style={styles.stepper}>
-        {STEPS.map((s, i) => (
-          <View key={s} style={styles.stepItem}>
-            <View style={[styles.stepDot, i <= activeStep && styles.stepDotOn]} />
-            <Text style={[styles.stepLabel, i <= activeStep && styles.stepLabelOn]}>{t(s)}</Text>
+          <View style={styles.header}>
+            <Text style={styles.headerTitle}>{t('Live Tracking')}</Text>
+            <View style={[styles.etaBadge, !route && styles.etaBadgeIdle]}>
+              <Text style={styles.etaText}>
+                {route
+                  ? t('ETA {{mins}} mins', { mins: route.etaMinutes })
+                  : t('Locating fundi…')}
+              </Text>
+            </View>
           </View>
-        ))}
-      </View>
-
-      <View style={styles.fundiCard}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{initials(fundiName)}</Text>
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{fundiName}</Text>
-          <Text style={styles.meta}>{job.service || t('Service')} · {t('Live location updating')}</Text>
+
+        <FundiMap
+          style={styles.map}
+          region={region}
+          currentLocation={coords}
+          destination={fundiCoords}
+          fundis={
+            job.fundiId && fundiCoords
+              ? [{ _id: job.fundiId, userId: { location: fundiCoords, name: fundiName } }]
+              : []
+          }
+        />
+
+        <View style={styles.content}>
+          {route ? (
+            <Text style={styles.distance}>
+              {t('≈ {{km}} km away', { km: route.distanceKm })}
+            </Text>
+          ) : (
+            <Text style={styles.distanceIdle}>
+              {t('Distance shows once the fundi shares live location')}
+            </Text>
+          )}
+          <Text style={styles.status}>{statusMessage}</Text>
+
+          <View style={styles.stepper}>
+            {STEPS.map((s, i) => (
+              <View key={s} style={styles.stepItem}>
+                <View style={[styles.stepDot, i <= activeStep && styles.stepDotOn]} />
+                <Text style={[styles.stepLabel, i <= activeStep && styles.stepLabelOn]}>{t(s)}</Text>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.fundiCard}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials(fundiName)}</Text>
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.name}>{fundiName}</Text>
+              <Text style={styles.meta}>{job.service || t('Service')} · {t('Live location updating')}</Text>
+            </View>
+            <PrimaryButton style={styles.chatBtn} onPress={onChat}>
+              💬 {t('Chat')}
+            </PrimaryButton>
+          </View>
+
+          <PrimaryButton style={{ marginBottom: 12 }} onPress={onJobStarted}>
+            {t('Fundi arrived — job started')}
+          </PrimaryButton>
+
+          <TouchableOpacity style={styles.shareLink}>
+            <Text style={styles.shareText}>🔗 {t('Share trip with a contact for safety')}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.sosBtn}>
+            <Text style={styles.sosText}>🚨 {t('SOS Emergency SOS')}</Text>
+          </TouchableOpacity>
         </View>
-        <PrimaryButton style={styles.chatBtn} onPress={onChat}>
-          💬 {t('Chat')}
-        </PrimaryButton>
-      </View>
-
-      <PrimaryButton style={{ marginBottom: 12 }} onPress={onJobStarted}>
-        {t('Fundi arrived — job started →')}
-      </PrimaryButton>
-
-      <TouchableOpacity style={styles.shareLink}>
-        <Text style={styles.shareText}>🔗 {t('Share trip with a contact for safety')}</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.sosBtn}>
-        <Text style={styles.sosText}>🚨 {t('SOS Emergency SOS')}</Text>
-      </TouchableOpacity>
+      </ScrollView>
     </ScreenWrapper>
   );
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: theme.colors.black, paddingHorizontal: 20 },
+  safe: { flex: 1, backgroundColor: theme.colors.black },
+  container: { paddingBottom: 32, flexGrow: 1 },
+  topBar: { paddingHorizontal: 20 },
+  content: { paddingHorizontal: 20 },
   backBtn: {
     width: 40,
     height: 40,
@@ -153,8 +181,15 @@ const styles = StyleSheet.create({
     borderRadius: 14,
   },
   etaText: { color: theme.colors.textDark, fontWeight: '800', fontSize: 12 },
-  map: { width: '100%', height: 380, borderRadius: theme.radius.lg, marginBottom: 8 },
+  etaBadgeIdle: { opacity: 0.6 },
+  map: { width: '100%', height: 380, marginBottom: 8 },
   distance: { textAlign: 'center', color: theme.colors.accent, fontWeight: '700', marginBottom: 8 },
+  distanceIdle: {
+    textAlign: 'center',
+    color: theme.colors.mutedDark,
+    fontSize: 12,
+    marginBottom: 8,
+  },
   status: { color: theme.colors.white, textAlign: 'center', fontWeight: '700', marginBottom: 16 },
   stepper: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 20 },
   stepItem: { alignItems: 'center', flex: 1 },

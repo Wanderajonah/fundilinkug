@@ -58,7 +58,6 @@ import {
   getMyReviews,
   getErrorMessage as reviewError,
 } from "./services/reviewsApi";
-import { updateJobStatus } from "./services/jobsApi";
 import { defaultActiveJob, buildBookingFromRequest } from "./app/utils/ratings";
 import BookingWaitingScreen from "./app/screens/BookingWaitingScreen";
 import FundiBookingDetailScreen from "./app/screens/FundiBookingDetailScreen";
@@ -67,6 +66,7 @@ import BottomNav from "./app/components/BottomNav";
 import FloatingSupportChat from "./app/components/FloatingSupportChat";
 import { LocationProvider, useLocation } from "./context/LocationContext";
 import { BookingProvider } from "./context/BookingContext";
+import BookingToast from "./app/components/BookingToast";
 import { ChatProvider } from "./context/ChatContext";
 import { LanguageProvider } from "./app/i18n/LanguageContext";
 
@@ -303,7 +303,10 @@ function AppContent() {
       fundiCoords={coords}
       onNavigate={handleNavigate}
     >
-      {el}
+      <View style={{ flex: 1 }}>
+        {el}
+        <BookingToast visible={!["bookingWaiting", "fundiBookingDetail"].includes(screen)} />
+      </View>
     </BookingProvider>
   );
 
@@ -393,14 +396,9 @@ function AppContent() {
     };
     setActiveJob(completed);
 
-    if (authToken && job.id && !String(job.id).startsWith("demo")) {
-      try {
-        await updateJobStatus(job.id, "completed");
-      } catch {
-        /* demo/offline — continue flow */
-      }
-    }
-
+    // Server completion (dual confirmation + escrow release) is handled by
+    // JobInProgressScreen via the bookings API; this only advances the flow
+    // to the review screen.
     setEditingReview(null);
     pushAndNavigate("rateExperience");
   };
@@ -566,8 +564,6 @@ function AppContent() {
           setGoogleNewUserOrigin("signin");
           setScreen("signIn");
         }}
-        onSignIn={() => setScreen("signIn")}
-        onSkip={() => setScreen("browse")}
       />
     );
   }
@@ -668,8 +664,6 @@ function AppContent() {
             setGoogleNewUserOrigin("signin");
             setScreen("signIn");
           }}
-          onSignIn={() => setScreen("signIn")}
-          onSkip={() => setScreen("browse")}
         />
       );
     }
@@ -956,6 +950,7 @@ function AppContent() {
       <PaymentScreen
         booking={booking}
         onBack={() => setScreen("bookingWaiting")}
+        onNavigate={handleNavigate}
         onPay={() => {
           const paidBooking = { ...booking, paid: true };
           setPendingBooking(paidBooking);

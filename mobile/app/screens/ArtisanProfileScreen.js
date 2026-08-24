@@ -278,7 +278,12 @@ export default function ArtisanProfileScreen({ artisan = {}, onNavigate }) {
     });
     return dist;
   }, [reviewList]);
-  const jobCount = artisan.jobsCompleted ?? artisan.jobsDone ?? "—";
+  // Prefer the live profile fetch, then whatever the list/card passed in.
+  const jobCount =
+    profileData?.jobsCompleted ??
+    artisan.jobsCompleted ??
+    artisan.jobsDone ??
+    "—";
   const yearsValue = profile.experience > 0 ? profile.experience : "—";
 
   const rateLabel = hourlyRate || (price ? `$${price}/hr` : t('Rate on request'));

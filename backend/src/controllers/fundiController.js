@@ -1,7 +1,24 @@
 const FundiProfile = require("../models/FundiProfile");
+const Review = require("../models/Review");
 const { getRecommendations } = require("../services/recommendationService");
 const { filterByRadius, normalizeCoords } = require("../utils/geo");
 const { buildSkillsQuery } = require("../utils/trades");
+
+// Batch-attach review counts so profile cards show "X reviews" without N+1
+// queries from the client.
+const attachReviewCounts = async (fundis) => {
+  const ids = fundis.map((f) => f._id).filter(Boolean);
+  if (!ids.length) return fundis;
+  const counts = await Review.aggregate([
+    { $match: { fundiId: { $in: ids } } },
+    { $group: { _id: "$fundiId", count: { $sum: 1 } } },
+  ]);
+  const byId = new Map(counts.map((c) => [String(c._id), c.count]));
+  return fundis.map((f) => ({
+    ...f,
+    reviewCount: byId.get(String(f._id)) || 0,
+  }));
+};
 
 const getFundis = async (req, res, next) => {
   try {
@@ -24,10 +41,10 @@ const getFundis = async (req, res, next) => {
         return plain;
       });
       const recommendations = getRecommendations(origin, fundis, 5);
-      return res.json(recommendations);
+      return res.json(await attachReviewCounts(recommendations));
     }
 
-    return res.json(fundis);
+    return res.json(await attachReviewCounts(fundis.map((f) => f.toObject())));
   } catch (error) {
     return next(error);
   }
@@ -37,7 +54,8 @@ const getFundiById = async (req, res, next) => {
   try {
     const fundi = await FundiProfile.findById(req.params.id).populate("userId", "-password");
     if (!fundi) return res.status(404).json({ message: "Fundi not found" });
-    return res.json(fundi);
+    const [withStats] = await attachReviewCounts([fundi.toObject()]);
+    return res.json(withStats);
   } catch (error) {
     return next(error);
   }

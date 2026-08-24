@@ -22,3 +22,5 @@ services:
         sync: false
       - key: COMMS_API_KEY
         sync: false
+      - key: COMMS_SENDER_ID
+        sync: false

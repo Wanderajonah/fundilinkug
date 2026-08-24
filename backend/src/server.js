@@ -56,6 +56,7 @@ app.use("/uploads/:subdir/:fileId", streamGridFsFile);
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
 app.get("/api/health", (req, res) => {
+  const { isConfigured } = require("./services/supportBotService");
   res.json({
     status: "ok",
     service: "FundiLink API",
@@ -64,6 +65,7 @@ app.get("/api/health", (req, res) => {
       otp: true,
       maps: Boolean(process.env.GOOGLE_MAPS_API_KEY),
       ai: true,
+      aiVision: isConfigured(),
       bookings: true,
       chat: true,
       socket: true,

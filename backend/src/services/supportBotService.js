@@ -1,8 +1,19 @@
 const fs = require("fs");
 const path = require("path");
+const mongoose = require("mongoose");
 const { guessTradeFromText } = require("../utils/trades");
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
 const VISION_MODEL = process.env.GROQ_VISION_MODEL || "qwen/qwen3.6-27b";
+
+const MIME_BY_EXT = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+  ".heic": "image/heic",
+  ".heif": "image/heif",
+};
 
 // Trade categories the platform supports (matches mobile browse categories)
 const TRADE_CATEGORIES = ["plumber", "electrician", "carpenter", "painter"];
@@ -90,26 +101,74 @@ async function groqChat(body, maxAttempts = 3) {
   return null;
 }
 
-/** Read an uploaded chat image from local disk and return a base64 data URL. */
-function readUploadAsDataUrl(imageUrl) {
+/** Convert a GridFS file to a base64 data URL. */
+async function gridFsFileToDataUrl(bucketName, fileId) {
+  const idPart = String(fileId).split(".")[0];
+  if (!mongoose.Types.ObjectId.isValid(idPart)) return null;
+  if (mongoose.connection.readyState !== 1) return null;
+
+  const { getBucket } = require("./gridfsStorage");
+  const bucket = getBucket(bucketName);
+  const files = await bucket
+    .find({ _id: new mongoose.Types.ObjectId(idPart) })
+    .toArray();
+  if (!files.length) return null;
+
+  const file = files[0];
+  const buf = await new Promise((resolve, reject) => {
+    const bufs = [];
+    const stream = bucket.openDownloadStream(file._id);
+    stream.on("data", (c) => bufs.push(c));
+    stream.on("end", () => resolve(Buffer.concat(bufs)));
+    stream.on("error", reject);
+  });
+
+  const mime = file.contentType || MIME_BY_EXT[path.extname(file.filename).toLowerCase()] || "image/jpeg";
+  return `data:${mime};base64,${buf.toString("base64")}`;
+}
+
+/**
+ * Read an uploaded chat image and return a base64 data URL. Supports legacy
+ * disk files, GridFS (current storage), data URLs, and remote http(s) URLs.
+ */
+async function readUploadAsDataUrl(imageUrl) {
   if (!imageUrl) return null;
   if (imageUrl.startsWith("data:")) return imageUrl;
-  if (imageUrl.startsWith("http")) return imageUrl; // already a remote URL
 
-  const uploadRoot = path.join(__dirname, "../../uploads");
+  if (imageUrl.startsWith("http")) {
+    try {
+      const res = await fetch(imageUrl);
+      if (!res.ok) return null;
+      const buf = Buffer.from(await res.arrayBuffer());
+      const mime = res.headers.get("content-type") || "image/jpeg";
+      return `data:${mime};base64,${buf.toString("base64")}`;
+    } catch (e) {
+      return null;
+    }
+  }
+
   const rel = imageUrl.replace(/^\/uploads\//, "").split("?")[0];
+
+  // legacy files on local disk
+  const uploadRoot = path.join(__dirname, "../../uploads");
   const filePath = path.join(uploadRoot, rel);
-  if (!fs.existsSync(filePath)) return null;
+  if (fs.existsSync(filePath)) {
+    const mime = MIME_BY_EXT[path.extname(filePath).toLowerCase()] || "image/jpeg";
+    return `data:${mime};base64,${fs.readFileSync(filePath).toString("base64")}`;
+  }
 
-  const mime = {
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".png": "image/png",
-    ".gif": "image/gif",
-    ".webp": "image/webp"
-  }[path.extname(filePath).toLowerCase()] || "image/jpeg";
+  // current GridFS storage: /uploads/<bucket>/<id>[.ext]
+  const parts = rel.split("/");
+  if (parts.length === 2) {
+    try {
+      const dataUrl = await gridFsFileToDataUrl(parts[0], parts[1]);
+      if (dataUrl) return dataUrl;
+    } catch (e) {
+      // fall through to null
+    }
+  }
 
-  return `data:${mime};base64,${fs.readFileSync(filePath).toString("base64")}`;
+  return null;
 }
 
 function parseCategory(raw) {
@@ -157,7 +216,7 @@ function extractJson(raw) {
 
 /** Analyze an uploaded problem photo with the Groq vision model. */
 async function analyzeProblemImage(imageUrl, userText) {
-  const imageData = readUploadAsDataUrl(imageUrl);
+  const imageData = await readUploadAsDataUrl(imageUrl);
   if (!imageData) return { reply: null, category: null };
 
   const content = [
@@ -209,6 +268,10 @@ async function getBotResponse({ messages, imageUrl, userText } = {}) {
       if (vision.reply) {
         return { reply: vision.reply, category: vision.category };
       }
+    } else {
+      console.warn(
+        "[supportBot] GROQ not configured (set GROQ_API_KEY and GROQ_MODEL) — image analysis skipped"
+      );
     }
     // Fallback: no AI or analysis failed
     const fallbackCategory = guessTradeFromText(lastUser);

@@ -18,6 +18,8 @@ export default function FundiMap({
   radiusKm = 10,
   onRegionChange,
   onPressCoordinate,
+  userLabel = 'You',
+  userSubtitle = 'Customer',
 }) {
   const { t } = useLanguage();
   const loc = currentLocation || (region ? { lat: region.latitude, lng: region.longitude } : null);
@@ -41,6 +43,8 @@ export default function FundiMap({
       radiusKm={radiusKm}
       onRegionChange={onRegionChange}
       onPressCoordinate={onPressCoordinate}
+      userLabel={userLabel}
+      userSubtitle={userSubtitle}
     />
   );
 }

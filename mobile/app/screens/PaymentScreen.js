@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenWrapper from '../components/ScreenWrapper';
 import PrimaryButton from '../components/PrimaryButton';
@@ -8,13 +8,28 @@ import theme from '../theme';
 import { formatUgx } from '../utils/ratings';
 import { canProceedToPayment } from '../utils/bookings';
 import { getPlatformPricing } from '../../services/api';
+import { holdEscrow as holdPaymentApi, getWallet } from '../../services/walletApi';
 import { useLanguage } from '../i18n/LanguageContext';
 
-export default function PaymentScreen({ booking = {}, onBack, onPay, loading = false }) {
+export default function PaymentScreen({ booking = {}, onBack, onPay, loading = false, onNavigate }) {
   const { t } = useLanguage();
   const [method, setMethod] = useState('mtn');
   const [phone, setPhone] = useState('');
   const [clientFeeRate, setClientFeeRate] = useState(10);
+  const [processing, setProcessing] = useState(false);
+  const [balance, setBalance] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    getWallet()
+      .then((res) => {
+        if (mounted && res.data?.wallet) setBalance(res.data.wallet.balance ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -33,6 +48,46 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
   const platformFee = Math.round(serviceFee * (clientFeeRate / 100));
   const total = booking.total || booking.amount || serviceFee + platformFee;
   const canPay = canProceedToPayment(booking) || booking.paid;
+
+  // Record the payment server-side (escrow hold). Local-only bookings
+  // (demo flow, no id) skip the API and keep the old local behaviour.
+  const handlePay = async () => {
+    if (!booking.id && !booking._id) {
+      onPay?.();
+      return;
+    }
+    setProcessing(true);
+    try {
+      await holdPaymentApi(booking.id || booking._id);
+      onPay?.();
+    } catch (error) {
+      const serverMsg = error?.response?.data?.message;
+      let msg = serverMsg;
+      if (!msg && error?.code === 'ECONNABORTED') {
+        msg = t('The request timed out. Check your connection and try again.');
+      } else if (!msg && !error?.response) {
+        msg = t('Cannot reach FundiLink servers. Check your internet connection.');
+      } else if (!msg) {
+        msg = t('Could not complete the payment. Please try again.');
+      }
+      if (/insufficient/i.test(msg)) {
+        Alert.alert(t('Not enough balance'), msg, [
+          { text: t('Cancel'), style: 'cancel' },
+          {
+            text: t('Deposit now'),
+            onPress: () => onNavigate?.('deposit'),
+          },
+        ]);
+      } else if (serverMsg && /already/i.test(serverMsg)) {
+        // Server already has the escrow hold — treat as success.
+        onPay?.();
+      } else {
+        Alert.alert(t('Payment failed'), msg);
+      }
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   return (
     <ScreenWrapper style={styles.safe}>
@@ -57,7 +112,13 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
         <View style={styles.summary}>
           <Text style={styles.summaryName}>{booking.artisanName || t('Fundi')} · {booking.service || t('Service')}</Text>
           <Text style={styles.summaryMeta}>{booking.date || 'Sat, Apr 27'} · {booking.time || '09:00 AM'}</Text>
-          <Text style={styles.summaryLoc}>{booking.location || 'Plot 14 Bukoto St'}</Text>
+          <Text style={styles.summaryLoc}>
+            {typeof booking.address === 'string' && booking.address
+              ? booking.address
+              : typeof booking.location === 'string' && booking.location
+                ? booking.location
+                : 'Plot 14 Bukoto St'}
+          </Text>
           <Text style={styles.total}>UGX {total.toLocaleString()}</Text>
         </View>
 
@@ -109,10 +170,25 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
             <Text style={styles.totalLabel}>{t('Total')}</Text>
             <Text style={styles.totalVal}>UGX {total.toLocaleString()}</Text>
           </View>
+          {balance != null ? (
+            <View style={styles.row}>
+              <Text style={styles.rowLabel}>{t('Wallet balance')}</Text>
+              <Text
+                style={[
+                  styles.rowVal,
+                  { color: balance >= total ? theme.colors.green : theme.colors.red },
+                ]}
+              >
+                {formatUgx(balance)}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
-        <PrimaryButton onPress={onPay} disabled={!canPay || loading}>
-          {loading ? t('Processing…') : t('Proceed to Payment · UGX {{amount}}', { amount: total.toLocaleString() })}
+        <PrimaryButton onPress={handlePay} disabled={!canPay || loading || processing}>
+          {processing
+            ? t('Processing…')
+            : t('Proceed to Payment · UGX {{amount}}', { amount: total.toLocaleString() })}
         </PrimaryButton>
         {!canPay ? (
           <Text style={styles.disabledHint}>{t('Complete price negotiation to enable payment.')}</Text>

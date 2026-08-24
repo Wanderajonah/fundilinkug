@@ -199,6 +199,8 @@ export default function BrowseArtisansScreen({
         name,
         role,
         rating: item.rating,
+        reviewCount: item.reviewCount,
+        jobsCompleted: item.jobsCompleted,
         skills: item.skills || [],
         profilePhoto: item.userId?.profilePhoto || "",
         coverPhoto: item.userId?.coverPhoto || "",

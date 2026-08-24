@@ -15,9 +15,35 @@ import {
   mapApiBooking,
   mapBookingRequest,
   bookingToActiveJob,
+  getTimeLeftSeconds,
+  calculateDistanceKm,
 } from '../app/utils/bookings';
 
 const BookingContext = createContext(null);
+
+const ACTIVE_STATUSES = ['PENDING', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'];
+
+// Rebuild a socket-style request object from a persisted PENDING booking so
+// requests that arrived while the fundi was logged out still show up.
+function requestFromBooking(booking, coords) {
+  return {
+    id: booking.id,
+    bookingId: booking.id,
+    category: booking.category,
+    service: booking.service || booking.category,
+    description: booking.description,
+    address: booking.address,
+    location: booking.location || null,
+    clientName: booking.clientName,
+    clientPhone: booking.clientPhone || '',
+    estimatedPrice: booking.proposedPrice || booking.agreedPrice || null,
+    expiresAt: booking.expiresAt,
+    timeLeft: getTimeLeftSeconds(booking),
+    distanceKm:
+      booking.distanceKm ?? calculateDistanceKm(coords, booking.location),
+    status: 'PENDING',
+  };
+}
 
 export function BookingProvider({
   children,
@@ -35,10 +61,15 @@ export function BookingProvider({
   const [notification, setNotification] = useState(null);
   const [fundiLocation, setFundiLocation] = useState(null);
   const onNavigateRef = useRef(onNavigate);
+  const fundiCoordsRef = useRef(fundiCoords);
 
   useEffect(() => {
     onNavigateRef.current = onNavigate;
   }, [onNavigate]);
+
+  useEffect(() => {
+    fundiCoordsRef.current = fundiCoords;
+  }, [fundiCoords]);
 
   const roleKey = userRole === 'fundi' ? 'fundi' : 'customer';
 
@@ -52,11 +83,28 @@ export function BookingProvider({
       setBookings(list);
       setError('');
 
+      // Sync in-flight state with the DB — also clears stale entries once a
+      // booking is completed/cancelled, so restore always reflects the truth.
       const current =
-        list.find((b) =>
-          ['PENDING', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status)
-        ) || null;
-      if (current) setActiveBooking(current);
+        list.find((b) => ACTIVE_STATUSES.includes(b.status)) || null;
+      setActiveBooking(current);
+
+      // Fundis: restore requests that arrived while logged out. A PENDING
+      // booking with no assigned fundi is still a live request for this fundi.
+      if (roleKey === 'fundi') {
+        const candidate = list.find(
+          (b) =>
+            b.status === 'PENDING' && !b.fundiId && getTimeLeftSeconds(b) > 0
+        );
+        if (candidate) {
+          const req = requestFromBooking(candidate, fundiCoordsRef.current);
+          setPendingRequest((prev) =>
+            prev && prev.id === req.id ? prev : req
+          );
+        } else {
+          setPendingRequest(null);
+        }
+      }
 
       return list;
     } catch (e) {
@@ -182,11 +230,24 @@ export function BookingProvider({
       }),
       subscribeSocket('price_update', (payload) => {
         if (payload?.bookingId) refreshBookingById(payload.bookingId);
+        const myRoleKey = roleKey === 'customer' ? 'CLIENT' : 'FUNDI';
         if (payload?.priceAgreed) {
           setNotification({
             type: 'success',
             title: 'Price agreed',
             message: 'You can now proceed to payment.',
+          });
+        } else if (
+          payload?.proposedPrice &&
+          payload?.proposedBy &&
+          payload.proposedBy !== myRoleKey
+        ) {
+          setNotification({
+            type: 'info',
+            title: 'New price proposal',
+            message: `${
+              payload.proposedBy === 'CLIENT' ? 'Client' : 'Fundi'
+            } proposed UGX ${Number(payload.proposedPrice).toLocaleString()}.`,
           });
         }
       }),

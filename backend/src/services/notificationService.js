@@ -25,9 +25,11 @@ async function buildSmsMessage(event, data, recipient) {
 }
 
 // Deliver a notification to a user:
-//  - online  -> socket event only (no SMS)
-//  - offline -> SMS only
-async function deliver(userId, event, data, role) {
+//  - online            -> socket event only (no SMS)
+//  - offline           -> SMS only, unless allowSms is false
+//                        (high-frequency events like counter-proposals rely
+//                        on in-app polling instead of paid SMS)
+async function deliver(userId, event, data, role, { allowSms = true } = {}) {
   const channels = [];
   try {
     const User = require("../models/User");
@@ -40,6 +42,8 @@ async function deliver(userId, event, data, role) {
       console.log(`Socket notification sent to ${role} ${userId} for event ${event}`);
       return channels;
     }
+
+    if (!allowSms) return channels;
 
     if (user.phone) {
       const message = await buildSmsMessage(event, data, role);
@@ -57,12 +61,12 @@ async function deliver(userId, event, data, role) {
   return channels;
 }
 
-async function notifyFundi(fundiId, event, data) {
-  return deliver(fundiId, event, data, "fundi");
+async function notifyFundi(fundiId, event, data, options) {
+  return deliver(fundiId, event, data, "fundi", options);
 }
 
-async function notifyClient(clientId, event, data) {
-  return deliver(clientId, event, data, "client");
+async function notifyClient(clientId, event, data, options) {
+  return deliver(clientId, event, data, "client", options);
 }
 
 function formatSmsMessage(event, data, recipient) {
@@ -117,6 +121,12 @@ function formatSmsMessage(event, data, recipient) {
         return `The client has confirmed the job is complete. Thank you for your service!`;
       }
       return "";
+
+    case "completion_confirm":
+      if (recipient === "client") {
+        return `${data.name || "Your fundi"} marked the job as done. Open the app to confirm and release payment.`;
+      }
+      return `The client confirmed the job is complete. Open the app to confirm and receive your payment.`;
 
     case "no_fundi_available":
       if (recipient === "client") {

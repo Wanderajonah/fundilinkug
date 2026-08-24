@@ -52,6 +52,20 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
     });
   }, [bookingId, refreshBookingById]);
 
+  // Safety net: re-fetch during negotiation so client proposals show up
+  // even when a socket event is missed.
+  const negotiating =
+    booking?.status === 'ACCEPTED' && !booking?.priceAgreed;
+  useEffect(() => {
+    if (!negotiating || !bookingId) return undefined;
+    const id = setInterval(() => {
+      refreshBookingById(bookingId).then((result) => {
+        if (result) setLocalBooking(result);
+      });
+    }, 8000);
+    return () => clearInterval(id);
+  }, [negotiating, bookingId, refreshBookingById]);
+
   const handleAccept = async () => {
     if (!bookingId) return;
     setAcceptLoading(true);
@@ -76,9 +90,19 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
     setLoading(true);
     setError('');
     try {
-      await updateBookingStatus(bookingId, status);
+      const res = await updateBookingStatus(bookingId, status);
+      const booking = res?.data?.booking;
       await refreshBookingById(bookingId);
-      Alert.alert(t('Status updated'), t('Booking marked as {{label}}.', { label: BOOKING_STATUS_LABELS[status] || status }));
+      if (status === 'COMPLETED' && booking && booking.status !== 'COMPLETED') {
+        Alert.alert(
+          t('Waiting for client'),
+          t(
+            'You confirmed the job. Payment is released as soon as the client confirms too.'
+          )
+        );
+      } else {
+        Alert.alert(t('Status updated'), t('Booking marked as {{label}}.', { label: BOOKING_STATUS_LABELS[status] || status }));
+      }
     } catch (e) {
       const msg = getErrorMessage(e);
       setError(msg);

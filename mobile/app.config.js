@@ -13,6 +13,18 @@ function googleIosUrlScheme() {
 
 const iosUrlScheme = googleIosUrlScheme();
 
+// Map provider: explicit env override wins. Otherwise default to Google in
+// development and MapLibre in production builds.
+const mapProvider = (() => {
+  const explicit = process.env.EXPO_PUBLIC_MAP_PROVIDER;
+  if (explicit === 'google' || explicit === 'maplibre') return explicit;
+  return process.env.EAS_BUILD_PROFILE === 'production' ? 'maplibre' : 'google';
+})();
+// Google Maps SDK key baked into native manifests — only needed when testing
+// with EXPO_PUBLIC_MAP_PROVIDER=google.
+const googleMapsApiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY;
+const useGoogleMaps = mapProvider === 'google' && !!googleMapsApiKey;
+
 module.exports = {
   expo: {
     name: 'FundiLink',
@@ -27,12 +39,18 @@ module.exports = {
     ios: {
       supportsTablet: true,
       bundleIdentifier: 'com.fundilink.uganda',
+      ...(useGoogleMaps
+        ? { config: { googleMapsApiKey } }
+        : {}),
     },
     android: {
       package: 'com.fundilink.uganda',
+      ...(useGoogleMaps
+        ? { config: { googleMaps: { apiKey: googleMapsApiKey } } }
+        : {}),
       adaptiveIcon: {
-        foregroundImage: './assets/icon.png',
-        backgroundColor: '#FFFFFF',
+        foregroundImage: './assets/splash-icon.png',
+        backgroundColor: '#000000',
       },
       permissions: ['ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION'],
       softwareKeyboardLayoutMode: 'resize',
@@ -65,6 +83,19 @@ module.exports = {
         {
           backgroundColor: '#000000',
           barStyle: 'light-content',
+        },
+      ],
+      [
+        'expo-splash-screen',
+        {
+          backgroundColor: '#000000',
+          image: './assets/splash-icon.png',
+          imageWidth: 160,
+          resizeMode: 'contain',
+          dark: {
+            backgroundColor: '#000000',
+            image: './assets/splash-icon.png',
+          },
         },
       ],
     ],

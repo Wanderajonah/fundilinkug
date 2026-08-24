@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -13,6 +13,7 @@ import EmptyState from '../components/EmptyState';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import { useBookingOptional } from '../../context/BookingContext';
 import { formatUgx, formatBookingDate, initials } from '../utils/ratings';
+import { bookingRoute } from '../utils/bookings';
 import { useLanguage } from '../i18n/LanguageContext';
 
 function FundiBookingsView({ bookings, tab, setTab, onNavigate, loading, onRefresh, refreshing }) {
@@ -107,7 +108,7 @@ export default function BookingsScreen({
   onNavigate,
   onViewHistory,
 }) {
-  const [activeTab, setActiveTab] = useState('active');
+  const [activeTab, setActiveTab] = useState('pending');
   const [fundiTab, setFundiTab] = useState('active');
   const [refreshing, setRefreshing] = useState(false);
   const { t } = useLanguage();
@@ -120,20 +121,50 @@ export default function BookingsScreen({
 
   const fundiBookings = bookingCtx?.bookings || [];
 
+  // Resolve the booking's CURRENT server state before routing — a request
+  // accepted while the client was away skips the waiting screen.
+  const openClientBooking = useCallback(
+    async (item) => {
+      if (!item?.id) return;
+      let fresh = await bookingCtx?.refreshBookingById?.(item.id);
+      // One retry: on a flaky connection the first fetch can fail and we
+      // must not fall back to a stale list item (e.g. showing "unpaid").
+      if (!fresh) {
+        await new Promise((r) => setTimeout(r, 1200));
+        fresh = await bookingCtx?.refreshBookingById?.(item.id);
+      }
+      fresh = fresh || item;
+      const route = bookingRoute(fresh);
+      if (!route) return;
+      onNavigate?.(route.key, route.params);
+    },
+    [bookingCtx?.refreshBookingById, onNavigate]
+  );
+
   const clientBookings = bookingCtx?.bookings || [];
-  const activeBookings = clientBookings.filter((b) =>
-    ['PENDING', 'ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status)
+  const pendingBookings = clientBookings.filter((b) =>
+    ['PENDING', 'ACCEPTED'].includes(b.status)
+  );
+  const ongoingBookings = clientBookings.filter((b) =>
+    ['ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status)
   );
   const completedBookings = clientBookings.filter((b) => b.status === 'COMPLETED');
   const cancelledBookings = clientBookings.filter((b) => b.status === 'CANCELLED');
 
   const customerTabs = useMemo(
     () => [
-      { key: 'active', label: t('Active ({{count}})', { count: activeBookings.length }) },
+      { key: 'pending', label: t('Pending ({{count}})', { count: pendingBookings.length }) },
+      { key: 'ongoing', label: t('Ongoing ({{count}})', { count: ongoingBookings.length }) },
       { key: 'completed', label: t('Completed ({{count}})', { count: completedBookings.length }) },
       { key: 'cancelled', label: t('Cancelled ({{count}})', { count: cancelledBookings.length }) },
     ],
-    [activeBookings.length, completedBookings.length, cancelledBookings.length, t]
+    [
+      pendingBookings.length,
+      ongoingBookings.length,
+      completedBookings.length,
+      cancelledBookings.length,
+      t
+    ]
   );
 
   if (userRole === 'fundi') {
@@ -168,11 +199,13 @@ export default function BookingsScreen({
   const listData =
     activeTab === 'completed'
       ? completedBookings
-      : activeTab === 'active'
-        ? activeBookings
-        : activeTab === 'cancelled'
-          ? cancelledBookings
-          : [];
+      : activeTab === 'ongoing'
+        ? ongoingBookings
+        : activeTab === 'pending'
+          ? pendingBookings
+          : activeTab === 'cancelled'
+            ? cancelledBookings
+            : [];
 
   return (
     <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
@@ -225,32 +258,35 @@ export default function BookingsScreen({
                     ? t('No cancelled bookings')
                     : activeTab === 'completed'
                       ? t('No completed bookings yet')
-                      : t('No active bookings')
+                      : activeTab === 'ongoing'
+                        ? t('No ongoing bookings')
+                        : t('No pending bookings')
                 }
                 message={
                   activeTab === 'completed'
                     ? t('Your completed bookings will appear here.')
-                    : activeTab === 'active'
-                      ? t('Book a fundi to see your bookings here.')
-                      : t('Cancelled bookings will appear here.')
+                    : activeTab === 'ongoing'
+                      ? t('Jobs on the way or in progress will appear here.')
+                      : activeTab === 'cancelled'
+                        ? t('Cancelled bookings will appear here.')
+                        : t('Book a fundi to see your bookings here.')
                 }
               />
             }
             renderItem={({ item }) => {
               const statusKey = (item.status || '').toLowerCase();
-              const isActive = ['pending', 'accepted', 'on_the_way', 'arrived', 'in_progress'].includes(statusKey);
+              const isTracked = ['on_the_way', 'arrived', 'in_progress'].includes(statusKey);
+              const isLive = isTracked || ['pending', 'accepted'].includes(statusKey);
 
               return (
                 <TouchableOpacity
                   style={styles.card}
                   onPress={() =>
-                    statusKey === 'in_progress'
-                      ? onNavigate?.('jobInProgress')
-                      : statusKey === 'completed'
-                        ? onViewHistory?.()
-                        : isActive
-                          ? onNavigate?.('bookingWaiting', { booking: item })
-                          : undefined
+                    statusKey === 'completed'
+                      ? onViewHistory?.()
+                      : isLive
+                        ? openClientBooking(item)
+                        : undefined
                   }
                 >
                   <View style={styles.cardRow}>
@@ -276,18 +312,14 @@ export default function BookingsScreen({
                     {item.amount ? <Text style={styles.extra}>{formatUgx(item.amount)}</Text> : null}
                   </View>
 
-                  {isActive ? (
+                  {isLive ? (
                     <View style={styles.actionsRow}>
                       <TouchableOpacity
                         style={styles.actionBtn}
-                        onPress={() =>
-                          statusKey === 'in_progress'
-                            ? onNavigate?.('jobInProgress')
-                            : onNavigate?.('bookingWaiting', { booking: item })
-                        }
+                        onPress={() => openClientBooking(item)}
                       >
                         <Text style={styles.actionText}>
-                          {statusKey === 'in_progress' ? t('Track') : t('View')}
+                          {isTracked ? t('Track') : t('View')}
                         </Text>
                       </TouchableOpacity>
                     </View>

@@ -35,8 +35,11 @@ export function connectSocket(userId) {
   socket = io(url, {
     transports: ['websocket', 'polling'],
     reconnection: true,
-    reconnectionAttempts: 10,
+    // Never give up — a dropped socket means silent lost notifications
+    // (proposals, accepts) with no way to recover except app restart.
+    reconnectionAttempts: Infinity,
     reconnectionDelay: 2000,
+    reconnectionDelayMax: 15000,
   });
 
   socket.userId = userId;

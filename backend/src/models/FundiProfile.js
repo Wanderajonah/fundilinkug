@@ -6,6 +6,7 @@ const fundiProfileSchema = new mongoose.Schema(
     skills: [{ type: String }],
     experience: { type: Number, default: 0 },
     rating: { type: Number, default: 0, min: 0, max: 5 },
+    jobsCompleted: { type: Number, default: 0 },
     verified: { type: Boolean, default: false },
     verificationStatus: {
       type: String,

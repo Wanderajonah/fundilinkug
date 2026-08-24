@@ -1,6 +1,7 @@
 const Booking = require("../models/Booking");
 const User = require("../models/User");
 const FundiProfile = require("../models/FundiProfile");
+const Conversation = require("../models/Conversation");
 const { notifyFundi, notifyClient } = require("./notificationService");
 const { buildSkillsQuery } = require("../utils/trades");
 
@@ -251,11 +252,47 @@ async function handleNoFundiAvailable(booking) {
   }
 }
 
+async function ensureBookingConversation(booking) {
+  try {
+    if (!booking.fundiId || !booking.clientId) return null;
+    const participants = [booking.clientId.toString(), booking.fundiId.toString()].sort();
+    let conversation = await Conversation.findOne({
+      participants: { $all: participants, $size: 2 },
+      bookingId: booking._id,
+      type: "booking",
+    });
+    if (!conversation) {
+      conversation = await Conversation.create({
+        participants,
+        bookingId: booking._id,
+        type: "booking",
+      });
+    }
+    return conversation;
+  } catch (error) {
+    console.error("Error ensuring booking conversation:", error.message);
+    return null;
+  }
+}
+
 async function acceptBooking(bookingId, fundiId) {
   try {
     const booking = await Booking.findById(bookingId);
     
-    if (!booking || booking.status !== "PENDING") {
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
+    // Idempotent: already accepted by the same fundi (e.g. double tap / retry).
+    if (
+      booking.status === "ACCEPTED" &&
+      booking.fundiId &&
+      booking.fundiId.toString() === fundiId.toString()
+    ) {
+      return booking;
+    }
+
+    if (booking.status !== "PENDING") {
       throw new Error("Booking not available for acceptance");
     }
     
@@ -283,6 +320,9 @@ async function acceptBooking(bookingId, fundiId) {
       fundiName: fundi.name,
       fundiPhone: fundi.phone
     });
+
+    // Auto-create a booking conversation so negotiation/chat works immediately.
+    await ensureBookingConversation(booking);
     
     console.log(`Booking ${bookingId} accepted by fundi ${fundiId}`);
     
@@ -324,6 +364,11 @@ async function declineBooking(bookingId, fundiId) {
 
 async function updateBookingStatus(bookingId, fundiId, newStatus) {
   try {
+    // Fundi-driven completion must go through dual confirmation.
+    if (newStatus === "COMPLETED") {
+      return await confirmBookingCompletion(bookingId, "fundi");
+    }
+
     const booking = await Booking.findById(bookingId);
     
     if (!booking) {
@@ -346,7 +391,17 @@ async function updateBookingStatus(bookingId, fundiId, newStatus) {
     if (!validTransitions[booking.status].includes(newStatus)) {
       throw new Error(`Invalid status transition from ${booking.status} to ${newStatus}`);
     }
-    
+
+    // Negotiation phase is mandatory: the fundi cannot start the job until a
+    // price has been agreed between both parties.
+    if (
+      booking.status === "ACCEPTED" &&
+      newStatus !== "CANCELLED" &&
+      !booking.priceAgreed
+    ) {
+      throw new Error("Agree on a service price with the client before starting the job");
+    }
+
     booking.status = newStatus;
     
     // Set timestamps
@@ -366,6 +421,17 @@ async function updateBookingStatus(bookingId, fundiId, newStatus) {
     }
     
     await booking.save();
+    
+    // Release escrow once the job is completed (idempotent).
+    if (newStatus === "COMPLETED" && booking.paymentStatus === "held") {
+      try {
+        const { releaseEscrow } = require("../controllers/walletController");
+        await releaseEscrow(booking._id.toString());
+        console.log(`Escrow released for booking ${bookingId}`);
+      } catch (escrowErr) {
+        console.error("Failed to release escrow:", escrowErr.message);
+      }
+    }
     
     // Notify client of status update
     const eventMap = {
@@ -390,56 +456,103 @@ async function updateBookingStatus(bookingId, fundiId, newStatus) {
   }
 }
 
-async function completeBooking(bookingId, clientId) {
+async function confirmBookingCompletion(bookingId, role) {
   try {
     const booking = await Booking.findById(bookingId);
-    
     if (!booking) {
       throw new Error("Booking not found");
     }
-    
+    if (booking.status !== "IN_PROGRESS") {
+      throw new Error("Job must be in progress to be marked complete");
+    }
+
+    const isClient = role === "customer";
+    if (isClient) {
+      booking.clientCompleted = true;
+      booking.clientCompletedAt = new Date();
+    } else {
+      booking.fundiCompleted = true;
+      booking.fundiCompletedAt = new Date();
+    }
+
+    // Release only when BOTH parties have confirmed.
+    if (!(booking.clientCompleted && booking.fundiCompleted)) {
+      await booking.save();
+      if (isClient) {
+        await notifyFundi(booking.fundiId, "completion_confirm", {
+          bookingId: booking._id,
+        });
+      } else {
+        await notifyClient(booking.clientId, "completion_confirm", {
+          bookingId: booking._id,
+        });
+      }
+      console.log(
+        `Booking ${bookingId}: ${role} confirmed completion, waiting for the other party`
+      );
+      return booking;
+    }
+
+    booking.status = "COMPLETED";
+    booking.completedAt = new Date();
+    if (booking.startedAt) {
+      booking.actualDuration = Math.floor(
+        (new Date() - booking.startedAt) / (1000 * 60)
+      );
+    }
+    await booking.save();
+
+    // Count the finished job on the fundi's public profile.
+    try {
+      const FundiProfile = require("../models/FundiProfile");
+      await FundiProfile.updateOne(
+        { userId: booking.fundiId },
+        { $inc: { jobsCompleted: 1 } }
+      );
+    } catch (statErr) {
+      console.error("Failed to update fundi job count:", statErr.message);
+    }
+
+    if (booking.paymentStatus === "held") {
+      try {
+        const { releaseEscrow } = require("../controllers/walletController");
+        await releaseEscrow(booking._id.toString());
+        console.log(`Escrow released for booking ${bookingId}`);
+      } catch (escrowErr) {
+        console.error("Failed to release escrow:", escrowErr.message);
+      }
+    }
+
+    // Tell both sides the job is done.
+    await notifyFundi(booking.fundiId, "status_completed", {
+      bookingId: booking._id,
+    });
+    await notifyClient(booking.clientId, "status_completed", {
+      bookingId: booking._id,
+    });
+
+    console.log(`Booking ${bookingId} completed by both parties`);
+    return booking;
+  } catch (error) {
+    console.error("Error confirming booking completion:", error);
+    throw error;
+  }
+}
+
+async function completeBooking(bookingId, clientId) {
+  try {
+    const booking = await Booking.findById(bookingId);
+
+    if (!booking) {
+      throw new Error("Booking not found");
+    }
+
     // Verify client owns this booking
     if (booking.clientId.toString() !== clientId.toString()) {
       throw new Error("Client is not the owner of this booking");
     }
-    
-    if (booking.status !== "IN_PROGRESS") {
-      throw new Error("Booking must be in progress to complete");
-    }
-    
-    booking.status = "COMPLETED";
-    booking.completedAt = new Date();
-    
-    // Calculate actual duration
-    if (booking.startedAt) {
-      booking.actualDuration = Math.floor((new Date() - booking.startedAt) / (1000 * 60));
-    }
-    
-    await booking.save();
-    
-    // Release escrow if funds are held
-    if (booking.paymentStatus === "held") {
-      try {
-        const { releasePayment } = require("../controllers/walletController");
-        await releasePayment(
-          { body: { bookingId: booking._id.toString() }, user: { _id: booking.clientId } },
-          { json: () => {}, status: () => ({ json: () => {} }) },
-          (err) => { if (err) console.error("Escrow release error:", err); }
-        );
-        console.log(`Escrow released for booking ${bookingId}`);
-      } catch (escrowErr) {
-        console.error("Failed to release escrow:", escrowErr);
-      }
-    }
-    
-    // Notify fundi
-    await notifyFundi(booking.fundiId, "status_completed", {
-      bookingId: booking._id
-    });
-    
-    console.log(`Booking ${bookingId} completed by client ${clientId}`);
-    
-    return booking;
+
+    return await confirmBookingCompletion(bookingId, "customer");
   } catch (error) {
     console.error("Error completing booking:", error);
     throw error;
@@ -480,15 +593,11 @@ async function cancelBooking(bookingId, userId, role, reason) {
     // Refund escrow if funds are held
     if (booking.paymentStatus === "held") {
       try {
-        const { refundPayment } = require("../controllers/walletController");
-        await refundPayment(
-          { body: { bookingId: booking._id.toString() }, user: { _id: booking.clientId } },
-          { json: () => {}, status: () => ({ json: () => {} }) },
-          (err) => { if (err) console.error("Escrow refund error:", err); }
-        );
+        const { refundEscrow } = require("../controllers/walletController");
+        await refundEscrow(booking._id.toString());
         console.log(`Escrow refunded for cancelled booking ${bookingId}`);
       } catch (escrowErr) {
-        console.error("Failed to refund escrow:", escrowErr);
+        console.error("Failed to refund escrow:", escrowErr.message);
       }
     }
     
@@ -682,9 +791,15 @@ async function negotiatePrice(bookingId, userId, role, { price, action }) {
     };
 
     if (role === "customer") {
-      await notifyFundi(booking.fundiId, "price_update", payload);
+      // Negotiation never uses paid SMS — the app polls and loads fresh
+      // state on open, so in-app delivery is always enough.
+      await notifyFundi(booking.fundiId, "price_update", payload, {
+        allowSms: false,
+      });
     } else {
-      await notifyClient(booking.clientId, "price_update", payload);
+      await notifyClient(booking.clientId, "price_update", payload, {
+        allowSms: false,
+      });
     }
 
     return booking;
@@ -700,6 +815,7 @@ module.exports = {
   declineBooking,
   updateBookingStatus,
   completeBooking,
+  confirmBookingCompletion,
   cancelBooking,
   getUserBookings,
   getBookingById,

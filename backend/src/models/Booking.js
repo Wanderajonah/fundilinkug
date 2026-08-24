@@ -44,6 +44,10 @@ const bookingSchema = new mongoose.Schema(
     arrivedAt: { type: Date, default: null },
     startedAt: { type: Date, default: null },
     completedAt: { type: Date, default: null },
+    clientCompleted: { type: Boolean, default: false },
+    fundiCompleted: { type: Boolean, default: false },
+    clientCompletedAt: { type: Date, default: null },
+    fundiCompletedAt: { type: Date, default: null },
     cancelledAt: { type: Date, default: null },
     fundiLocation: {
       lat: { type: Number, default: null },

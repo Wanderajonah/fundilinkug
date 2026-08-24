@@ -60,7 +60,11 @@ export function getTimeLeftSeconds(booking) {
 }
 
 export function canProceedToPayment(booking) {
-  return booking?.status === 'ACCEPTED' && booking?.priceAgreed === true;
+  return (
+    booking?.status === 'ACCEPTED' &&
+    booking?.priceAgreed === true &&
+    !booking?.paid
+  );
 }
 
 export function calculateDistanceKm(from, to) {
@@ -85,8 +89,17 @@ export function mapApiBooking(booking, role = 'customer') {
   const fundi = booking.fundiId || {};
   const client = booking.clientId || {};
   const agreed = booking.agreedPrice || booking.proposedPrice || 0;
-  const platformFee = Math.round(agreed * 0.1);
+  // Platform revenue is the client-side fee only (5% default); trust the
+  // value stored on the booking once the escrow hold exists.
+  const platformFee =
+    booking.clientFee != null ? booking.clientFee : Math.round(agreed * 0.05);
   const total = agreed + platformFee;
+  // `location` stays a {lat,lng} object for geo math; anything rendered as
+  // text must use the string `address`.
+  const address =
+    typeof booking.address === 'string'
+      ? booking.address
+      : '';
 
   return {
     id,
@@ -96,8 +109,8 @@ export function mapApiBooking(booking, role = 'customer') {
     category: booking.category || '',
     service: booking.category || '',
     description: booking.description || '',
-    address: booking.address || '',
-    location: booking.location || '',
+    address,
+    location: booking.location || null,
     expiresAt: booking.expiresAt || null,
     timeLeft: getTimeLeftSeconds(booking),
     fundiId: fundi?._id || booking.fundiId || null,
@@ -112,13 +125,20 @@ export function mapApiBooking(booking, role = 'customer') {
     fundiPriceAgreed: booking.fundiPriceAgreed || false,
     agreedPrice: booking.agreedPrice || null,
     priceAgreed: booking.priceAgreed || false,
+    clientCompleted: Boolean(booking.clientCompleted),
+    fundiCompleted: Boolean(booking.fundiCompleted),
+    paymentStatus: booking.paymentStatus || 'unpaid',
+    // Server truth: escrow hold or release means paid. The schema has no
+    // boolean `paid` — never trust a local-only flag for this.
+    paid:
+      Boolean(booking.paid) ||
+      ['held', 'released'].includes(booking.paymentStatus),
     fundiLocation: booking.fundiLocation || null,
     distanceKm: booking.distanceKm || null,
     amount: total,
     serviceFee: agreed,
     platformFee,
     total,
-    paid: booking.paid || false,
     createdAt: booking.createdAt || null,
     images: booking.images || [],
   };
@@ -187,4 +207,25 @@ export function priceSummaryText(booking) {
     return `${by} proposed ${formatUgx(booking.proposedPrice)}`;
   }
   return 'Agree on a service price to continue';
+}
+
+// Where should the client be taken for this booking right now?
+// Resolved against fresh server state so a booking accepted while the
+// client was away routes past the waiting screen automatically.
+export function bookingRoute(booking) {
+  if (!booking?.id && !booking?._id) return null;
+  const status = String(booking.status || '').toUpperCase();
+  switch (status) {
+    case 'ON_THE_WAY':
+    case 'ARRIVED':
+      return { key: 'tracking', params: {} };
+    case 'IN_PROGRESS':
+      return {
+        key: 'jobInProgress',
+        params: { job: bookingToActiveJob(booking) },
+      };
+    default:
+      // PENDING (waiting for fundi) and ACCEPTED (price negotiation)
+      return { key: 'bookingWaiting', params: { booking } };
+  }
 }
