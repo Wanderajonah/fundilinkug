@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
   ActivityIndicator,
   Animated,
+  Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,26 +21,208 @@ import { formatUgx, initials } from '../utils/ratings';
 import { useLanguage } from '../i18n/LanguageContext';
 
 const MAX_COMMENT = 300;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const MOOD_CHIPS = [
+  { label: 'Professional', icon: 'briefcase-outline', minRating: 4 },
+  { label: 'Friendly', icon: 'happy-outline', minRating: 3 },
+  { label: 'Fast work', icon: 'flash-outline', minRating: 4 },
+  { label: 'Great value', icon: 'cash-outline', minRating: 3 },
+  { label: 'Clean work', icon: 'sparkles-outline', minRating: 4 },
+  { label: 'On time', icon: 'time-outline', minRating: 3 },
+];
+
+function CelebrationParticle({ delay, x, color }) {
+  const y = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.delay(delay),
+      Animated.parallel([
+        Animated.timing(y, {
+          toValue: -260 - Math.random() * 120,
+          duration: 1800 + Math.random() * 600,
+          useNativeDriver: true,
+        }),
+        Animated.sequence([
+          Animated.timing(opacity, {
+            toValue: 1,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.delay(800),
+          Animated.timing(opacity, {
+            toValue: 0,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.sequence([
+          Animated.delay(200),
+          Animated.spring(scale, {
+            toValue: 1,
+            friction: 4,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.particle,
+        {
+          left: x,
+          backgroundColor: color,
+          transform: [{ translateY: y }, { scale }],
+          opacity,
+        },
+      ]}
+    />
+  );
+}
+
+function CheckmarkAnimation() {
+  const scale = useRef(new Animated.Value(0)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.delay(200),
+      Animated.parallel([
+        Animated.spring(scale, {
+          toValue: 1,
+          friction: 5,
+          tension: 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, []);
+
+  return (
+    <Animated.View
+      style={[
+        styles.checkRing,
+        {
+          transform: [{ scale }],
+          opacity,
+        },
+      ]}
+    >
+      <LinearGradient
+        colors={[theme.colors.green, '#16A34A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.checkGrad}
+      >
+        <Ionicons name="checkmark" size={32} color="#fff" />
+      </LinearGradient>
+    </Animated.View>
+  );
+}
+
+const PARTICLE_COLORS = [
+  theme.colors.accent,
+  theme.colors.accentLight,
+  '#FF6B6B',
+  '#4ECDC4',
+  '#45B7D1',
+  '#96CEB4',
+  '#FFEAA7',
+  '#DDA0DD',
+];
 
 export default function RateExperienceScreen({
   job = {},
   existingReview = null,
+  reviewHistory = [],
   onBack,
   onSubmit,
+  onSetEditingReview,
 }) {
   const [rating, setRating] = useState(existingReview?.rating || 0);
   const [comment, setComment] = useState(existingReview?.comment || '');
   const [photos, setPhotos] = useState(existingReview?.photoUrls || []);
   const [submitting, setSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [focused, setFocused] = useState(false);
+  const [selectedMoods, setSelectedMoods] = useState([]);
   const ctaScale = useRef(new Animated.Value(1)).current;
+  const heroScale = useRef(new Animated.Value(0.95)).current;
+  const heroOpacity = useRef(new Animated.Value(0)).current;
+  const ratingCardScale = useRef(new Animated.Value(0.95)).current;
+  const ratingCardOpacity = useRef(new Animated.Value(0)).current;
   const { t } = useLanguage();
 
   const fundiName = job.fundiName || 'Fundi';
   const firstName = fundiName.split(' ')[0];
   const releasedTime = job.releasedAt
     ? new Date(job.releasedAt).toLocaleTimeString('en-UG', { hour: 'numeric', minute: '2-digit' })
-    : '8:41 PM';
+    : '';
+
+  // Auto-detect existing review for the same fundi if not already provided
+  useEffect(() => {
+    if (existingReview || !onSetEditingReview) return;
+    const fundiId = job.fundiId || job.fundi;
+    if (!fundiId) return;
+    const found = reviewHistory.find(
+      (r) =>
+        (r.fundiId === fundiId || r.fundi?._id === fundiId) &&
+        r.reviewId &&
+        !String(r.reviewId).startsWith('demo') &&
+        !String(r.reviewId).startsWith('local-'),
+    );
+    if (found) onSetEditingReview(found);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Sync form when existingReview is set asynchronously (e.g. auto-detected)
+  useEffect(() => {
+    if (!existingReview) return;
+    setRating(existingReview.rating || 0);
+    setComment(existingReview.comment || '');
+    setPhotos(existingReview.photoUrls || []);
+  }, [existingReview?.reviewId || existingReview?._id || existingReview?.id]);
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(heroScale, {
+        toValue: 1,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+      Animated.timing(heroOpacity, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    Animated.sequence([
+      Animated.delay(300),
+      Animated.parallel([
+        Animated.spring(ratingCardScale, {
+          toValue: 1,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(ratingCardOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
+    ]).start();
+  }, []);
 
   const pickPhotos = async () => {
     const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -60,6 +243,12 @@ export default function RateExperienceScreen({
 
   const removePhoto = (uri) => setPhotos((prev) => prev.filter((p) => p !== uri));
 
+  const toggleMood = (label) => {
+    setSelectedMoods((prev) =>
+      prev.includes(label) ? prev.filter((m) => m !== label) : [...prev, label],
+    );
+  };
+
   const handleSubmit = async () => {
     if (rating < 1) {
       Alert.alert(t('Rating required'), t('Pick a star rating before submitting.'));
@@ -67,12 +256,14 @@ export default function RateExperienceScreen({
     }
     setSubmitting(true);
     try {
+      const moodText = selectedMoods.length > 0 ? `\n\nHighlights: ${selectedMoods.join(', ')}` : '';
       await onSubmit?.({
         rating,
-        comment: comment.trim(),
+        comment: (comment.trim() + moodText).trim(),
         photoUrls: photos,
         reviewId: existingReview?.reviewId || existingReview?._id || existingReview?.id,
       });
+      setSubmitted(true);
     } finally {
       setSubmitting(false);
     }
@@ -85,68 +276,155 @@ export default function RateExperienceScreen({
 
   const ctaReady = rating >= 1;
 
+  if (submitted) {
+    return (
+      <ScrollScreen contentStyle={styles.scroll} bottomPad={40}>
+        <View style={styles.successContainer}>
+          {Array.from({ length: 16 }).map((_, i) => (
+            <CelebrationParticle
+              key={i}
+              delay={i * 80}
+              x={40 + Math.random() * (SCREEN_WIDTH - 80)}
+              color={PARTICLE_COLORS[i % PARTICLE_COLORS.length]}
+            />
+          ))}
+          <CheckmarkAnimation />
+          <Text style={styles.successTitle}>{t('Thank you!')}</Text>
+          <Text style={styles.successSub}>
+            {existingReview
+              ? t('Your review for {{name}} has been updated.', { name: firstName })
+              : t('Your review for {{name}} has been submitted.', { name: firstName })}
+          </Text>
+          <TouchableOpacity style={styles.successBtn} onPress={onBack} activeOpacity={0.8}>
+            <Text style={styles.successBtnText}>{t('Done')}</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollScreen>
+    );
+  }
+
   return (
     <ScrollScreen keyboard contentStyle={styles.scroll} bottomPad={40}>
       <TouchableOpacity style={styles.backRow} onPress={onBack} activeOpacity={0.7}>
         <View style={styles.backBtn}>
           <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
         </View>
-        <Text style={styles.backText}>{t('Rate your experience')}</Text>
+        <Text style={styles.backText}>
+          {existingReview ? t('Edit your review') : t('Rate your experience')}
+        </Text>
       </TouchableOpacity>
 
+      {/* Celebration particles */}
+      {rating >= 4 &&
+        Array.from({ length: 8 }).map((_, i) => (
+          <CelebrationParticle
+            key={`p-${i}`}
+            delay={i * 120}
+            x={30 + Math.random() * (SCREEN_WIDTH - 60)}
+            color={PARTICLE_COLORS[i % PARTICLE_COLORS.length]}
+          />
+        ))}
+
       {/* Hero card */}
-      <LinearGradient
-        colors={['#2A1E07', '#161616']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.hero}
+      <Animated.View
+        style={[
+          styles.heroWrap,
+          {
+            transform: [{ scale: heroScale }],
+            opacity: heroOpacity,
+          },
+        ]}
       >
-        <View style={styles.heroGlow} />
         <LinearGradient
-          colors={[theme.colors.accentLight, theme.colors.accentDark]}
+          colors={['#2A1E07', '#161616']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={styles.avatarRing}
+          style={styles.hero}
         >
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(fundiName)}</Text>
+          <View style={styles.heroGlow} />
+          <LinearGradient
+            colors={[theme.colors.accentLight, theme.colors.accentDark]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.avatarRing}
+          >
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials(fundiName)}</Text>
+            </View>
+          </LinearGradient>
+
+          <View style={styles.heroInfo}>
+            <Text style={styles.name}>{fundiName}</Text>
+            <View style={styles.metaRow}>
+              <Ionicons name="checkmark-circle" size={14} color={theme.colors.green} />
+              <Text style={styles.meta}>
+                {job.service} · {t('Completed')}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.releasedPill}>
+            <Ionicons name="cash-outline" size={14} color={theme.colors.green} />
+            <Text style={styles.releasedText}>{t('Paid')}</Text>
           </View>
         </LinearGradient>
-
-        <View style={styles.heroInfo}>
-          <Text style={styles.name}>{fundiName}</Text>
-          <View style={styles.metaRow}>
-            <Ionicons name="checkmark-circle" size={14} color={theme.colors.green} />
-            <Text style={styles.meta}>
-              {job.service} · {t('Completed')}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.releasedPill}>
-          <Ionicons name="cash-outline" size={14} color={theme.colors.green} />
-          <Text style={styles.releasedText}>{t('Released')}</Text>
-        </View>
-      </LinearGradient>
+      </Animated.View>
 
       <Text style={styles.releasedLine}>
-        {t('{{amount}} released to {{firstName}} · {{time}}', {
+        {t('{{amount}} released to {{firstName}}', {
           amount: formatUgx(job.amount),
           firstName,
-          time: releasedTime,
         })}
+        {releasedTime ? ` · ${releasedTime}` : ''}
       </Text>
 
       {/* Rating */}
-      <View style={styles.ratingCard}>
+      <Animated.View
+        style={[
+          styles.ratingCard,
+          {
+            transform: [{ scale: ratingCardScale }],
+            opacity: ratingCardOpacity,
+          },
+        ]}
+      >
         <Text style={styles.question}>
-          {t('How was your experience with {{firstName}}?', { firstName })}
+          {existingReview
+            ? t('Update your review for {{firstName}}?', { firstName })
+            : t('How was your experience with {{firstName}}?', { firstName })}
         </Text>
-        <StarRating value={rating} onChange={setRating} size={44} />
+        <StarRating value={rating} onChange={setRating} size={48} />
+      </Animated.View>
+
+      {/* Mood chips */}
+      <Text style={styles.sectionLabel}>{t('Quick tags')}</Text>
+      <View style={styles.chipRow}>
+        {MOOD_CHIPS.filter((c) => rating >= c.minRating || selectedMoods.includes(c.label)).map(
+          (chip) => {
+            const active = selectedMoods.includes(chip.label);
+            return (
+              <TouchableOpacity
+                key={chip.label}
+                style={[styles.chip, active && styles.chipActive]}
+                onPress={() => toggleMood(chip.label)}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={chip.icon}
+                  size={14}
+                  color={active ? theme.colors.textDark : theme.colors.muted}
+                />
+                <Text style={[styles.chipText, active && styles.chipTextActive]}>
+                  {t(chip.label)}
+                </Text>
+              </TouchableOpacity>
+            );
+          },
+        )}
       </View>
 
       {/* Comment */}
-      <Text style={styles.fieldLabel}>{t('Tell others about your experience')}</Text>
+      <Text style={styles.sectionLabel}>{t('Your review')}</Text>
       <View style={[styles.inputWrap, focused && styles.inputWrapFocused]}>
         <TextInput
           style={styles.input}
@@ -166,7 +444,7 @@ export default function RateExperienceScreen({
       </View>
 
       {/* Photos */}
-      <Text style={styles.fieldLabel}>{t('Add photos (optional)')}</Text>
+      <Text style={styles.sectionLabel}>{t('Add photos (optional)')}</Text>
       <View style={styles.photoRow}>
         {photos.map((uri) => (
           <View key={uri} style={styles.photoWrap}>
@@ -184,7 +462,7 @@ export default function RateExperienceScreen({
         {photos.length < 3 ? (
           <TouchableOpacity style={styles.addTile} onPress={pickPhotos} activeOpacity={0.8}>
             <Ionicons name="camera-outline" size={22} color={theme.colors.accent} />
-            <Text style={styles.addTileText}>{t('Upload photos')}</Text>
+            <Text style={styles.addTileText}>{t('Upload')}</Text>
           </TouchableOpacity>
         ) : null}
       </View>
@@ -235,6 +513,7 @@ export default function RateExperienceScreen({
 
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: 4 },
+
   backRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -253,6 +532,7 @@ const styles = StyleSheet.create({
   },
   backText: { color: theme.colors.white, fontWeight: '700', fontSize: 15 },
 
+  heroWrap: {},
   hero: {
     borderRadius: theme.radius.xl,
     padding: 18,
@@ -312,23 +592,24 @@ const styles = StyleSheet.create({
 
   ratingCard: {
     backgroundColor: theme.colors.input,
-    borderRadius: theme.radius.lg,
+    borderRadius: theme.radius.xl,
     borderWidth: 1,
-    borderColor: theme.colors.border,
-    paddingVertical: 22,
-    paddingHorizontal: 16,
+    borderColor: theme.colors.borderLight,
+    paddingVertical: 28,
+    paddingHorizontal: 20,
     alignItems: 'center',
+    ...theme.elevation.sm,
   },
   question: {
     color: theme.colors.white,
-    fontSize: 17,
+    fontSize: 18,
     fontWeight: '800',
     textAlign: 'center',
-    marginBottom: 18,
-    lineHeight: 24,
+    marginBottom: 20,
+    lineHeight: 26,
   },
 
-  fieldLabel: {
+  sectionLabel: {
     color: theme.colors.muted,
     fontSize: theme.typography.caps,
     fontWeight: '700',
@@ -337,6 +618,30 @@ const styles = StyleSheet.create({
     marginTop: 24,
     marginBottom: 10,
   },
+
+  chipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: theme.radius.pill,
+    backgroundColor: theme.colors.input,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  chipActive: {
+    backgroundColor: theme.colors.accent,
+    borderColor: theme.colors.accent,
+  },
+  chipText: { color: theme.colors.muted, fontSize: 13, fontWeight: '600' },
+  chipTextActive: { color: theme.colors.textDark },
+
   inputWrap: {
     backgroundColor: theme.colors.input,
     borderRadius: theme.radius.md,
@@ -416,4 +721,59 @@ const styles = StyleSheet.create({
   },
   submitTextDisabled: { color: theme.colors.mutedDark },
   submitLoader: { marginTop: 32 },
+
+  /* Celebration particles */
+  particle: {
+    position: 'absolute',
+    top: '45%',
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    zIndex: 10,
+  },
+
+  /* Success state */
+  successContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingBottom: 80,
+  },
+  checkRing: {
+    marginBottom: 24,
+  },
+  checkGrad: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...theme.elevation.lg,
+  },
+  successTitle: {
+    color: theme.colors.white,
+    fontSize: 28,
+    fontWeight: '900',
+    marginBottom: 10,
+  },
+  successSub: {
+    color: theme.colors.muted,
+    fontSize: 15,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 36,
+    paddingHorizontal: 20,
+  },
+  successBtn: {
+    backgroundColor: theme.colors.accent,
+    paddingHorizontal: 48,
+    paddingVertical: 16,
+    borderRadius: theme.buttons.radius.lg,
+    ...theme.elevation.md,
+  },
+  successBtnText: {
+    color: theme.colors.textDark,
+    fontWeight: '800',
+    fontSize: 16,
+  },
 });

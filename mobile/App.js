@@ -61,6 +61,7 @@ import {
 import { defaultActiveJob, buildBookingFromRequest } from "./app/utils/ratings";
 import BookingWaitingScreen from "./app/screens/BookingWaitingScreen";
 import FundiBookingDetailScreen from "./app/screens/FundiBookingDetailScreen";
+import FundiNavigationScreen from "./app/screens/FundiNavigationScreen";
 import SkillsPortfolioScreen from "./app/screens/SkillsPortfolioScreen";
 import BottomNav from "./app/components/BottomNav";
 import FloatingSupportChat from "./app/components/FloatingSupportChat";
@@ -245,8 +246,26 @@ function AppContent() {
       return pushAndNavigate("jobInProgress");
     }
     if (key === "rateExperience") {
-      if (params?.review) setEditingReview(params.review);
       if (params?.job) setActiveJob(params.job);
+      // If no explicit review was passed, check if we already have one for
+      // this fundi so the screen can offer "Update review" instead of creating
+      // a duplicate.
+      if (params?.review) {
+        setEditingReview(params.review);
+      } else if (!editingReview) {
+        const job = params?.job || activeJob;
+        const fundiId = job?.fundiId || job?.fundi;
+        const existing = fundiId
+          ? reviewHistory.find(
+              (r) =>
+                (r.fundiId === fundiId || r.fundi?._id === fundiId) &&
+                r.reviewId &&
+                !String(r.reviewId).startsWith("demo") &&
+                !String(r.reviewId).startsWith("local-"),
+            )
+          : null;
+        setEditingReview(existing || null);
+      }
       return pushAndNavigate("rateExperience");
     }
     if (key === "bookingHistory") return pushAndNavigate("bookingHistory");
@@ -292,6 +311,10 @@ function AppContent() {
     if (key === "fundiBookingDetail") {
       if (params?.bookingId) setSelectedBookingId(params.bookingId);
       return pushAndNavigate("fundiBookingDetail");
+    }
+    if (key === "fundiNavigation") {
+      if (params?.bookingId) setSelectedBookingId(params.bookingId);
+      return pushAndNavigate("fundiNavigation");
     }
   };
 
@@ -396,10 +419,21 @@ function AppContent() {
     };
     setActiveJob(completed);
 
-    // Server completion (dual confirmation + escrow release) is handled by
-    // JobInProgressScreen via the bookings API; this only advances the flow
-    // to the review screen.
-    setEditingReview(null);
+    // Check if the client already reviewed this fundi — if so, load that
+    // review so the screen offers an "Update review" flow instead of
+    // creating a duplicate.
+    const fundiId = job.fundiId || job.fundi;
+    const existingForFundi = fundiId
+      ? reviewHistory.find(
+          (r) =>
+            (r.fundiId === fundiId || r.fundi?._id === fundiId) &&
+            r.reviewId &&
+            !String(r.reviewId).startsWith("demo") &&
+            !String(r.reviewId).startsWith("local-"),
+        )
+      : null;
+
+    setEditingReview(existingForFundi || null);
     pushAndNavigate("rateExperience");
   };
 
@@ -471,7 +505,9 @@ function AppContent() {
     });
 
     setReviewSuccessMessage(
-      `Your review for ${job.fundiName.split(" ")[0]} was submitted.`,
+      reviewId
+        ? `Your review for ${job.fundiName.split(" ")[0]} was updated.`
+        : `Your review for ${job.fundiName.split(" ")[0]} was submitted.`,
     );
     setEditingReview(null);
     pushAndNavigate("bookingHistory");
@@ -938,6 +974,15 @@ function AppContent() {
     );
   }
 
+  if (screen === "fundiNavigation") {
+    return (
+      <FundiNavigationScreen
+        route={{ params: { bookingId: selectedBookingId } }}
+        onNavigate={handleNavigate}
+      />
+    );
+  }
+
   if (screen === "payment") {
     const booking =
       pendingBooking?.priceAgreed || pendingBooking?.agreedPrice
@@ -1015,10 +1060,14 @@ function AppContent() {
       <RateExperienceScreen
         job={job}
         existingReview={editingReview}
-        onBack={() =>
-          setScreen(editingReview ? "bookingHistory" : "jobInProgress")
-        }
+        reviewHistory={reviewHistory}
+        onBack={() => {
+          const wasEditing = Boolean(editingReview);
+          setEditingReview(null);
+          setScreen(wasEditing ? "bookingHistory" : "jobInProgress");
+        }}
         onSubmit={handleReviewSubmit}
+        onSetEditingReview={setEditingReview}
       />
     );
   }

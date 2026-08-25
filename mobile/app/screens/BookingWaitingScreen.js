@@ -19,6 +19,7 @@ import PriceNegotiationSection from '../components/PriceNegotiationSection';
 import {
   cancelClientBooking,
   negotiateClientPrice,
+  completeBooking,
   getErrorMessage,
 } from '../../services/bookingsApi';
 import { useBooking } from '../../context/BookingContext';
@@ -41,6 +42,7 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
   const booking = activeBooking || initialBooking;
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
+  const [completeLoading, setCompleteLoading] = useState(false);
   const [localError, setLocalError] = useState('');
 
   useEffect(() => {
@@ -108,6 +110,28 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
     }
   };
 
+  const handleMarkComplete = async () => {
+    if (!booking?.id) return;
+    setCompleteLoading(true);
+    try {
+      const res = await completeBooking(booking.id);
+      const updated = res?.data?.booking;
+      if (!updated || updated.status === 'COMPLETED') {
+        onNavigate?.('rateExperience', { job: updated || booking });
+      } else {
+        Alert.alert(
+          t('Waiting for fundi'),
+          t('You confirmed the job. Payment is released from escrow once the fundi confirms too.'),
+        );
+        await refreshBookingById(booking.id);
+      }
+    } catch (e) {
+      Alert.alert(t('Could not confirm completion'), getErrorMessage(e));
+    } finally {
+      setCompleteLoading(false);
+    }
+  };
+
   const retryRefresh = useCallback(async () => {
     if (!booking?.id) return;
     setLoading(true);
@@ -137,6 +161,7 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
   const isPending = booking.status === 'PENDING';
   const isAccepted = booking.status === 'ACCEPTED';
   const isCancelled = booking.status === 'CANCELLED';
+  const isInProgress = booking.status === 'IN_PROGRESS';
   const canPay = canProceedToPayment(booking);
   const displayError = localError || socketError;
 
@@ -271,14 +296,28 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
           <View style={styles.paidNote}>
             <Ionicons name="shield-checkmark" size={18} color={theme.colors.green} />
             <Text style={styles.paidText}>
-              {t('Payment held in escrow. {{name}} can start whenever they arrive.', {
-                name: booking.fundiName || t('Your fundi'),
-              })}
+              {isInProgress
+                ? t('Payment held in escrow. {{name}} is working on the job.', {
+                    name: booking.fundiName || t('Your fundi'),
+                  })
+                : t('Payment held in escrow. {{name}} can start whenever they arrive.', {
+                    name: booking.fundiName || t('Your fundi'),
+                  })}
             </Text>
           </View>
         ) : isAccepted ? (
           <PrimaryButton style={{ marginTop: 20 }} disabled>
             {t('Proceed to Payment')}
+          </PrimaryButton>
+        ) : null}
+
+        {isInProgress ? (
+          <PrimaryButton
+            style={{ marginTop: 20 }}
+            onPress={handleMarkComplete}
+            disabled={completeLoading}
+          >
+            {completeLoading ? t('Confirming…') : t('Mark job as complete')}
           </PrimaryButton>
         ) : null}
 
