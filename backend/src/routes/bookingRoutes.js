@@ -158,11 +158,14 @@ router.post("/fundi/bookings/:id/price", protect, requireRole("fundi"), async (r
 // Update fundi availability status
 router.put("/fundi/availability", protect, requireRole("fundi"), async (req, res) => {
   try {
-    const { isAvailable } = req.body;
+    const { isAvailable, availableForNegotiation } = req.body;
     const FundiProfile = require("../models/FundiProfile");
+    const update = {};
+    if (typeof isAvailable === "boolean") update.isAvailable = isAvailable;
+    if (typeof availableForNegotiation === "boolean") update.availableForNegotiation = availableForNegotiation;
     await FundiProfile.findOneAndUpdate(
       { userId: req.user._id },
-      { isAvailable }
+      update
     );
     res.json({ success: true, message: "Availability updated" });
   } catch (error) {

@@ -187,7 +187,6 @@ export default function FundiDashboardScreen({
   onNavigate,
   userName,
   userFullName,
-  activeJob,
 }) {
   const { t, language, setLanguage } = useLanguage();
   const {
@@ -195,8 +194,9 @@ export default function FundiDashboardScreen({
     refreshBookings,
     loading: bookingsLoading,
     pendingRequest,
+    setPendingRequest,
   } = useBooking();
-  const [online, setOnline] = useState(true);
+  const [availabilityMode, setAvailabilityMode] = useState("online");
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [acceptLoading, setAcceptLoading] = useState(false);
@@ -273,7 +273,7 @@ export default function FundiDashboardScreen({
     return buckets;
   }, [completedBookings]);
 
-  const active = activeBookings[0] || activeJob || null;
+  const active = activeBookings[0] || null;
   const request = pendingRequest || null;
 
   const activeCard = useMemo(() => {
@@ -347,13 +347,16 @@ export default function FundiDashboardScreen({
   const pendingCount = activeBookings.length + (request ? 1 : 0);
   const escrow = Math.round(heroEarnings * 0.17);
 
-  const handleToggleOnline = async (next) => {
-    setOnline(next);
+  const handleSetAvailability = async (mode) => {
+    const prev = availabilityMode;
+    setAvailabilityMode(mode);
     setAvailabilityLoading(true);
     try {
-      await updateFundiAvailability(next);
+      const isOnline = mode === "online";
+      const isNegotiable = mode === "negotiable";
+      await updateFundiAvailability(isOnline || isNegotiable, isNegotiable);
     } catch (e) {
-      setOnline(!next);
+      setAvailabilityMode(prev);
       Alert.alert(t('Could not update availability'), getErrorMessage(e));
     } finally {
       setAvailabilityLoading(false);
@@ -397,6 +400,8 @@ export default function FundiDashboardScreen({
     try {
       await acceptBooking(id);
       emitSocket('accept_booking', { bookingId: id });
+      // Clear the request card immediately so it disappears from "New Requests"
+      setPendingRequest(null);
       Alert.alert(t('Booking accepted'), t("{{name}}'s request has been accepted.", { name: requestCard.name }));
       await refreshBookings();
       onNavigate?.('fundiBookingDetail', { bookingId: id });
@@ -414,6 +419,7 @@ export default function FundiDashboardScreen({
     try {
       await declineBooking(id);
       emitSocket('decline_booking', { bookingId: id });
+      setPendingRequest(null);
       await refreshBookings();
     } catch (e) {
       Alert.alert(t('Could not decline'), getErrorMessage(e));
@@ -447,30 +453,27 @@ export default function FundiDashboardScreen({
           </View>
         </View>
 
-        <View style={styles.presenceRow}>
-          <TouchableOpacity
-            style={[styles.presencePill, online ? styles.presenceOn : styles.presenceOff]}
-            activeOpacity={0.88}
-            onPress={() => handleToggleOnline(true)}
-          >
-            <View style={styles.pillDot} />
-            <Text style={styles.presenceText}>{online ? t('Available for jobs') : t('Offline')}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.offlineButton, online ? styles.offlineButtonIdle : styles.offlineButtonActive]}
-            activeOpacity={0.88}
-            onPress={() => handleToggleOnline(!online)}
-            disabled={availabilityLoading}
-          >
-            {availabilityLoading ? (
-              <ActivityIndicator size="small" color={theme.colors.muted} />
-            ) : (
-              <Text style={[styles.offlineButtonText, !online && styles.offlineButtonTextActive]}>
-                {online ? t('Go Offline') : t('Go Online')}
-              </Text>
-            )}
-          </TouchableOpacity>
+        <View style={styles.availabilityRow}>
+          {[
+            { key: "online", label: t("Online"), color: "#30d060" },
+            { key: "negotiable", label: t("Negotiable"), color: "#ffb800" },
+            { key: "offline", label: t("Offline"), color: "#666" },
+          ].map((opt) => {
+            const active = availabilityMode === opt.key;
+            return (
+              <TouchableOpacity
+                key={opt.key}
+                style={[styles.availChip, active && { borderColor: opt.color, backgroundColor: `${opt.color}18` }]}
+                activeOpacity={0.85}
+                onPress={() => handleSetAvailability(opt.key)}
+                disabled={availabilityLoading}
+              >
+                <View style={[styles.availDot, { backgroundColor: active ? opt.color : "#444" }]} />
+                <Text style={[styles.availLabel, active && { color: opt.color }]}>{opt.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+          {availabilityLoading ? <ActivityIndicator size="small" color={theme.colors.muted} style={{ marginLeft: 8 }} /> : null}
         </View>
 
         <LinearGradient
@@ -814,67 +817,32 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 15,
   },
-  presenceRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    marginBottom: 14,
-  },
-  presencePill: {
+  availabilityRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    minHeight: 38,
+    marginBottom: 14,
+  },
+  availChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 36,
     paddingHorizontal: 14,
     borderRadius: 999,
     borderWidth: 1,
-  },
-  presenceOn: {
-    backgroundColor: 'rgba(12, 50, 22, 0.95)',
-    borderColor: 'rgba(42, 170, 72, 0.35)',
-  },
-  presenceOff: {
-    backgroundColor: '#161616',
     borderColor: theme.colors.border,
-  },
-  pillDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 999,
-    backgroundColor: '#2ddb68',
-    shadowColor: '#2ddb68',
-    shadowOpacity: 0.5,
-    shadowRadius: 8,
-  },
-  presenceText: {
-    color: '#42d56d',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  offlineButton: {
-    minHeight: 38,
-    paddingHorizontal: 16,
-    borderRadius: 999,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  offlineButtonIdle: {
     backgroundColor: '#161616',
-    borderColor: theme.colors.border,
   },
-  offlineButtonActive: {
-    backgroundColor: '#161616',
-    borderColor: '#f2a61b',
+  availDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  offlineButtonText: {
+  availLabel: {
     color: theme.colors.mutedDark,
     fontWeight: '700',
     fontSize: 13,
-  },
-  offlineButtonTextActive: {
-    color: '#ffb42f',
   },
   earningsCard: {
     borderRadius: 24,

@@ -23,7 +23,8 @@ const fundiProfileSchema = new mongoose.Schema(
       lng: { type: Number, default: null },
       updatedAt: { type: Date, default: null }
     },
-    isAvailable: { type: Boolean, default: true }
+    isAvailable: { type: Boolean, default: true },
+    availableForNegotiation: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

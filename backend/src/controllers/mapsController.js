@@ -1,4 +1,5 @@
 const FundiProfile = require("../models/FundiProfile");
+const User = require("../models/User");
 const { getRecommendations } = require("../services/recommendationService");
 const { geocodeAddress, reverseGeocode, buildRouteSummary, fetchDrivingRoute } = require("../services/mapsService");
 const { filterByRadius, normalizeCoords } = require("../utils/geo");
@@ -31,7 +32,7 @@ const reverse = async (req, res, next) => {
 
 const nearbyFundis = async (req, res, next) => {
   try {
-    const { lat, lng, category, radiusKm = 10, excludeUserId } = req.query;
+    const { lat, lng, category, radiusKm = 10, excludeUserId, excludePhone, excludeEmail } = req.query;
     if (lat == null || lng == null) {
       return res.status(400).json({ message: "lat and lng are required" });
     }
@@ -39,13 +40,24 @@ const nearbyFundis = async (req, res, next) => {
     const origin = normalizeCoords(lat, lng);
     const radius = Math.min(50, Math.max(1, Number(radiusKm)));
     const query = category && category !== "all" ? buildSkillsQuery(category) : {};
+
+    const excludeIds = new Set();
+    if (excludeUserId) excludeIds.add(excludeUserId);
+    if (excludePhone || excludeEmail) {
+      const or = [];
+      if (excludePhone) or.push({ phone: excludePhone });
+      if (excludeEmail) or.push({ email: excludeEmail });
+      const siblings = await User.find({ role: "fundi", $or: or }).select("_id");
+      siblings.forEach((s) => excludeIds.add(String(s._id)));
+    }
+
     const fundis = await FundiProfile.find(query)
       .populate({
         path: "userId",
         match: {
           "location.lat": { $ne: 0 },
           "location.lng": { $ne: 0 },
-          ...(excludeUserId && { _id: { $ne: excludeUserId } }),
+          ...(excludeIds.size && { _id: { $nin: [...excludeIds] } }),
         },
         select: "-password",
       });

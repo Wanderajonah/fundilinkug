@@ -34,6 +34,7 @@ import ProfileScreen from "./app/screens/ProfileScreen";
 import EditProfileScreen from "./app/screens/EditProfileScreen";
 import VerificationScreen from "./app/screens/VerificationScreen";
 import SettingsScreen from "./app/screens/SettingsScreen";
+import RolePickerScreen from "./app/screens/RolePickerScreen";
 import PaymentMethodsScreen from "./app/screens/PaymentMethodsScreen";
 import HelpSupportScreen from "./app/screens/HelpSupportScreen";
 import WalletHomeScreen from "./app/screens/WalletHomeScreen";
@@ -45,6 +46,7 @@ import {
   sendOtp,
   verifyOtpRegister,
   verifyOtpLogin,
+  selectRole,
   applyAuthSession,
   clearAuthSession,
   restoreAuthSession,
@@ -107,6 +109,7 @@ function AppContent() {
   const [otpPhone, setOtpPhone] = useState("");
   const [otpExpiresIn, setOtpExpiresIn] = useState(600);
   const [signupSubmitting, setSignupSubmitting] = useState(false);
+  const [pendingUsers, setPendingUsers] = useState(null);
   const [authToken, setAuthToken] = useState("");
   const [browseCategory, setBrowseCategory] = useState("all");
   const [selectedArtisan, setSelectedArtisan] = useState(null);
@@ -158,6 +161,7 @@ function AppContent() {
     setUserId("");
     setUserRole("customer");
     setFundiEnabled(false);
+    setPendingUsers(null);
     historyRef.current = [];
     setScreen("onboarding");
   };
@@ -374,13 +378,17 @@ function AppContent() {
     if (Platform.OS === "android") {
       (async () => {
         try {
-          await NavigationBar.setBackgroundColorAsync("#000000");
+          if (NavigationBar.setBackgroundColorAsync) {
+            await NavigationBar.setBackgroundColorAsync("#000000");
+          }
           await NavigationBar.setButtonStyleAsync("light");
         } catch {
           /* non-blocking */
         }
         try {
-          await SystemUI.setBackgroundColorAsync("#000000");
+          if (SystemUI.setBackgroundColorAsync) {
+            await SystemUI.setBackgroundColorAsync("#000000");
+          }
         } catch {
           /* non-blocking */
         }
@@ -819,6 +827,11 @@ function AppContent() {
             return;
           }
           const { data } = await verifyOtpLogin(otpPhone, code);
+          if (data.requireRoleSelection) {
+            setPendingUsers([data.user]);
+            setScreen("rolePicker");
+            return;
+          }
           const role = await applySession(data);
           setAuthTokenForSync(data.token || "");
           const locationOk = await ensureLocationForLogin();
@@ -831,6 +844,38 @@ function AppContent() {
             return;
           }
           goHome(role);
+        }}
+      />
+    );
+  }
+
+  if (screen === "rolePicker") {
+    const dualUser = pendingUsers?.[0];
+    return (
+      <RolePickerScreen
+        user={dualUser}
+        onSelect={async (role) => {
+          try {
+            const { data } = await selectRole(role, dualUser?.id || dualUser?._id);
+            setPendingUsers(null);
+            await applySession(data);
+            // Override userRole with the selected role — DB role stays "customer"
+            // for single-account dual-role, but UI must reflect the chosen view.
+            setUserRole(role);
+            setAuthTokenForSync(data.token || "");
+            const locationOk = await ensureLocationForLogin();
+            if (!locationOk) {
+              Alert.alert(
+                "Location required",
+                "FundiLink needs location access to show nearby services.",
+              );
+              handleLogout();
+              return;
+            }
+            goHome(role);
+          } catch (e) {
+            Alert.alert("Error", getErrorMessage(e));
+          }
         }}
       />
     );

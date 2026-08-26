@@ -1,6 +1,5 @@
 import api, { setAuthToken } from './api';
 import { getItem, setItem, removeItem } from './storage';
-import { mapGoogleSignInError } from './googleSignIn';
 
 
 
@@ -23,27 +22,17 @@ export const verifyOtpRegister = (payload) =>
 export const verifyOtpLogin = (phone, code) =>
   api.post('/auth/otp/verify-login', { phone: normalizeUgandaPhone(phone), code });
 
+export const selectRole = (role, userId) =>
+  api.post('/auth/select-role', { role, userId });
+
 export const registerAccount = (payload) => api.post('/auth/register', payload);
 
 /**
- * Handle Google Sign-In response by exchanging the Google token for FundiLink session
- * @param {Object} googleUser - User profile from Google API (id, name, email, picture, etc.)
- * @param {string} accessToken - Google OAuth access token
- * @returns {Promise} Auth response with token and user data
+ * Handle Google Sign-In response by sending the ID token to the backend
+ * for server-side verification with google-auth-library.
  */
-export const handleGoogleSignInResponse = async (googleUser, accessToken, profile = {}, mode = 'signup') => {
-  const { data } = await api.post('/auth/google', {
-    googleId: googleUser.id,
-    email: profile.email || googleUser.email,
-    name: profile.name || googleUser.name,
-    firstName: profile.firstName,
-    lastName: profile.lastName,
-    picture: googleUser.picture,
-    role: profile.role,
-    dateOfBirth: profile.dateOfBirth,
-    mode,
-    accessToken,
-  });
+export const handleGoogleSignInResponse = async (idToken) => {
+  const { data } = await api.post('/auth/google', { idToken });
   return data;
 };
 

@@ -174,7 +174,18 @@ async function readUploadAsDataUrl(imageUrl) {
 function parseCategory(raw) {
   if (!raw) return null;
   const value = String(raw).toLowerCase().replace(/[^a-z]/g, "");
-  return TRADE_CATEGORIES.includes(value) ? value : null;
+  // Direct match
+  if (TRADE_CATEGORIES.includes(value)) return value;
+  // Map gerund/variant forms returned by vision models
+  const GERUND_MAP = {
+    plumbing: "plumber",
+    electricalelectrics: "electrician",
+    electrical: "electrician",
+    carpentry: "carpenter",
+    painting: "painter",
+    masonry: "carpenter",
+  };
+  return GERUND_MAP[value] || null;
 }
 
 /** Extract a JSON object from a model response (handles <think> blocks, code fences, stray text). */

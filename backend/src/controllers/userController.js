@@ -19,40 +19,10 @@ const updateProfile = async (req, res, next) => {
     const updates = { ...req.body };
     delete updates.password;
 
-    // --- DIAGNOSTIC LOGGING: remove once the bug is found ---
-    console.log("[updateProfile] req.user._id:", req.user._id);
-    console.log("[updateProfile] incoming req.body:", JSON.stringify(req.body));
-    console.log(
-      "[updateProfile] updates being applied:",
-      JSON.stringify(updates),
-    );
-
-    const beforeDoc = await User.findById(req.user._id).select("-password");
-    console.log(
-      "[updateProfile] BEFORE update, current user doc:",
-      JSON.stringify(beforeDoc),
-    );
-    // --- END DIAGNOSTIC ---
-
     const user = await User.findByIdAndUpdate(req.user._id, updates, {
       new: true,
       runValidators: true,
     }).select("-password");
-
-    // --- DIAGNOSTIC LOGGING ---
-    console.log(
-      "[updateProfile] AFTER update, returned user doc:",
-      JSON.stringify(user),
-    );
-
-    // Re-read directly from the DB (bypassing the .findByIdAndUpdate result)
-    // to confirm the write actually persisted, not just what Mongoose handed back.
-    const verifyDoc = await User.findById(req.user._id).select("-password");
-    console.log(
-      "[updateProfile] VERIFY re-read from DB:",
-      JSON.stringify(verifyDoc),
-    );
-    // --- END DIAGNOSTIC ---
 
     if (
       (user.role === "fundi" || user.fundiEnabled) &&
@@ -71,19 +41,10 @@ const updateProfile = async (req, res, next) => {
         }),
         ...(req.body.bio && { bio: req.body.bio }),
       };
-      console.log(
-        "[updateProfile] writing FundiProfile update:",
-        JSON.stringify(fundiUpdate),
-      );
-
-      const fundiDoc = await FundiProfile.findOneAndUpdate(
+      await FundiProfile.findOneAndUpdate(
         { userId: user._id },
         fundiUpdate,
         { upsert: true, new: true },
-      );
-      console.log(
-        "[updateProfile] FundiProfile after write:",
-        JSON.stringify(fundiDoc),
       );
     }
 
@@ -94,15 +55,6 @@ const updateProfile = async (req, res, next) => {
 
     return res.json({ user });
   } catch (error) {
-    // --- DIAGNOSTIC LOGGING ---
-    console.log("[updateProfile] ERROR caught:", error?.name, error?.message);
-    if (error?.errors) {
-      console.log(
-        "[updateProfile] validation errors:",
-        JSON.stringify(error.errors),
-      );
-    }
-    // --- END DIAGNOSTIC ---
     return next(error);
   }
 };

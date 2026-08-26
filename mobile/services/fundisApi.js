@@ -2,6 +2,8 @@ import api from "./api";
 
 export const getFundis = (params = {}) => api.get("/fundis", { params });
 
+export const getNegotiableFundis = (params = {}) => api.get("/fundis/negotiable", { params });
+
 export const getFundiById = (id) => api.get(`/fundis/${id}`);
 
 export function mapFundiItem(item) {
@@ -31,6 +33,7 @@ export function mapFundiItem(item) {
     experience: item.experience || 0,
     location: user.locationLabel || user.address || "",
     isAvailable: item.isAvailable,
+    availableForNegotiation: item.availableForNegotiation,
     userId: user,
   };
 }

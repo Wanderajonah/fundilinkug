@@ -28,6 +28,7 @@ const formatUser = (user) => ({
   email: user.email,
   phone: user.phone,
   role: user.role,
+  fundiEnabled: user.fundiEnabled,
   phoneVerified: user.phoneVerified,
   dateOfBirth: user.dateOfBirth,
   profilePhoto: user.profilePhoto,
@@ -243,9 +244,12 @@ const verifyOtpLogin = async (req, res, next) => {
     user.phoneVerified = true;
     await user.save();
 
+    const isDualRole = user.fundiEnabled && user.role === "customer";
+
     return res.json({
       token: generateToken(user._id),
       user: formatUser(user),
+      requireRoleSelection: isDualRole,
     });
   } catch (error) {
     if (error.statusCode) {
@@ -255,81 +259,23 @@ const verifyOtpLogin = async (req, res, next) => {
   }
 };
 
-const googleAuth = async (req, res, next) => {
+const selectRole = async (req, res, next) => {
   try {
-    const {
-      googleId,
-      email,
-      name,
-      firstName,
-      lastName,
-      picture,
-      role,
-      dateOfBirth,
-      mode = "signup",
-    } = req.body;
-
-    if (!email) {
-      return res.status(400).json({ message: "email is required" });
+    const { role, userId } = req.body;
+    if (!role || !["customer", "fundi"].includes(role)) {
+      return res.status(400).json({ message: "role must be 'customer' or 'fundi'" });
     }
-
-    const normalizedRole = role ? normalizeRole(role) : "customer";
-    const fullName = buildFullName(
-      firstName,
-      lastName,
-      name || email.split("@")[0],
-    );
-
-    let user =
-      (googleId && (await User.findOne({ googleId }))) ||
-      (await User.findOne({ email }));
-
-    if (mode === "signin") {
-      if (!user) {
-        return res.status(404).json({
-          message: "Account not found. Please create an account first.",
-        });
-      }
-    } else if (user) {
-      return res.status(400).json({
-        message: "Account already exists. Try signing in instead.",
-      });
+    if (!userId) {
+      return res.status(400).json({ message: "userId is required" });
     }
-
+    const user = await User.findById(userId).select("-password");
     if (!user) {
-      user = await User.create({
-        name: fullName,
-        firstName: firstName || fullName.split(" ")[0] || "",
-        lastName: lastName || fullName.split(" ").slice(1).join(" ") || "",
-        email,
-        googleId: googleId || undefined,
-        profilePhoto: picture || "",
-        coverPhoto: req.body.coverPhoto || "",
-        phoneVerified: true,
-        role: normalizedRole,
-        password: await bcrypt.hash(crypto.randomBytes(24).toString("hex"), 10),
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined,
-        onboardingComplete: normalizedRole === "customer",
-        location: { lat: 0, lng: 0 },
-      });
-
-      if (normalizedRole === "fundi") {
-        await createFundiProfile(user._id);
-      }
-    } else {
-      user.name = user.name || fullName;
-      user.firstName = user.firstName || firstName || "";
-      user.lastName = user.lastName || lastName || "";
-      user.profilePhoto = picture || user.profilePhoto;
-      user.googleId = user.googleId || googleId;
-      if (dateOfBirth && !user.dateOfBirth)
-        user.dateOfBirth = new Date(dateOfBirth);
-      await user.save();
+      return res.status(404).json({ message: "Account not found" });
     }
-
     return res.json({
       token: generateToken(user._id),
       user: formatUser(user),
+      selectedRole: role,
     });
   } catch (error) {
     return next(error);
@@ -341,5 +287,5 @@ module.exports = {
   sendOtp,
   verifyOtpRegister,
   verifyOtpLogin,
-  googleAuth,
+  selectRole,
 };

@@ -46,8 +46,8 @@ export const updateFundiLocation = (lat, lng) =>
 export const enableFundi = () => api.post("/users/enable-fundi");
 
 // Update fundi availability status
-export const updateFundiAvailability = (isAvailable) =>
-  api.put("/bookings/fundi/availability", { isAvailable });
+export const updateFundiAvailability = (isAvailable, availableForNegotiation) =>
+  api.put("/bookings/fundi/availability", { isAvailable, availableForNegotiation });
 
 // Submit identity verification documents (fundi)
 export const requestVerification = (formData) => {

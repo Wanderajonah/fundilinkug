@@ -34,7 +34,7 @@ const STATUS_ORDER = ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS', 'COMPL
 const TERMINAL_STATUSES = new Set(['COMPLETED', 'CANCELLED', 'DISPUTED']);
 
 export default function FundiBookingDetailScreen({ bookingId, onBack }) {
-  const { activeBooking, setPendingRequest, refreshBookingById, refreshBookings } = useBooking();
+  const { activeBooking, setPendingRequest, setActiveBooking, refreshBookingById, refreshBookings } = useBooking();
   const { t } = useLanguage();
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
@@ -171,6 +171,12 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
           try {
             await cancelFundiBooking(bookingId, 'Cancelled by fundi');
             emitSocket('cancel_booking', { bookingId, reason: 'Cancelled by fundi' });
+            // Explicitly clear context state before navigating back so the
+            // dashboard immediately reflects the cancelled booking.
+            setActiveBooking((prev) =>
+              prev && prev.id === bookingId ? null : prev
+            );
+            setPendingRequest(null);
             await refreshBookings();
             onBack?.();
           } catch (e) {

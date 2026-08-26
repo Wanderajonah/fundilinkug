@@ -11,12 +11,13 @@ export function useGoogleSignIn() {
   const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
   const webClientId = process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID;
 
-  const disabled = !androidClientId || !iosClientId || !webClientId;
+  const disabled = !androidClientId && !iosClientId;
 
   const [request, response, promptAsync] = Google.useAuthRequest({
-    androidClientId: androidClientId || '',
-    iosClientId: iosClientId || '',
-    webClientId: webClientId || '',
+    androidClientId: androidClientId || undefined,
+    iosClientId: iosClientId || undefined,
+    webClientId: webClientId || undefined,
+    scopes: ['profile', 'email'],
   });
 
   const safePromptAsync = async () => {

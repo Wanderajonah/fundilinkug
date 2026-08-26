@@ -9,6 +9,7 @@ const errorHandler = require("./middleware/errorHandler");
 const initializeSocket = require("./config/socket");
 
 const authRoutes = require("./routes/authRoutes");
+const googleAuthRoutes = require("./routes/googleAuthRoutes");
 const userRoutes = require("./routes/userRoutes");
 const fundiRoutes = require("./routes/fundiRoutes");
 const jobRoutes = require("./routes/jobRoutes");
@@ -94,6 +95,7 @@ app.get("/api/platform-settings", async (req, res, next) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/auth", googleAuthRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/fundis", fundiRoutes);
 app.use("/api/jobs", jobRoutes);

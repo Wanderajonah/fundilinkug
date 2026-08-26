@@ -14,7 +14,7 @@ import AuthButton from '../components/AuthButton';
 import PhoneInput from '../components/PhoneInput';
 import theme from '../theme';
 import { getErrorMessage, handleGoogleSignInResponse } from '../../services/authApi';
-import { useGoogleSignIn, fetchGoogleUser } from '../../services/googleSignIn';
+import { useGoogleSignIn } from '../../services/googleSignIn';
 import { useLanguage } from '../i18n/LanguageContext';
 
 export default function SignInScreen({
@@ -39,14 +39,17 @@ export default function SignInScreen({
     setGoogleLoading(true);
     try {
       const result = await promptAsync();
-      if (result?.type === 'success' && result.authentication?.accessToken) {
-        const googleUser = await fetchGoogleUser(result.authentication.accessToken);
-        const data = await handleGoogleSignInResponse(
-          googleUser,
-          result.authentication.accessToken,
-          { role },
-          'signin'
-        );
+      if (result?.type === 'success') {
+        // expo-auth-session returns idToken in authentication.idToken
+        // or in params.id_token depending on the provider version
+        const idToken = result.authentication?.idToken || result.params?.id_token;
+
+        if (!idToken) {
+          Alert.alert(t('Sign in failed'), t('Could not get Google ID token. Please try again.'));
+          return;
+        }
+
+        const data = await handleGoogleSignInResponse(idToken);
 
         const isNewUser = data?.isNewUser === true || !data?.user;
 
@@ -54,9 +57,9 @@ export default function SignInScreen({
           onGoogleNewUser?.({
             role,
             googleProfile: {
-              firstName: googleUser?.given_name || googleUser?.firstName,
-              lastName: googleUser?.family_name || googleUser?.lastName,
-              email: googleUser?.email,
+              firstName: data?.user?.firstName,
+              lastName: data?.user?.lastName,
+              email: data?.user?.email,
             },
           });
           return;

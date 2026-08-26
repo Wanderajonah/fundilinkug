@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Image } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ScreenWrapper from '../components/ScreenWrapper';
 import PrimaryButton from '../components/PrimaryButton';
@@ -11,9 +11,18 @@ import { getPlatformPricing } from '../../services/api';
 import { holdEscrow as holdPaymentApi, getWallet } from '../../services/walletApi';
 import { useLanguage } from '../i18n/LanguageContext';
 
+import mtnIcon from '../../assets/mtn.png';
+import airtelIcon from '../../assets/airtel.png';
+
+const METHODS = [
+  { key: 'wallet', name: 'Pay with Wallet', icon: null, phoneLabel: '', hint: 'Pay directly from your wallet balance.' },
+  { key: 'mtn', name: 'MTN Mobile Money', icon: mtnIcon, phoneLabel: 'MTN MOMO NUMBER', hint: "You'll receive a MoMo STK push prompt to approve on your phone." },
+  { key: 'airtel', name: 'Airtel Money', icon: airtelIcon, phoneLabel: 'AIRTEL MONEY NUMBER', hint: "You'll receive an Airtel Money STK push prompt to approve on your phone." },
+];
+
 export default function PaymentScreen({ booking = {}, onBack, onPay, loading = false, onNavigate }) {
   const { t } = useLanguage();
-  const [method, setMethod] = useState('mtn');
+  const [method, setMethod] = useState('wallet');
   const [phone, setPhone] = useState('');
   const [clientFeeRate, setClientFeeRate] = useState(10);
   const [processing, setProcessing] = useState(false);
@@ -48,17 +57,18 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
   const platformFee = Math.round(serviceFee * (clientFeeRate / 100));
   const total = booking.total || booking.amount || serviceFee + platformFee;
   const canPay = canProceedToPayment(booking) || booking.paid;
+  const isWallet = method === 'wallet';
+  const hasSufficientBalance = balance != null && balance >= total;
 
-  // Record the payment server-side (escrow hold). Local-only bookings
-  // (demo flow, no id) skip the API and keep the old local behaviour.
   const handlePay = async () => {
     if (!booking.id && !booking._id) {
       onPay?.();
       return;
     }
+    const bookingId = booking.id || booking._id;
     setProcessing(true);
     try {
-      await holdPaymentApi(booking.id || booking._id);
+      await holdPaymentApi(bookingId);
       onPay?.();
     } catch (error) {
       const serverMsg = error?.response?.data?.message;
@@ -79,7 +89,6 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
           },
         ]);
       } else if (serverMsg && /already/i.test(serverMsg)) {
-        // Server already has the escrow hold — treat as success.
         onPay?.();
       } else {
         Alert.alert(t('Payment failed'), msg);
@@ -88,6 +97,8 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
       setProcessing(false);
     }
   };
+
+  const currentMethod = METHODS.find((m) => m.key === method);
 
   return (
     <ScreenWrapper style={styles.safe}>
@@ -123,39 +134,64 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
         </View>
 
         <Text style={styles.section}>{t('PAYMENT METHOD')}</Text>
-        <TouchableOpacity
-          style={[styles.methodCard, method === 'mtn' && styles.methodOn]}
-          onPress={() => setMethod('mtn')}
-        >
-          <View style={styles.methodLeft}>
-            <View style={[styles.logo, { backgroundColor: '#FFCC00' }]}>
-              <Text style={styles.logoText}>MTN</Text>
-            </View>
-            <Text style={styles.methodName}>{t('MTN Mobile Money')}</Text>
-          </View>
-          <View style={[styles.radio, method === 'mtn' && styles.radioOn]} />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.methodCard, method === 'airtel' && styles.methodOn]}
-          onPress={() => setMethod('airtel')}
-        >
-          <View style={styles.methodLeft}>
-            <View style={[styles.logo, { backgroundColor: '#E40000' }]}>
-              <Text style={[styles.logoText, { color: '#fff' }]}>A</Text>
-            </View>
-            <Text style={styles.methodName}>{t('Airtel Money')}</Text>
-          </View>
-          <View style={[styles.radio, method === 'airtel' && styles.radioOn]} />
-        </TouchableOpacity>
+        {METHODS.map((m) => {
+          const selected = method === m.key;
+          return (
+            <TouchableOpacity
+              key={m.key}
+              style={[styles.methodCard, selected && styles.methodOn]}
+              onPress={() => setMethod(m.key)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.methodLeft}>
+                {m.icon ? (
+                  <Image source={m.icon} style={styles.methodIcon} resizeMode="contain" />
+                ) : (
+                  <View style={styles.walletIcon}>
+                    <Ionicons name="wallet-outline" size={22} color={selected ? theme.colors.accent : theme.colors.muted} />
+                  </View>
+                )}
+                <View>
+                  <Text style={styles.methodName}>{t(m.name)}</Text>
+                  {m.key === 'wallet' && balance != null ? (
+                    <Text style={[styles.methodBalance, hasSufficientBalance ? styles.balanceOk : styles.balanceLow]}>
+                      {t('Balance')}: {formatUgx(balance)}
+                    </Text>
+                  ) : null}
+                </View>
+              </View>
+              {selected ? (
+                <View style={styles.tickWrap}>
+                  <Ionicons name="checkmark-circle" size={22} color={theme.colors.accent} />
+                </View>
+              ) : (
+                <View style={styles.radio} />
+              )}
+            </TouchableOpacity>
+          );
+        })}
 
         <View style={styles.escrow}>
           <Ionicons name="lock-closed-outline" size={14} color={theme.colors.muted} />
           <Text style={styles.escrowText}> {t('Funds held in escrow until job is confirmed complete.')}</Text>
         </View>
 
-        <PhoneInput label={t('MTN MOMO NUMBER')} value={phone} onChangeText={setPhone} placeholder="7XX XXX XXX" />
-        <Text style={styles.hint}>{t("You'll receive a MoMo STK push prompt to approve on your phone.")}</Text>
+        {!isWallet ? (
+          <>
+            <PhoneInput
+              label={t(currentMethod?.phoneLabel || 'PHONE NUMBER')}
+              value={phone}
+              onChangeText={setPhone}
+              placeholder="7XX XXX XXX"
+            />
+            <Text style={styles.hint}>{t(currentMethod?.hint || '')}</Text>
+          </>
+        ) : (
+          <View style={styles.walletHint}>
+            <Ionicons name="information-circle-outline" size={14} color={theme.colors.muted} />
+            <Text style={styles.hintText}> {t('The total amount will be deducted from your wallet balance.')}</Text>
+          </View>
+        )}
 
         <View style={styles.breakdown}>
           <View style={styles.row}>
@@ -185,13 +221,20 @@ export default function PaymentScreen({ booking = {}, onBack, onPay, loading = f
           ) : null}
         </View>
 
-        <PrimaryButton onPress={handlePay} disabled={!canPay || loading || processing}>
+        <PrimaryButton
+          onPress={handlePay}
+          disabled={!canPay || loading || processing || (isWallet && !hasSufficientBalance)}
+        >
           {processing
             ? t('Processing…')
-            : t('Proceed to Payment · UGX {{amount}}', { amount: total.toLocaleString() })}
+            : isWallet
+              ? t('Pay from Wallet · UGX {{amount}}', { amount: total.toLocaleString() })
+              : t('Proceed to Payment · UGX {{amount}}', { amount: total.toLocaleString() })}
         </PrimaryButton>
         {!canPay ? (
           <Text style={styles.disabledHint}>{t('Complete price negotiation to enable payment.')}</Text>
+        ) : isWallet && !hasSufficientBalance ? (
+          <Text style={styles.disabledHint}>{t('Insufficient wallet balance. Please deposit first.')}</Text>
         ) : null}
         {loading ? <ActivityIndicator color={theme.colors.accent} style={{ marginTop: 12 }} /> : null}
       </ScrollView>
@@ -244,9 +287,20 @@ const styles = StyleSheet.create({
   },
   methodOn: { borderColor: theme.colors.accent, backgroundColor: 'rgba(255,184,0,0.08)' },
   methodLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  logo: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  logoText: { fontWeight: '900', fontSize: 11, color: theme.colors.textDark },
+  methodIcon: { width: 40, height: 40, borderRadius: 10 },
+  walletIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,184,0,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   methodName: { color: theme.colors.white, fontWeight: '700' },
+  methodBalance: { fontSize: 11, marginTop: 2 },
+  balanceOk: { color: theme.colors.green },
+  balanceLow: { color: theme.colors.red },
+  tickWrap: { marginLeft: 8 },
   radio: {
     width: 20,
     height: 20,
@@ -254,7 +308,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: theme.colors.mutedDark,
   },
-  radioOn: { borderColor: theme.colors.accent, backgroundColor: theme.colors.accent },
   escrow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -264,6 +317,12 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   escrowText: { color: theme.colors.muted, fontSize: 12, lineHeight: 18 },
+  walletHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  hintText: { color: theme.colors.muted, fontSize: 12 },
   hint: { color: theme.colors.mutedDark, fontSize: 12, marginTop: -8, marginBottom: 20 },
   breakdown: { marginBottom: 24 },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },

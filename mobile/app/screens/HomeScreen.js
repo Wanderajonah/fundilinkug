@@ -206,7 +206,7 @@ function HeroSlider({ onNavigate }) {
   );
 }
 
-function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLoading, walletBalance }) {
+function ListHeader({ userName, userRole, fundiEnabled, onNavigate, locationLabel, activeJob, bookingsLoading, walletBalance }) {
   const { t } = useLanguage();
   const bookingCtx = useBookingOptional();
 
@@ -459,6 +459,8 @@ export default function HomeScreen({
         ListHeaderComponent={
           <ListHeader
             userName={userName}
+            userRole={userRole}
+            fundiEnabled={fundiEnabled}
             onNavigate={onNavigate}
             locationLabel={address}
             activeJob={resolvedActiveJob}
