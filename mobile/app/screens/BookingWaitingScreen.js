@@ -28,9 +28,10 @@ import { formatUgx } from '../utils/ratings';
 import { resolveMediaUrl } from '../../utils/image';
 import { useLanguage } from '../i18n/LanguageContext';
 
-export default function BookingWaitingScreen({ booking: initialBooking, onNavigate, onBack }) {
+export default function BookingWaitingScreen({ booking: initialBooking, onNavigate, onBack, onComplete }) {
   const {
     activeBooking,
+    setActiveBooking,
     refreshBookingById,
     notification,
     clearNotification,
@@ -117,6 +118,9 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
       const res = await completeBooking(booking.id);
       const updated = res?.data?.booking;
       if (!updated || updated.status === 'COMPLETED') {
+        // Clear the active booking so it disappears from the home screen
+        setActiveBooking(null);
+        onComplete?.(updated || booking);
         onNavigate?.('rateExperience', { job: updated || booking });
       } else {
         Alert.alert(

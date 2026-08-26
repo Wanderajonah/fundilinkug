@@ -5,7 +5,7 @@ const getProfile = async (req, res, next) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
     let fundiProfile = null;
-    if (user.role === "fundi") {
+    if (user.role === "fundi" || user.fundiEnabled) {
       fundiProfile = await FundiProfile.findOne({ userId: user._id });
     }
     return res.json({ user, fundiProfile });
@@ -55,7 +55,7 @@ const updateProfile = async (req, res, next) => {
     // --- END DIAGNOSTIC ---
 
     if (
-      user.role === "fundi" &&
+      (user.role === "fundi" || user.fundiEnabled) &&
       (req.body.skills ||
         req.body.portfolioImages ||
         req.body.experience !== undefined ||
@@ -257,6 +257,33 @@ const requestVerification = async (req, res, next) => {
   }
 };
 
+const enableFundi = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id).select("-password");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    // Already a fundi — nothing to do
+    if (user.role === "fundi" || user.fundiEnabled) {
+      const fundiProfile = await FundiProfile.findOne({ userId: user._id });
+      return res.json({ user, fundiProfile });
+    }
+
+    // Mark fundi as enabled for this customer
+    user.fundiEnabled = true;
+    await user.save();
+
+    // Create a FundiProfile if one doesn't exist yet
+    let fundiProfile = await FundiProfile.findOne({ userId: user._id });
+    if (!fundiProfile) {
+      fundiProfile = await FundiProfile.create({ userId: user._id });
+    }
+
+    return res.json({ user, fundiProfile });
+  } catch (error) {
+    return next(error);
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -266,4 +293,5 @@ module.exports = {
   uploadPortfolioImages,
   deletePortfolioImage,
   requestVerification,
+  enableFundi,
 };

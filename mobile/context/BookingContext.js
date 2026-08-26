@@ -125,7 +125,18 @@ export function BookingProvider({
         if (!data?.booking) return null;
         const mapped = mapApiBooking(data.booking, roleKey);
         if (!mapped) return null;
-        setActiveBooking(mapped);
+
+        // Only keep activeBooking if the booking is still active;
+        // clear it when the booking is completed/cancelled so the
+        // home-screen banner disappears immediately.
+        if (ACTIVE_STATUSES.includes(mapped.status)) {
+          setActiveBooking(mapped);
+        } else {
+          setActiveBooking((prev) =>
+            prev && prev.id === mapped.id ? null : prev,
+          );
+        }
+
         setBookings((prev) => {
           const idx = prev.findIndex((b) => b.id === mapped.id);
           if (idx < 0) return [mapped, ...prev];
@@ -226,7 +237,10 @@ export function BookingProvider({
         }
       }),
       subscribeSocket('status_completed', (payload) => {
-        if (payload?.bookingId) refreshBookingById(payload.bookingId);
+        if (payload?.bookingId) {
+          refreshBookingById(payload.bookingId);
+          refreshBookings();
+        }
       }),
       subscribeSocket('price_update', (payload) => {
         if (payload?.bookingId) refreshBookingById(payload.bookingId);

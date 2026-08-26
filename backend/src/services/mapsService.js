@@ -90,6 +90,78 @@ const reverseGeocode = async (lat, lng) => {
 /** ETA in minutes from distance (rough urban speed ~25 km/h) */
 const estimateEtaMinutes = (distanceKm) => Math.max(3, Math.round((distanceKm / 25) * 60));
 
+/** Decode a Google encoded polyline into [{lat,lng}] points. */
+const decodePolyline = (encoded) => {
+  const points = [];
+  let index = 0;
+  let lat = 0;
+  let lng = 0;
+  while (index < encoded.length) {
+    let result = 1;
+    let shift = 0;
+    let b;
+    do {
+      b = encoded.charCodeAt(index++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while (b >= 0x1f);
+    lat += result & 1 ? ~(result >> 1) : result >> 1;
+    result = 1;
+    shift = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63 - 1;
+      result += b << shift;
+      shift += 5;
+    } while (b >= 0x1f);
+    lng += result & 1 ? ~(result >> 1) : result >> 1;
+    points.push({ lat: lat * 1e-5, lng: lng * 1e-5 });
+  }
+  return points;
+};
+
+/**
+ * Driving route from the Google Directions API. Returns null when no key is
+ * configured or the API fails so callers can fall back to haversine summary.
+ */
+const fetchDrivingRoute = async (from, to) => {
+  const key = getApiKey();
+  if (!key) return null;
+
+  try {
+    const url =
+      `${GOOGLE_BASE}/directions/json?origin=${from.lat},${from.lng}` +
+      `&destination=${to.lat},${to.lng}&mode=driving&key=${key}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (data.status !== "OK" || !data.routes?.[0]) return null;
+
+    const route = data.routes[0];
+    const leg = route.legs?.[0];
+    const distanceKm =
+      leg?.distance?.value != null
+        ? Number((leg.distance.value / 1000).toFixed(2))
+        : Number(haversineDistanceKm(from, to).toFixed(2));
+    const etaMinutes =
+      leg?.duration?.value != null
+        ? Math.max(1, Math.round(leg.duration.value / 60))
+        : estimateEtaMinutes(distanceKm);
+
+    const polyline = route.overview_polyline?.points
+      ? decodePolyline(route.overview_polyline.points)
+      : [];
+
+    return {
+      distanceKm,
+      etaMinutes,
+      polyline,
+      source: "google-directions",
+    };
+  } catch {
+    return null;
+  }
+};
+
 const buildRouteSummary = (from, to) => {
   const distanceKm = Number(haversineDistanceKm(from, to).toFixed(2));
   return {
@@ -102,5 +174,6 @@ module.exports = {
   geocodeAddress,
   reverseGeocode,
   buildRouteSummary,
+  fetchDrivingRoute,
   normalizeCoords
 };

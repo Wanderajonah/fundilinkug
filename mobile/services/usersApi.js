@@ -42,6 +42,9 @@ export const deletePortfolioImage = (imageUrl) => {
 export const updateFundiLocation = (lat, lng) =>
   api.put("/bookings/fundi/location", { lat, lng });
 
+// Enable fundi mode for a client account
+export const enableFundi = () => api.post("/users/enable-fundi");
+
 // Update fundi availability status
 export const updateFundiAvailability = (isAvailable) =>
   api.put("/bookings/fundi/availability", { isAvailable });

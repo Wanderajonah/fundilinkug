@@ -18,13 +18,17 @@ import {
   hasApiAuthToken,
 } from '../../services/authApi';
 import { createBooking, uploadBookingImage, getErrorMessage } from '../../services/bookingsApi';
-import { compressImage } from '../../utils/image';
+import { compressImage, resolveMediaUrl } from '../../utils/image';
 import { normalizeCategory } from '../utils/bookings';
 import theme from '../theme';
 import PrimaryButton from '../components/PrimaryButton';
 import BookingSentAlert from '../components/BookingSentAlert';
 import ScreenWrapper from '../components/ScreenWrapper';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLanguage } from '../i18n/LanguageContext';
+
+const DATE_OPTIONS = ['Today', 'Tomorrow'];
+const TIME_OPTIONS = ['ASAP', 'Morning', 'Afternoon', 'Evening'];
 
 export default function RequestServiceScreen({
   artisan = {},
@@ -34,9 +38,14 @@ export default function RequestServiceScreen({
 }) {
   const { address, coords } = useLocation();
   const { t } = useLanguage();
-  const [service, setService] = useState(artisan.skills?.[0] || artisan.role || t('General Service'));
-  const [date, setDate] = useState(t('Today'));
-  const [time, setTime] = useState('ASAP');
+  // Bottom inset is handled here (not by ScreenWrapper) so the sticky footer
+  // clears the Android/iOS system navigation bar.
+  const insets = useSafeAreaInsets();
+  const skillOptions = (artisan.skills?.length ? artisan.skills : [artisan.role || t('General Service')])
+    .filter(Boolean);
+  const [service, setService] = useState(skillOptions[0] || t('General Service'));
+  const [date, setDate] = useState(DATE_OPTIONS[0]);
+  const [time, setTime] = useState(TIME_OPTIONS[0]);
   const [location, setLocation] = useState(address || '');
   const [desc, setDesc] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -152,122 +161,241 @@ export default function RequestServiceScreen({
     setPhotos((prev) => [...prev, ...newUris].slice(0, 5));
   }, [photos.length]);
 
+  const ratingValue =
+    typeof artisan.rating === 'number' && artisan.rating > 0
+      ? artisan.rating.toFixed(1)
+      : null;
+
   return (
-    <ScreenWrapper style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container}>
-        <TouchableOpacity onPress={() => onNavigate?.('artisan')} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
-        </TouchableOpacity>
+    <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        <View style={styles.topBar}>
+          <TouchableOpacity onPress={() => onNavigate?.('artisan')} style={styles.backBtn}>
+            <Ionicons name="chevron-back" size={20} color={theme.colors.white} />
+          </TouchableOpacity>
+          <Text style={styles.topTitle}>{t('Request Service')}</Text>
+          <View style={{ width: 40 }} />
+        </View>
 
         <View style={styles.headerCard}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{(artisan.name || 'U').slice(0, 2).toUpperCase()}</Text>
-          </View>
+          {artisan.profilePhoto ? (
+            <Image source={{ uri: resolveMediaUrl(artisan.profilePhoto) }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{(artisan.name || 'U').slice(0, 2).toUpperCase()}</Text>
+            </View>
+          )}
           <View style={styles.headerInfo}>
-            <Text style={styles.name}>{artisan.name || t('Nearby Fundi')}</Text>
-            <Text style={styles.role}>{artisan.role || service}</Text>
-            <Text style={styles.meta}>★ {artisan.rating?.toFixed?.(1) || artisan.rating || '—'}</Text>
-          </View>
-        </View>
-
-        <Text style={styles.sectionTitle}>{t('Service Details')}</Text>
-
-        <View style={styles.fieldRow}>
-          <Text style={styles.fieldLabel}>{t('Service Type')}</Text>
-          <View style={styles.fieldBox}>
-            <Text style={styles.fieldText}>{service}</Text>
-          </View>
-        </View>
-
-        <View style={styles.twoCol}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>{t('Date')}</Text>
-            <View style={styles.fieldBox}>
-              <Text style={styles.fieldText}>{date}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.name} numberOfLines={1}>{artisan.name || t('Nearby Fundi')}</Text>
+              {artisan.verified ? (
+                <Ionicons name="checkmark-circle" size={16} color={theme.colors.green} />
+              ) : null}
+            </View>
+            <Text style={styles.role}>{service}</Text>
+            <View style={styles.statRow}>
+              {ratingValue ? (
+                <View style={[styles.statChip, styles.statChipAccent]}>
+                  <Ionicons name="star" size={11} color={theme.colors.accent} />
+                  <Text style={styles.statTextAccent}>{ratingValue}</Text>
+                </View>
+              ) : null}
+              {Number.isFinite(artisan.jobsCompleted) && artisan.jobsCompleted > 0 ? (
+                <View style={styles.statChip}>
+                  <Ionicons name="checkmark-done-outline" size={11} color={theme.colors.muted} />
+                  <Text style={styles.statText}>
+                    {t('{{count}} jobs done', { count: artisan.jobsCompleted })}
+                  </Text>
+                </View>
+              ) : null}
+              {artisan.experience > 0 ? (
+                <View style={styles.statChip}>
+                  <Text style={styles.statText}>
+                    {t('{{years}}+ yrs', { years: artisan.experience })}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.fieldLabel}>{t('Time')}</Text>
-            <View style={styles.fieldBox}>
-              <Text style={styles.fieldText}>{time}</Text>
-            </View>
-          </View>
         </View>
 
-        <Text style={styles.fieldLabel}>{t('Location')}</Text>
-        <TouchableOpacity style={styles.fieldBox} onPress={() => onNavigate?.('setLocation')}>
-          <View style={styles.fieldRowInner}>
-            <Ionicons name="location-outline" size={16} color={theme.colors.mutedDark} />
-            <Text style={[styles.fieldText, !location && styles.placeholderText]}>
-              {location || t('Set location')}
-            </Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Ionicons name="build-outline" size={14} color={theme.colors.accent} />
+            <Text style={styles.sectionTitle}>{t('WHAT DO YOU NEED?')}</Text>
           </View>
-        </TouchableOpacity>
-
-        <Text style={styles.fieldLabel}>{t('Description')}</Text>
-        <TextInput
-          value={desc}
-          onChangeText={setDesc}
-          placeholder={t('Describe the issue...')}
-          placeholderTextColor={theme.colors.mutedDark}
-          style={styles.textArea}
-          multiline
-        />
-
-        <Text style={styles.fieldLabel}>
-          {t('Photos (optional)')}{' '}
-          <Text style={styles.photosHint}>— {t('show the fundi what needs to be done')}</Text>
-        </Text>
-
-        {photos.length > 0 ? (
-          <View style={styles.photoRow}>
-            {photos.map((uri, i) => (
-              <View key={i} style={styles.photoThumbWrap}>
-                <Image source={{ uri }} style={styles.photoThumb} />
+          <View style={styles.chipWrap}>
+            {skillOptions.map((s) => {
+              const on = s === service;
+              return (
                 <TouchableOpacity
-                  style={styles.photoRemove}
-                  onPress={() => setPhotos(photos.filter((_, j) => j !== i))}
+                  key={s}
+                  onPress={() => setService(s)}
+                  style={[styles.chip, on && styles.chipOn]}
                 >
-                  <Ionicons name="close-circle" size={20} color={theme.colors.red} />
+                  <Text style={[styles.chipText, on && styles.chipTextOn]}>{s}</Text>
                 </TouchableOpacity>
-              </View>
-            ))}
-            {photos.length < 5 ? (
-              <TouchableOpacity style={styles.photoAdd} onPress={handlePickPhoto}>
-                <Ionicons name="camera-outline" size={22} color={theme.colors.mutedDark} />
-              </TouchableOpacity>
-            ) : null}
+              );
+            })}
           </View>
-        ) : (
-          <TouchableOpacity style={styles.photoPickerBtn} onPress={handlePickPhoto} activeOpacity={0.85}>
-            <Ionicons name="images-outline" size={18} color={theme.colors.accent} style={styles.photoPickerIcon} />
-            <Text style={styles.photoPickerText}>{t('Add photos')}</Text>
-          </TouchableOpacity>
-        )}
+        </View>
 
-        {uploadingPhotos ? (
-          <View style={styles.uploadingRow}>
-            <ActivityIndicator size="small" color={theme.colors.accent} />
-            <Text style={styles.uploadingText}>{t('Uploading photos…')}</Text>
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Ionicons name="calendar-outline" size={14} color={theme.colors.accent} />
+            <Text style={styles.sectionTitle}>{t('WHEN DO YOU NEED IT?')}</Text>
           </View>
-        ) : null}
+          <View style={styles.chipWrap}>
+            {DATE_OPTIONS.map((d) => {
+              const on = d === date;
+              return (
+                <TouchableOpacity
+                  key={d}
+                  onPress={() => setDate(d)}
+                  style={[styles.chip, on && styles.chipOn]}
+                >
+                  <Ionicons
+                    name={d === 'Today' ? 'today-outline' : 'sunny-outline'}
+                    size={13}
+                    color={on ? theme.colors.black : theme.colors.muted}
+                  />
+                  <Text style={[styles.chipText, on && styles.chipTextOn]}>{t(d)}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          <View style={[styles.chipWrap, { marginTop: 8 }]}>
+            {TIME_OPTIONS.map((tm) => {
+              const on = tm === time;
+              return (
+                <TouchableOpacity
+                  key={tm}
+                  onPress={() => setTime(tm)}
+                  style={[styles.chip, styles.chipSmall, on && styles.chipOn]}
+                >
+                  <Text style={[styles.chipText, on && styles.chipTextOn]}>{t(tm)}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Ionicons name="location-outline" size={14} color={theme.colors.accent} />
+            <Text style={styles.sectionTitle}>{t('WHERE IS THE JOB?')}</Text>
+          </View>
+          <TouchableOpacity style={styles.locationBox} onPress={() => onNavigate?.('setLocation')} activeOpacity={0.85}>
+            <View style={styles.locationIconWrap}>
+              <Ionicons name="location" size={16} color={theme.colors.accent} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.locationText, !location && styles.placeholderText]} numberOfLines={1}>
+                {location || t('Set your location')}
+              </Text>
+              <Text style={styles.locationHint}>
+                {location ? t('Tap to change') : t('Pick on map or use current location')}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHead}>
+            <Ionicons name="document-text-outline" size={14} color={theme.colors.accent} />
+            <Text style={styles.sectionTitle}>{t('DESCRIBE THE JOB')}</Text>
+          </View>
+          <TextInput
+            value={desc}
+            onChangeText={setDesc}
+            placeholder={t('e.g. Kitchen sink is leaking under the cabinet…')}
+            placeholderTextColor={theme.colors.mutedDark}
+            style={styles.textArea}
+            multiline
+          />
+
+          <View style={styles.photoHeadRow}>
+            <Text style={styles.photosLabel}>{t('Add photos')}</Text>
+            <Text style={styles.photosCount}>{photos.length}/5</Text>
+          </View>
+          {photos.length > 0 ? (
+            <View style={styles.photoRow}>
+              {photos.map((uri, i) => (
+                <View key={i} style={styles.photoThumbWrap}>
+                  <Image source={{ uri }} style={styles.photoThumb} />
+                  <TouchableOpacity
+                    style={styles.photoRemove}
+                    onPress={() => setPhotos(photos.filter((_, j) => j !== i))}
+                  >
+                    <Ionicons name="close-circle" size={20} color={theme.colors.red} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {photos.length < 5 ? (
+                <TouchableOpacity style={styles.photoAdd} onPress={handlePickPhoto}>
+                  <Ionicons name="camera-outline" size={22} color={theme.colors.mutedDark} />
+                </TouchableOpacity>
+              ) : null}
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.photoPickerBtn} onPress={handlePickPhoto} activeOpacity={0.85}>
+              <View style={styles.photoPickerIconWrap}>
+                <Ionicons name="camera-outline" size={18} color={theme.colors.accent} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.photoPickerTitle}>{t('Show the fundi what needs fixing')}</Text>
+                <Text style={styles.photoPickerSub}>{t('Photos help the fundi arrive prepared (optional)')}</Text>
+              </View>
+              <Ionicons name="add-circle-outline" size={20} color={theme.colors.mutedDark} />
+            </TouchableOpacity>
+          )}
+          {uploadingPhotos ? (
+            <View style={styles.uploadingRow}>
+              <ActivityIndicator size="small" color={theme.colors.accent} />
+              <Text style={styles.uploadingText}>{t('Uploading photos…')}</Text>
+            </View>
+          ) : null}
+        </View>
 
         {error ? (
           <View style={styles.errorBox}>
+            <Ionicons name="alert-circle" size={16} color={theme.colors.red} />
             <Text style={styles.errorText}>{error}</Text>
           </View>
         ) : null}
 
+        <View style={styles.trustStrip}>
+          <Ionicons name="shield-checkmark" size={18} color={theme.colors.green} />
+          <Text style={styles.trustText}>
+            {t(
+              'Your payment is held safely in escrow — the fundi is paid only when the job is done.'
+            )}
+          </Text>
+        </View>
+      </ScrollView>
+
+      <View
+        style={[
+          styles.footerBar,
+          { paddingBottom: 12 + insets.bottom },
+        ]}
+      >
         <PrimaryButton
           onPress={handleBook}
-          disabled={submitting}
+          disabled={submitting || uploadingPhotos}
           loading={submitting}
           icon="hammer-outline"
           style={styles.mainBtn}
         >
           {submitting ? t('Sending request…') : t('Book Fundi')}
         </PrimaryButton>
-      </ScrollView>
+      </View>
 
       <BookingSentAlert
         visible={sentAlertVisible}
@@ -282,7 +410,15 @@ export default function RequestServiceScreen({
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.black },
-  container: { paddingHorizontal: 20, paddingBottom: 120 },
+  scroll: { flex: 1 },
+  container: { paddingHorizontal: 20, paddingBottom: 130 },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 8,
+    marginBottom: 14,
+  },
   backBtn: {
     width: 40,
     height: 40,
@@ -292,65 +428,96 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.border,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
-    marginBottom: 16,
   },
+  topTitle: { color: theme.colors.white, fontSize: 17, fontWeight: '800' },
   headerCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.input,
     padding: 14,
-    borderRadius: theme.radius.md,
+    borderRadius: theme.radius.lg,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   headerInfo: { flex: 1, marginLeft: 12 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: theme.colors.accentDim,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarText: { color: theme.colors.accent, fontWeight: '900', fontSize: 16 },
-  name: { color: theme.colors.white, fontWeight: '900', fontSize: 16 },
+  avatarText: { color: theme.colors.accent, fontWeight: '900', fontSize: 17 },
+  name: { color: theme.colors.white, fontWeight: '900', fontSize: 16, flexShrink: 1 },
   role: { color: theme.colors.muted, fontSize: 13, marginTop: 2 },
-  meta: { color: theme.colors.accent, fontSize: 13, marginTop: 4, fontWeight: '700' },
-  sectionTitle: {
-    color: theme.colors.white,
-    fontWeight: '800',
-    fontSize: 18,
-    marginTop: 20,
-    marginBottom: 12,
+  statRow: { flexDirection: 'row', gap: 6, marginTop: 8, flexWrap: 'wrap' },
+  statChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: theme.radius.pill,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  fieldRow: { marginBottom: 12 },
-  twoCol: { flexDirection: 'row', gap: 10, marginBottom: 12 },
-  fieldLabel: {
+  statChipAccent: { backgroundColor: theme.colors.accentDim },
+  statText: { color: theme.colors.muted, fontSize: 11, fontWeight: '700' },
+  statTextAccent: { color: theme.colors.accent, fontSize: 11, fontWeight: '800' },
+  section: { marginTop: 18 },
+  sectionHead: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 10,
+  },
+  sectionTitle: {
     color: theme.colors.muted,
     fontSize: theme.typography.caps,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    marginBottom: 8,
-    marginTop: 12,
+    fontWeight: '800',
+    letterSpacing: 0.8,
   },
-  fieldBox: {
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: theme.radius.pill,
     backgroundColor: theme.colors.input,
-    padding: 14,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+  },
+  chipSmall: { paddingVertical: 7, paddingHorizontal: 12 },
+  chipOn: { backgroundColor: theme.colors.accent, borderColor: theme.colors.accent },
+  chipText: { color: theme.colors.muted, fontSize: 13, fontWeight: '700' },
+  chipTextOn: { color: theme.colors.black, fontWeight: '800' },
+  locationBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: theme.colors.input,
+    padding: 12,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
   },
-  fieldRowInner: {
-    flexDirection: 'row',
+  locationIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: theme.colors.accentDim,
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 8,
   },
-  fieldText: { color: theme.colors.white, fontSize: 15 },
-  placeholderText: { color: theme.colors.mutedDark },
+  locationText: { color: theme.colors.white, fontSize: 14, fontWeight: '700' },
+  locationHint: { color: theme.colors.mutedDark, fontSize: 11, marginTop: 2 },
+  placeholderText: { color: theme.colors.mutedDark, fontWeight: '500' },
   textArea: {
-    minHeight: 100,
+    minHeight: 96,
     backgroundColor: theme.colors.input,
     padding: 14,
     borderRadius: theme.radius.md,
@@ -360,22 +527,36 @@ const styles = StyleSheet.create({
     fontSize: 15,
     textAlignVertical: 'top',
   },
-  photosHint: { color: theme.colors.mutedDark, fontWeight: '400' },
+  photoHeadRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  photosLabel: { color: theme.colors.white, fontSize: 13, fontWeight: '700' },
+  photosCount: { color: theme.colors.mutedDark, fontSize: 11, fontWeight: '700' },
   photoPickerBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
+    gap: 10,
     backgroundColor: theme.colors.input,
-    paddingVertical: 14,
+    padding: 12,
     borderRadius: theme.radius.md,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    marginTop: 4,
   },
-  photoPickerIcon: { marginRight: 0 },
-  photoPickerText: { color: theme.colors.muted, fontSize: 14, fontWeight: '600' },
-  photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 6 },
+  photoPickerIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: theme.colors.accentDim,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoPickerTitle: { color: theme.colors.white, fontSize: 13, fontWeight: '700' },
+  photoPickerSub: { color: theme.colors.mutedDark, fontSize: 11, marginTop: 2 },
+  photoRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   photoThumbWrap: { position: 'relative' },
   photoThumb: { width: 64, height: 64, borderRadius: theme.radius.sm },
   photoRemove: { position: 'absolute', top: -6, right: -6 },
@@ -397,13 +578,39 @@ const styles = StyleSheet.create({
   },
   uploadingText: { color: theme.colors.muted, fontSize: 13 },
   errorBox: {
-    marginTop: 12,
+    marginTop: 14,
     padding: 12,
     borderRadius: theme.radius.md,
     backgroundColor: 'rgba(239,68,68,0.1)',
     borderWidth: 1,
     borderColor: 'rgba(239,68,68,0.25)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  errorText: { color: theme.colors.red, fontSize: 13, lineHeight: 18 },
-  mainBtn: { marginTop: 24 },
+  errorText: { color: theme.colors.red, fontSize: 13, lineHeight: 18, flex: 1 },
+  trustStrip: {
+    marginTop: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    padding: 12,
+    borderRadius: theme.radius.md,
+    backgroundColor: 'rgba(34,197,94,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,197,94,0.22)',
+  },
+  trustText: { color: theme.colors.muted, fontSize: 12, lineHeight: 17, flex: 1 },
+  footerBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    backgroundColor: theme.colors.black,
+    borderTopWidth: 1,
+    borderTopColor: theme.colors.border,
+  },
+  mainBtn: { height: 54 },
 });

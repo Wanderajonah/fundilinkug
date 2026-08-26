@@ -116,6 +116,7 @@ function FundiCard({ item, onPress }) {
 export default function BrowseArtisansScreen({
   initialCategory = "all",
   userRole = "customer",
+  userId,
   onNavigate,
 }) {
   const { coords, region, radiusKm, locationRevision } = useLocation();
@@ -134,9 +135,10 @@ export default function BrowseArtisansScreen({
       lng: coords.lng,
       category,
       radiusKm,
+      excludeUserId: userId || undefined,
     });
     return data.fundis || [];
-  }, [coords.lat, coords.lng, radiusKm, initialCategory]);
+  }, [coords.lat, coords.lng, radiusKm, initialCategory, userId]);
 
   useEffect(() => {
     let cancelled = false;

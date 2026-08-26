@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema(
     phone: { type: String, sparse: true, unique: true },
     password: { type: String },
     role: { type: String, enum: ["customer", "fundi", "admin"], required: true },
+    fundiEnabled: { type: Boolean, default: false },
     phoneVerified: { type: Boolean, default: false },
     dateOfBirth: { type: Date },
     profilePhoto: { type: String, default: "" },

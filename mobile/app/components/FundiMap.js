@@ -16,6 +16,7 @@ export default function FundiMap({
   destination,
   showRadiusCircle = false,
   radiusKm = 10,
+  routeCoords = null,
   onRegionChange,
   onPressCoordinate,
   userLabel = 'You',
@@ -41,6 +42,7 @@ export default function FundiMap({
       destination={destination}
       showRadiusCircle={showRadiusCircle}
       radiusKm={radiusKm}
+      routeCoords={routeCoords}
       onRegionChange={onRegionChange}
       onPressCoordinate={onPressCoordinate}
       userLabel={userLabel}

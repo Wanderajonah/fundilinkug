@@ -8,6 +8,7 @@ const {
   uploadPortfolioImages,
   deletePortfolioImage,
   requestVerification,
+  enableFundi,
 } = require("../controllers/userController");
 const { protect } = require("../middleware/authMiddleware");
 const { uploadProfile, uploadPortfolio, uploadVerification } = require("../middleware/uploadMiddleware");
@@ -17,6 +18,7 @@ const router = express.Router();
 router.get("/profile", protect, getProfile);
 router.put("/update", protect, updateProfile);
 router.put("/location", protect, updateLocation);
+router.post("/enable-fundi", protect, enableFundi);
 router.post(
   "/profile-picture",
   protect,

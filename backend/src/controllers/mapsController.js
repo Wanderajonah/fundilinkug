@@ -1,6 +1,6 @@
 const FundiProfile = require("../models/FundiProfile");
 const { getRecommendations } = require("../services/recommendationService");
-const { geocodeAddress, reverseGeocode, buildRouteSummary } = require("../services/mapsService");
+const { geocodeAddress, reverseGeocode, buildRouteSummary, fetchDrivingRoute } = require("../services/mapsService");
 const { filterByRadius, normalizeCoords } = require("../utils/geo");
 const { buildSkillsQuery } = require("../utils/trades");
 
@@ -31,7 +31,7 @@ const reverse = async (req, res, next) => {
 
 const nearbyFundis = async (req, res, next) => {
   try {
-    const { lat, lng, category, radiusKm = 10 } = req.query;
+    const { lat, lng, category, radiusKm = 10, excludeUserId } = req.query;
     if (lat == null || lng == null) {
       return res.status(400).json({ message: "lat and lng are required" });
     }
@@ -42,7 +42,11 @@ const nearbyFundis = async (req, res, next) => {
     const fundis = await FundiProfile.find(query)
       .populate({
         path: "userId",
-        match: { "location.lat": { $ne: 0 }, "location.lng": { $ne: 0 } },
+        match: {
+          "location.lat": { $ne: 0 },
+          "location.lng": { $ne: 0 },
+          ...(excludeUserId && { _id: { $ne: excludeUserId } }),
+        },
         select: "-password",
       });
 
@@ -85,7 +89,13 @@ const routePreview = async (req, res, next) => {
       normalizeCoords(fromLat, fromLng),
       normalizeCoords(toLat, toLng)
     );
-    return res.json(summary);
+    // Prefer a real driving route (with polyline geometry) when the Google
+    // key is available; otherwise the haversine summary stands alone.
+    const driving = await fetchDrivingRoute(
+      normalizeCoords(fromLat, fromLng),
+      normalizeCoords(toLat, toLng)
+    );
+    return res.json(driving ? { ...summary, ...driving } : summary);
   } catch (error) {
     return next(error);
   }

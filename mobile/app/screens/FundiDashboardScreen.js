@@ -11,13 +11,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, {
-  Defs,
-  LinearGradient as SvgLinearGradient,
-  Stop,
-  Path,
-  Circle,
-} from 'react-native-svg';
 import ScreenWrapper from '../components/ScreenWrapper';
 import LoadingSkeleton from '../components/LoadingSkeleton';
 import { useBooking } from '../../context/BookingContext';
@@ -28,6 +21,7 @@ import {
   declineBooking,
   getErrorMessage,
 } from '../../services/bookingsApi';
+import { getProfile } from '../../services/usersApi';
 import { emitSocket } from '../../services/socketService';
 import { computeEarnings, getGreeting } from '../utils/jobs';
 import { BOOKING_STATUS_LABELS } from '../utils/bookings';
@@ -46,48 +40,6 @@ function compactK(amount) {
   const value = Math.max(0, Number(amount) || 0);
   if (value < 1000) return `${value}`;
   return `${Math.round(value / 1000)}k`;
-}
-
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
-
-function buildChartPoints(values, width, height, topPad = 6, bottomPad = 6) {
-  const leftPad = 4;
-  const rightPad = 4;
-  const innerWidth = Math.max(1, width - leftPad - rightPad);
-  const innerHeight = Math.max(1, height - topPad - bottomPad);
-  const max = Math.max(...values, 0);
-  const scaleTop = max > 0 ? max : 1;
-  const baseY = topPad + innerHeight;
-
-  return values.map((value, index) => {
-    const x = leftPad + (index * innerWidth) / Math.max(1, values.length - 1);
-    const normalized = clamp(value / scaleTop, 0, 1);
-    const y = baseY - normalized * innerHeight;
-    return { x, y };
-  });
-}
-
-function buildSmoothPath(points, topPad, baseY) {
-  if (!points.length) return '';
-  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
-
-  const clampY = (y) => clamp(y, topPad - 2, baseY + 2);
-  let path = `M ${points[0].x} ${points[0].y}`;
-  for (let i = 0; i < points.length - 1; i += 1) {
-    const p0 = points[i - 1] || points[i];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[i + 2] || p2;
-    const cp1x = p1.x + (p2.x - p0.x) / 6;
-    const cp1y = clampY(p1.y + (p2.y - p0.y) / 6);
-    const cp2x = p2.x - (p3.x - p1.x) / 6;
-    const cp2y = clampY(p2.y - (p3.y - p1.y) / 6);
-    path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
-  }
-
-  return path;
 }
 
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
@@ -110,28 +62,10 @@ const NEXT_JOB_ACTION = {
 
 function Sparkline({ values }) {
   const { t } = useLanguage();
-  const { width: screenWidth } = useWindowDimensions();
-  const chartWidth = Math.max(240, screenWidth - 76);
   const chartHeight = 96;
-  const topPad = 12;
-  const bottomPad = 14;
-  const baseY = chartHeight - bottomPad;
-
   const hasData = useMemo(() => values.some((v) => v > 0), [values]);
-  const points = useMemo(
-    () => buildChartPoints(values, chartWidth, chartHeight, topPad, bottomPad),
-    [values, chartWidth, topPad, bottomPad],
-  );
-  const linePath = useMemo(
-    () => buildSmoothPath(points, topPad, baseY),
-    [points, topPad, baseY],
-  );
-  const areaPath = useMemo(() => {
-    if (!points.length) return '';
-    const last = points[points.length - 1];
-    const first = points[0];
-    return `${linePath} L ${last.x} ${baseY} L ${first.x} ${baseY} Z`;
-  }, [points, linePath, baseY]);
+  const max = Math.max(...values, 0);
+  const todayIndex = values.length - 1;
 
   const dayLabels = useMemo(() => {
     const now = new Date();
@@ -142,70 +76,55 @@ function Sparkline({ values }) {
     });
   }, [values.length]);
 
-  const endPoint = points.length ? points[points.length - 1] : null;
-
   return (
-    <View style={[styles.sparklineWrap, { width: chartWidth }]}>
-      <Svg width={chartWidth} height={chartHeight}>
-        <Defs>
-          <SvgLinearGradient id="earningsFill" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor="rgba(255,171,28,0.30)" />
-            <Stop offset="100%" stopColor="rgba(255,171,28,0.01)" />
-          </SvgLinearGradient>
-          <SvgLinearGradient id="earningsLine" x1="0" y1="0" x2="1" y2="0">
-            <Stop offset="0%" stopColor="#ffc75e" />
-            <Stop offset="100%" stopColor="#ff9f10" />
-          </SvgLinearGradient>
-        </Defs>
-
-        {/* subtle grid */}
-        <Path
-          d={`M 2 ${topPad + (baseY - topPad) / 2} H ${chartWidth - 2}`}
-          stroke="rgba(255,255,255,0.06)"
-          strokeWidth="1"
-          strokeDasharray="3 6"
-        />
-        <Path
-          d={`M 2 ${baseY} H ${chartWidth - 2}`}
-          stroke="rgba(255,255,255,0.10)"
-          strokeWidth="1"
-        />
-
-        {hasData ? (
-          <>
-            <Path d={areaPath} fill="url(#earningsFill)" />
-            <Path
-              d={linePath}
-              fill="none"
-              stroke="url(#earningsLine)"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-            {endPoint ? (
-              <>
-                <Circle cx={endPoint.x} cy={endPoint.y} r="9" fill="rgba(255,171,28,0.22)" />
-                <Circle
-                  cx={endPoint.x}
-                  cy={endPoint.y}
-                  r="4"
-                  fill="#ffb42f"
-                  stroke="#241703"
-                  strokeWidth="1.5"
+    <View style={styles.sparklineWrap}>
+      <View style={[styles.barsRow, { height: chartHeight }]}>
+        {(values.length ? values : Array.from({ length: 7 }, () => 0)).map((value, i) => {
+          const isToday = i === todayIndex;
+          const filled = value > 0;
+          // Bars scale within the fixed-height row; flex sizing keeps every
+          // column inside the card regardless of screen width.
+          const barHeight = hasData && filled
+            ? Math.max(8, Math.round((value / (max || 1)) * (chartHeight - 14)))
+            : 4;
+          return (
+            <View key={`bar-${i}`} style={styles.barCol} pointerEvents="none">
+              {isToday && filled ? (
+                <View style={[styles.barValueTag, { bottom: barHeight + 6 }]}>
+                  <Text style={styles.barValueText}>{compactK(value)}</Text>
+                </View>
+              ) : null}
+              {filled ? (
+                <LinearGradient
+                  colors={
+                    isToday
+                      ? ['#ffd479', '#ff9f10']
+                      : ['rgba(255,184,0,0.55)', 'rgba(255,184,0,0.18)']
+                  }
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 0, y: 1 }}
+                  style={[
+                    styles.bar,
+                    styles.barFilled,
+                    { height: barHeight },
+                    isToday && styles.barToday,
+                    isToday && { shadowRadius: 10, elevation: 5 },
+                  ]}
                 />
-              </>
-            ) : null}
-          </>
-        ) : (
-          <Path
-            d={`M 2 ${baseY} H ${chartWidth - 2}`}
-            stroke="rgba(255,184,0,0.25)"
-            strokeWidth="1.5"
-            strokeDasharray="4 6"
-            strokeLinecap="round"
-          />
-        )}
-      </Svg>
+              ) : (
+                <View
+                  style={[
+                    styles.bar,
+                    styles.barEmpty,
+                    isToday && styles.barEmptyToday,
+                    { height: 4 },
+                  ]}
+                />
+              )}
+            </View>
+          );
+        })}
+      </View>
 
       {!hasData ? (
         <View style={styles.chartEmpty} pointerEvents="none">
@@ -214,10 +133,13 @@ function Sparkline({ values }) {
       ) : null}
 
       <View style={styles.dayRow}>
-        {dayLabels.map((letter, i) => (
+        {(dayLabels.length ? dayLabels : DAY_LETTERS).map((letter, i) => (
           <Text
             key={`day-${i}`}
-            style={[styles.dayLabel, i === dayLabels.length - 1 && styles.dayLabelToday]}
+            style={[
+              styles.dayLabel,
+              i === todayIndex && styles.dayLabelToday,
+            ]}
           >
             {letter}
           </Text>
@@ -308,6 +230,28 @@ export default function FundiDashboardScreen({
   );
 
   const heroEarnings = Number(earnings.week) || 0;
+
+  // Real week-over-week comparison (hidden until last week has data).
+  const trendPercent = useMemo(() => {
+    const now = new Date();
+    const startOfThisWeek = new Date(now);
+    startOfThisWeek.setHours(0, 0, 0, 0);
+    startOfThisWeek.setDate(now.getDate() - now.getDay());
+    const startOfLastWeek = new Date(startOfThisWeek);
+    startOfLastWeek.setDate(startOfThisWeek.getDate() - 7);
+
+    const sumBetween = (from, to) =>
+      completedBookings.reduce((sum, b) => {
+        const raw = b.updatedAt || b.createdAt;
+        if (!raw) return sum;
+        const d = new Date(raw);
+        return d >= from && d < to ? sum + Number(b.amount || b.agreedPrice || 0) : sum;
+      }, 0);
+
+    const lastWeek = sumBetween(startOfLastWeek, startOfThisWeek);
+    if (lastWeek <= 0) return null;
+    return Math.round(((heroEarnings - lastWeek) / lastWeek) * 100);
+  }, [completedBookings, heroEarnings]);
   const chartValues = useMemo(() => {
     const now = new Date();
     const start = new Date(now);
@@ -386,7 +330,20 @@ export default function FundiDashboardScreen({
   }, [request, t]);
 
   const jobsDone = completedBookings.length;
-  const avgRating = 4.8;
+  // Real rating comes from the fundi profile (falls back to '—' until loaded).
+  const [fundiRating, setFundiRating] = useState(null);
+  useEffect(() => {
+    let cancelled = false;
+    getProfile()
+      .then(({ data }) => {
+        if (!cancelled) setFundiRating(Number(data?.fundiProfile?.rating) || 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  const avgRating = fundiRating;
   const pendingCount = activeBookings.length + (request ? 1 : 0);
   const escrow = Math.round(heroEarnings * 0.17);
 
@@ -408,9 +365,12 @@ export default function FundiDashboardScreen({
     setStatusUpdating(true);
     try {
       const res = await updateBookingStatus(activeCard.id, nextJobAction.status);
-      const booking = res?.data?.booking;
+      if (nextJobAction.status === 'ON_THE_WAY') {
+        // Heading out: open turn-by-turn navigation to the client's side.
+        onNavigate?.('fundiNavigation', { bookingId: activeCard.id });
+      }
       await refreshBookings();
-      if (nextJobAction.status === 'COMPLETED' && booking && booking.status !== 'COMPLETED') {
+      if (nextJobAction.status === 'COMPLETED' && res?.data?.booking?.status !== 'COMPLETED') {
         Alert.alert(
           t('Waiting for client'),
           t(
@@ -423,6 +383,11 @@ export default function FundiDashboardScreen({
     } finally {
       setStatusUpdating(false);
     }
+  };
+
+  const handleOpenNavigation = () => {
+    if (!activeCard?.id) return;
+    onNavigate?.('fundiNavigation', { bookingId: activeCard.id });
   };
 
   const handleAcceptRequest = async () => {
@@ -514,28 +479,31 @@ export default function FundiDashboardScreen({
           end={{ x: 1, y: 1 }}
           style={styles.earningsCard}
         >
-          <View style={styles.earningsHeader}>
-            <View>
-              <Text style={styles.sectionKicker}>{t("THIS WEEK'S EARNINGS")}</Text>
-              <View style={styles.earningsAmountRow}>
-                <Text style={styles.currency}>UGX</Text>
-                <Text style={styles.earningsAmount}>{formatUgx(heroEarnings).replace('UGX ', '')}</Text>
-              </View>
-            </View>
-
-            {heroEarnings > 0 ? (
+          <View style={styles.earningsTopRow}>
+            <Text style={styles.sectionKicker}>{t("THIS WEEK'S EARNINGS")}</Text>
+            {trendPercent != null ? (
               <View style={styles.trendPill}>
-                <Ionicons name="arrow-up" size={12} color="#30d060" />
-                <Text style={styles.trendText}>+18% vs last week</Text>
+                <Ionicons
+                  name={trendPercent >= 0 ? 'arrow-up' : 'arrow-down'}
+                  size={12}
+                  color={trendPercent >= 0 ? '#30d060' : '#ff6b6b'}
+                />
+                <Text style={[styles.trendText, trendPercent < 0 && styles.trendTextDown]}>
+                  {trendPercent >= 0 ? '+' : ''}{trendPercent}% vs last week
+                </Text>
               </View>
             ) : null}
+          </View>
+          <View style={styles.earningsAmountRow}>
+            <Text style={styles.currency}>UGX</Text>
+            <Text style={styles.earningsAmount}>{formatUgx(heroEarnings).replace('UGX ', '')}</Text>
           </View>
 
           <Sparkline values={chartValues} />
 
           <View style={styles.statsGrid}>
             <StatCard value={`${jobsDone}`} label={t('JOBS DONE')} />
-            <StatCard value={`${avgRating.toFixed(1)}★`} label={t('AVG RATING')} />
+            <StatCard value={avgRating ? `${avgRating.toFixed(1)}★` : '—'} label={t('AVG RATING')} />
             <StatCard value={`${pendingCount}`} label={t('PENDING')} />
             <StatCard value={compactK(escrow)} label={t('ESCROW')} />
           </View>
@@ -623,36 +591,53 @@ export default function FundiDashboardScreen({
                     total: JOB_FLOW.length,
                   })}
                 </Text>
-                {awaitingClientConfirm ? (
-                  <Text style={styles.awaitingText}>
-                    ⏳ {t('Waiting for client to release payment')}
-                  </Text>
-                ) : !canAdvanceJob ? (
-                  <Text style={styles.finishText}>{t('Waiting for price agreement')}</Text>
-                ) : null}
               </View>
+              {awaitingClientConfirm ? (
+                <View style={styles.awaitingRow}>
+                  <View style={styles.awaitingIconWrap}>
+                    <Ionicons name="hourglass" size={11} color="#ffb42f" />
+                  </View>
+                  <Text style={styles.awaitingText}>
+                    {t('Waiting for client to release payment')}
+                  </Text>
+                </View>
+              ) : !canAdvanceJob ? (
+                <View style={styles.awaitingRow}>
+                  <Text style={styles.finishText}>{t('Waiting for price agreement')}</Text>
+                </View>
+              ) : null}
 
-              <View style={styles.actionRow}>
-                <TouchableOpacity
-                  style={[styles.primaryAction, (!canAdvanceJob || statusUpdating) && styles.primaryActionDisabled]}
-                  disabled={!canAdvanceJob || statusUpdating}
-                  onPress={handleAdvanceJob}
-                >
-                  {statusUpdating ? (
-                    <ActivityIndicator size="small" color={theme.colors.white} />
-                  ) : (
-                    <Text style={styles.primaryActionText}>✓ {t(awaitingClientConfirm ? 'Awaiting client confirmation' : nextJobAction?.cta || 'Manage Job')}</Text>
-                  )}
+              <TouchableOpacity
+                style={[styles.primaryAction, (!canAdvanceJob || statusUpdating) && styles.primaryActionDisabled]}
+                disabled={!canAdvanceJob || statusUpdating}
+                onPress={handleAdvanceJob}
+              >
+                {statusUpdating ? (
+                  <ActivityIndicator size="small" color={theme.colors.white} />
+                ) : (
+                  <Text style={styles.primaryActionText}>✓ {t(awaitingClientConfirm ? 'Awaiting client confirmation' : nextJobAction?.cta || 'Manage Job')}</Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.secondaryRow}>
+                <TouchableOpacity style={styles.secondaryAction} activeOpacity={0.88} onPress={() => onNavigate?.('chat')}>
+                  <Ionicons name="chatbubble-outline" size={16} color="#41c76b" />
+                  <Text style={styles.secondaryActionText}>{t('Chat')}</Text>
                 </TouchableOpacity>
-                <TouchableOpacity style={styles.iconAction} activeOpacity={0.88} onPress={() => onNavigate?.('chat')}>
-                  <Ionicons name="chatbubble-outline" size={18} color="#41c76b" />
+                <TouchableOpacity
+                  style={styles.secondaryAction}
+                  activeOpacity={0.88}
+                  onPress={handleOpenNavigation}
+                >
+                  <Ionicons name="navigate" size={16} color="#ffb42f" />
+                  <Text style={styles.secondaryActionText}>{t('Navigate')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.secondaryAction}
                   activeOpacity={0.88}
                   onPress={() => onNavigate?.('fundiBookingDetail', { bookingId: activeCard.id })}
                 >
-                  <Ionicons name="navigate-outline" size={16} color="#3fa4ff" />
+                  <Ionicons name="information-circle-outline" size={16} color="#3fa4ff" />
                   <Text style={styles.secondaryActionText}>{t('Details')}</Text>
                 </TouchableOpacity>
               </View>
@@ -898,23 +883,24 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,184,0,0.12)',
     marginBottom: 14,
   },
-  earningsHeader: {
+  earningsTopRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 12,
+    gap: 8,
   },
   sectionKicker: {
     color: '#7f7365',
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.3,
-    marginBottom: 6,
+    flexShrink: 1,
   },
   earningsAmountRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
+    marginTop: 6,
   },
   currency: {
     color: '#ffb42f',
@@ -932,23 +918,67 @@ const styles = StyleSheet.create({
   trendPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
     backgroundColor: 'rgba(27, 71, 31, 0.9)',
     borderWidth: 1,
     borderColor: 'rgba(65, 188, 81, 0.3)',
-    marginTop: 2,
+    flexShrink: 0,
   },
   trendText: {
     color: '#3ad160',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
   },
+  trendTextDown: {
+    color: '#ff6b6b',
+  },
   sparklineWrap: {
-    marginTop: 10,
+    marginTop: 12,
+  },
+  barsRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 7,
+  },
+  barCol: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+  },
+  bar: {
+    width: '100%',
+    maxWidth: 34,
+    borderRadius: 6,
+  },
+  barFilled: {},
+  barToday: {
+    shadowColor: '#ffb42f',
+    shadowOpacity: 0.5,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  barEmpty: {
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 3,
+  },
+  barEmptyToday: {
+    backgroundColor: 'rgba(255,184,0,0.22)',
+  },
+  barValueTag: {
+    position: 'absolute',
     alignSelf: 'center',
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,159,16,0.16)',
+  },
+  barValueText: {
+    color: '#ffc75e',
+    fontSize: 10,
+    fontWeight: '800',
   },
   chartEmpty: {
     position: 'absolute',
@@ -971,15 +1001,14 @@ const styles = StyleSheet.create({
   },
   dayRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 6,
-    paddingHorizontal: 1,
+    marginTop: 7,
+    gap: 7,
   },
   dayLabel: {
     color: '#6e655a',
     fontSize: 10,
     fontWeight: '700',
-    width: 14,
+    flex: 1,
     textAlign: 'center',
   },
   dayLabelToday: {
@@ -1148,6 +1177,7 @@ const styles = StyleSheet.create({
   priceChip: {
     alignItems: 'flex-end',
     marginLeft: 8,
+    maxWidth: '42%',
   },
   priceChipLabel: {
     color: '#6e655a',
@@ -1190,9 +1220,26 @@ const styles = StyleSheet.create({
   },
   progressRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 8,
+  },
+  awaitingRow: {
+    marginTop: 6,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexShrink: 1,
+  },
+  awaitingIconWrap: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,184,0,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,184,0,0.28)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 7,
   },
   progressText: {
     color: '#49d96d',
@@ -1208,6 +1255,7 @@ const styles = StyleSheet.create({
     color: '#ffb42f',
     fontSize: 12,
     fontWeight: '700',
+    flexShrink: 1,
   },
   primaryActionDisabled: {
     backgroundColor: '#2c332e',
@@ -1218,6 +1266,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     marginTop: 14,
+  },
+  secondaryRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 10,
   },
   primaryAction: {
     flex: 1,
@@ -1247,8 +1300,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   secondaryAction: {
-    height: 44,
-    paddingHorizontal: 14,
+    flex: 1,
+    minWidth: 0,
+    height: 42,
+    paddingHorizontal: 6,
     borderRadius: 999,
     backgroundColor: '#10161a',
     borderWidth: 1,
@@ -1256,11 +1311,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
-    gap: 8,
+    gap: 5,
   },
   secondaryActionText: {
     color: '#3fa4ff',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
   },
   requestCard: {

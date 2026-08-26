@@ -66,6 +66,24 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
     return () => clearInterval(id);
   }, [negotiating, bookingId, refreshBookingById]);
 
+  // While waiting for the client's completion confirmation, keep the
+  // booking fresh so the screen flips to Completed on its own.
+  const awaitingClientConfirm = Boolean(
+    booking &&
+      !TERMINAL_STATUSES.has(booking.status) &&
+      booking.fundiCompleted &&
+      !booking.clientCompleted,
+  );
+  useEffect(() => {
+    if (!awaitingClientConfirm || !bookingId) return undefined;
+    const id = setInterval(() => {
+      refreshBookingById(bookingId).then((result) => {
+        if (result) setLocalBooking(result);
+      });
+    }, 8000);
+    return () => clearInterval(id);
+  }, [awaitingClientConfirm, bookingId, refreshBookingById]);
+
   const handleAccept = async () => {
     if (!bookingId) return;
     setAcceptLoading(true);
@@ -190,6 +208,10 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
   const isAccepted = booking.status === 'ACCEPTED';
   const currentIdx = STATUS_ORDER.indexOf(booking.status);
 
+  // Completion has been confirmed by at least one side: the job can no
+  // longer be cancelled, even while the status still reads IN_PROGRESS.
+  const completionStarted = Boolean(booking.clientCompleted || booking.fundiCompleted);
+
   const nextActions = FUNDI_STATUS_ACTIONS.filter((a) => {
     const idx = STATUS_ORDER.indexOf(a.status);
     return idx === currentIdx + 1 || (booking.status === 'ACCEPTED' && a.status === 'ON_THE_WAY');
@@ -289,7 +311,7 @@ export default function FundiBookingDetailScreen({ bookingId, onBack }) {
           </View>
         ) : null}
 
-        {!isTerminal ? (
+        {!isTerminal && !completionStarted ? (
           <TouchableOpacity style={styles.cancelLink} onPress={handleCancel} disabled={loading}>
             <Ionicons name="close-circle-outline" size={18} color={theme.colors.red} />
             <Text style={styles.cancelText}>{t('Cancel booking')}</Text>

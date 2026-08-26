@@ -6,8 +6,8 @@ export const geocodeAddress = (address) =>
 export const reverseGeocode = (lat, lng) =>
   api.get('/maps/reverse', { params: { lat, lng } });
 
-export const getNearbyFundis = ({ lat, lng, category, radiusKm }) =>
-  api.get('/maps/nearby-fundis', { params: { lat, lng, category, radiusKm } });
+export const getNearbyFundis = ({ lat, lng, category, radiusKm, excludeUserId }) =>
+  api.get('/maps/nearby-fundis', { params: { lat, lng, category, radiusKm, excludeUserId } });
 
 export const getRoutePreview = ({ fromLat, fromLng, toLat, toLng }) =>
   api.get('/maps/route', { params: { fromLat, fromLng, toLat, toLng } });

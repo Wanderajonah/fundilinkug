@@ -22,12 +22,16 @@ const attachReviewCounts = async (fundis) => {
 
 const getFundis = async (req, res, next) => {
   try {
-    const { category, lat, lng, radiusKm = 20 } = req.query;
+    const { category, lat, lng, radiusKm = 20, excludeUserId } = req.query;
     const query = category && category !== "all" ? buildSkillsQuery(category) : {};
     let fundis = await FundiProfile.find(query)
       .populate({
         path: "userId",
-        match: { "location.lat": { $ne: 0 }, "location.lng": { $ne: 0 } },
+        match: {
+          "location.lat": { $ne: 0 },
+          "location.lng": { $ne: 0 },
+          ...(excludeUserId && { _id: { $ne: excludeUserId } }),
+        },
         select: "-password",
       });
 

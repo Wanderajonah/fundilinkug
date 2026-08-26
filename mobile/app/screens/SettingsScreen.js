@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView, Modal, Alert, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import theme from '../theme';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { useLanguage } from '../i18n/LanguageContext';
 import { LANGUAGES } from '../i18n/translations';
+import { enableFundi } from '../../services/usersApi';
 
-export default function SettingsScreen({ onNavigate }) {
+export default function SettingsScreen({ onNavigate, fundiEnabled, onFundiEnabled }) {
   const { language, setLanguage, t } = useLanguage();
   const [langModal, setLangModal] = useState(false);
+  const [enablingFundi, setEnablingFundi] = useState(false);
 
   const current = LANGUAGES.find((l) => l.code === language) || LANGUAGES[0];
 
@@ -16,6 +18,32 @@ export default function SettingsScreen({ onNavigate }) {
     setLangModal(false);
     await setLanguage(code);
     Alert.alert(t('Language'), t('Language setting saved'));
+  };
+
+  const handleBecomeFundi = () => {
+    Alert.alert(
+      t('Become a Fundi'),
+      t('Enable fundi mode to accept jobs and offer your services to clients. You can switch between client and fundi modes anytime.'),
+      [
+        { text: t('Cancel'), style: 'cancel' },
+        {
+          text: t('Enable'),
+          onPress: async () => {
+            setEnablingFundi(true);
+            try {
+              await enableFundi();
+              onFundiEnabled?.();
+              Alert.alert(t('Fundi mode enabled'), t('You can now offer services as a fundi. Set up your profile to start receiving jobs.'));
+              onNavigate?.('fundiProfileSetup');
+            } catch (e) {
+              Alert.alert(t('Could not enable fundi mode'), e?.response?.data?.message || t('Something went wrong'));
+            } finally {
+              setEnablingFundi(false);
+            }
+          },
+        },
+      ],
+    );
   };
 
   return (
@@ -28,6 +56,25 @@ export default function SettingsScreen({ onNavigate }) {
           <Text style={styles.title}>{t('Settings')}</Text>
           <View style={{ width: 40 }} />
         </View>
+
+        {!fundiEnabled && (
+          <>
+            <Text style={styles.sectionLabel}>{t('Fundi Mode')}</Text>
+            <View style={styles.card}>
+              <TouchableOpacity style={styles.row} onPress={handleBecomeFundi} disabled={enablingFundi}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.rowText}>{t('Become a Fundi')}</Text>
+                  <Text style={styles.rowSub}>{t('Offer your services and earn money')}</Text>
+                </View>
+                {enablingFundi ? (
+                  <ActivityIndicator size="small" color={theme.colors.accent} />
+                ) : (
+                  <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} />
+                )}
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
         <Text style={styles.sectionLabel}>{t('Notifications')}</Text>
         <View style={styles.card}>
@@ -101,6 +148,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: theme.colors.panel, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 16, paddingHorizontal: 16, paddingVertical: 4, ...theme.elevation.sm },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: theme.colors.border },
   rowText: { color: theme.colors.white, fontWeight: '700', fontSize: 14 },
+  rowSub: { color: theme.colors.mutedDark, fontSize: 12, marginTop: 2 },
   valueRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   valueText: { color: theme.colors.mutedDark, fontSize: 14 },
 

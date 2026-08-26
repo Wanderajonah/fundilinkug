@@ -96,6 +96,7 @@ function AppContent() {
   const [userFullName, setUserFullName] = useState("");
   const [userEmail, setUserEmail] = useState("");
   const [userId, setUserId] = useState("");
+  const [fundiEnabled, setFundiEnabled] = useState(false);
   const [pendingRole, setPendingRole] = useState("customer");
   const [selectedRole, setSelectedRole] = useState("");
   const [googleNewUserProfile, setGoogleNewUserProfile] = useState(null);
@@ -133,7 +134,12 @@ function AppContent() {
   const goHome = (role = userRole) => {
     // reset history when going to home/dashboard
     historyRef.current = [];
-    setScreen(role === "fundi" ? "fundiDashboard" : "home");
+    // Dual-role users (customer + fundiEnabled) always go to client home
+    if (fundiEnabled && role === "customer") {
+      setScreen("home");
+    } else {
+      setScreen(role === "fundi" ? "fundiDashboard" : "home");
+    }
   };
 
   const handleLogout = async () => {
@@ -151,6 +157,7 @@ function AppContent() {
     setUserEmail("");
     setUserId("");
     setUserRole("customer");
+    setFundiEnabled(false);
     historyRef.current = [];
     setScreen("onboarding");
   };
@@ -190,18 +197,21 @@ function AppContent() {
     setUserEmail(data.user?.email || "");
     const role = data.user?.role || "customer";
     setUserRole(role);
+    setFundiEnabled(Boolean(data.user?.fundiEnabled));
     return role;
   };
 
   const handleNavigate = (key, params) => {
-    if (userRole === "fundi" && CLIENT_ONLY_SCREENS.has(key)) {
+    // Pure fundis cannot access client-only screens
+    if (userRole === "fundi" && !fundiEnabled && CLIENT_ONLY_SCREENS.has(key)) {
       Alert.alert(
         "Client feature",
         "Browsing artisans and booking jobs are for clients. Use your Fundi dashboard and Jobs tab.",
       );
       return;
     }
-    if (userRole === "customer" && key === "fundiDashboard") {
+    // Customers without fundi mode cannot access fundi dashboard
+    if (userRole === "customer" && !fundiEnabled && key === "fundiDashboard") {
       return setScreen("home");
     }
 
@@ -564,6 +574,7 @@ function AppContent() {
     userEmail,
     userId,
     authToken,
+    fundiEnabled,
     onNavigate: handleNavigate,
     activeJob,
   };
@@ -766,7 +777,14 @@ function AppContent() {
       <FundiProfileSetupScreen
         authToken={authToken}
         onBack={() => setScreen("createAccount")}
-        onComplete={() => setScreen("locationPermission")}
+        onComplete={() => {
+          if (fundiEnabled) {
+            // Returning from Settings "Become a Fundi" — go to fundi dashboard
+            goHome("fundi");
+          } else {
+            setScreen("locationPermission");
+          }
+        }}
       />
     );
   }
@@ -900,7 +918,13 @@ function AppContent() {
   }
 
   if (screen === "settings") {
-    return <SettingsScreen onNavigate={handleNavigate} />;
+    return (
+      <SettingsScreen
+        onNavigate={handleNavigate}
+        fundiEnabled={fundiEnabled}
+        onFundiEnabled={() => setFundiEnabled(true)}
+      />
+    );
   }
 
   if (screen === "payments") {
@@ -961,6 +985,7 @@ function AppContent() {
         booking={clientBookingDraft || pendingBooking}
         onNavigate={handleNavigate}
         onBack={() => setScreen("home")}
+        onComplete={handleJobComplete}
       />
     );
   }

@@ -4,7 +4,7 @@
   "private": true,
   "main": "node_modules/expo/AppEntry.js",
   "scripts": {
-    "start": "expo start",
+    "start": "EXPO_OFFLINE=1 expo start",
     "start:tunnel": "expo start --tunnel",
     "android": "bash scripts/android-env.sh expo run:android",
     "android:dev": "bash scripts/android-env.sh expo run:android",

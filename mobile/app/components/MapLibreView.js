@@ -26,6 +26,8 @@ export default function MapLibreView({
   destination,
   showRadiusCircle = false,
   radiusKm = 10,
+  // Optional driving-route geometry: [{lat,lng}, ...] drawn as a line.
+  routeCoords = null,
   onRegionChange,
   onPressCoordinate,
   userLabel = 'You',
@@ -145,6 +147,32 @@ export default function MapLibreView({
       touchPitch
     >
       <Camera ref={cameraRef} />
+
+      {routeCoords?.length > 1 ? (
+        <GeoJSONSource
+          id="navRoute"
+          data={{
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: routeCoords.map((p) => [p.lng, p.lat]),
+            },
+          }}
+        >
+          <Layer
+            id="navRouteLine"
+            type="line"
+            paint={{
+              lineColor: '#ffb42f',
+              lineWidth: 5,
+              lineOpacity: 0.95,
+              lineCap: 'round',
+              lineJoin: 'round',
+            }}
+          />
+        </GeoJSONSource>
+      ) : null}
 
       {showRadiusCircle ? (
         <GeoJSONSource

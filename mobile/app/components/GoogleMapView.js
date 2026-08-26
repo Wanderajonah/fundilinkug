@@ -17,6 +17,8 @@ export default function GoogleMapView({
   destination,
   showRadiusCircle = false,
   radiusKm = 10,
+  // Optional driving-route geometry: [{lat,lng}, ...] drawn as a line.
+  routeCoords = null,
   onRegionChange,
   onPressCoordinate,
   userLabel = 'You',
@@ -55,7 +57,7 @@ export default function GoogleMapView({
     );
   }
 
-  const { default: MapView, Marker, Circle } = MapComponents;
+  const { default: MapView, Marker, Circle, Polyline } = MapComponents;
 
   const mapRegion = region || {
     latitude: lat,
@@ -100,6 +102,17 @@ export default function GoogleMapView({
           radius={radiusKm * 1000}
           strokeColor="rgba(255,184,0,0.6)"
           fillColor="rgba(255,184,0,0.12)"
+        />
+      ) : null}
+
+      {routeCoords?.length > 1 && Polyline ? (
+        <Polyline
+          coordinates={routeCoords.map((p) => ({
+            latitude: p.lat,
+            longitude: p.lng,
+          }))}
+          strokeColor={theme.colors.accent}
+          strokeWidth={5}
         />
       ) : null}
 

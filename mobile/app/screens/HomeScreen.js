@@ -280,8 +280,8 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
         ) : null}
       </View>
 
-      {/* Active booking banner */}
-      {activeJob?.status === "in_progress" || activeJob?.fundiName ? (
+      {/* Active booking banner — only show for in-progress jobs */}
+      {activeJob?.status === "in_progress" ? (
         <TouchableOpacity
           style={styles.activeBanner}
           onPress={openActiveBooking}
@@ -296,6 +296,22 @@ function ListHeader({ userName, onNavigate, locationLabel, activeJob, bookingsLo
             </Text>
           </View>
           <Text style={styles.activeBannerCta}>{t('Open')}</Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {/* Fundi mode switch for dual-role users */}
+      {fundiEnabled && userRole === "customer" ? (
+        <TouchableOpacity
+          style={styles.fundiModeBanner}
+          onPress={() => onNavigate?.("fundiDashboard")}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="briefcase-outline" size={20} color={theme.colors.accent} />
+          <View style={{ flex: 1, marginLeft: 10 }}>
+            <Text style={styles.fundiModeTitle}>{t('Fundi Mode')}</Text>
+            <Text style={styles.fundiModeSub}>{t('Switch to fundi view to manage jobs')}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} />
         </TouchableOpacity>
       ) : null}
 
@@ -391,6 +407,7 @@ function BookingCard({ item, onPress }) {
 export default function HomeScreen({
   userName = "User",
   userRole = "customer",
+  fundiEnabled,
   activeJob,
   onNavigate,
 }) {
@@ -561,6 +578,20 @@ const styles = StyleSheet.create({
   activeBannerTitle: { color: theme.colors.white, fontWeight: "800", fontSize: 14 },
   activeBannerSub: { color: theme.colors.muted, fontSize: 12, marginTop: 4 },
   activeBannerCta: { color: theme.colors.accent, fontWeight: "800", fontSize: 14 },
+
+  /* Fundi mode banner */
+  fundiModeBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,184,0,0.06)",
+    borderWidth: 1,
+    borderColor: "rgba(255,184,0,0.2)",
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 16,
+  },
+  fundiModeTitle: { color: theme.colors.accent, fontWeight: "800", fontSize: 13 },
+  fundiModeSub: { color: theme.colors.muted, fontSize: 11, marginTop: 2 },
 
   /* Search */
   searchWrap: {
