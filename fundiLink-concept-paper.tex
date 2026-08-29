@@ -4,7 +4,7 @@
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{geometry}
-\geometry{margin=2.3cm}
+\geometry{margin=2.5cm}
 \usepackage{amsmath,amssymb}
 \usepackage{booktabs}
 \usepackage{graphicx}
@@ -14,6 +14,8 @@
 \usepackage{array}
 \usepackage{parskip}
 \usepackage{setspace}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
 
 % ----------------------- Default serif (formal) -----------------------
 \usepackage{times}
@@ -23,26 +25,37 @@
   {\Large\bfseries}{\thesection.}{0.7em}{}
 \titleformat{\subsection}
   {\normalsize\bfseries}{\thesubsection.}{0.7em}{}
-\titlespacing*{\section}{0pt}{1.2em}{0.5em}
-\titlespacing*{\subsection}{0pt}{0.9em}{0.3em}
+\titlespacing*{\section}{0pt}{1.4em}{0.5em}
+\titlespacing*{\subsection}{0pt}{1.0em}{0.3em}
 
-\setstretch{1.15}
+\setstretch{1.2}
+
+% ----------------------- Header / footer -----------------------
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textsc{FundiLink}}
+\fancyhead[R]{\small Concept Paper}
+\fancyfoot[C]{\small Page \thepage\ of \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
 
 \begin{document}
 
-% ======================= Header block =======================
+% ======================= Cover page =======================
+\begin{titlepage}
+\vspace*{4.5cm}
 \begin{center}
-{\LARGE\bfseries Concept Paper}\\[0.4em]
-{\Large\textit{FundiLink}}\\[0.35em]
-{\normalsize Connecting Communities to Trusted Local Artisans}\\[0.6em]
+{\Huge\bfseries FundiLink}\\[1.0em]
+{\LARGE Connecting Communities to Trusted Local Artisans}\\[0.6em]
+{\large\itshape Concept Paper}\\[2.5em]
 {\small
 \rule{0.6\textwidth}{0.4pt}
-}\\[0.7em]
+}\\[2.2em]
 \begin{minipage}{0.85\textwidth}
-\centering\small
+\centering
 A plain-language introduction to the problem FundiLink solves, how we
 solve it, and the focused first step we propose to take.
-\end{minipage}\\[1.0em]
+\end{minipage}\\[3.0em]
 \begin{minipage}{0.9\textwidth}
 \centering
 \begin{tabular}{@{}l@{\hspace{2em}}l@{}}
@@ -52,24 +65,21 @@ solve it, and the focused first step we propose to take.
 \end{tabular}
 \end{minipage}
 \end{center}
-
-\vspace{0.8em}
-\hrule
-\vspace{0.8em}
+\vfill
+\end{titlepage}
 
 % ======================= 1. The Bottom Line =======================
 \section{The Bottom Line}
 
 Skilled manual work -- plumbing, electrical repairs, carpentry, painting -- is essential to
 every home and small business. Yet in our market, getting this kind of help is a constant
-gamble: you do not know who is qualified, what it should cost, whether the work will be done
-properly, or whether you are safe paying for it.
+gamble: you do not know who is qualified, what the job should cost, or whether the work will
+be done properly.
 
 \textbf{FundiLink solves this by bringing order and trust to an informal market.} At its core
 it is a location-based service: it uses where you are to connect you, almost instantly, to a
-qualified artisan working near you. It then sets a clear agreed price up front, holds payment
-safely until the work is done, and builds each artisan's reputation through genuine, public
-reviews.
+qualified artisan working near you. It sets a clear agreed price up front and builds each
+artisan's reputation through genuine, public reviews.
 
 Think of it like the way a trusted ride-hailing service finds a driver already close to you --
 but for skilled home services. Instead of waiting days and taking a chance on whoever you can
@@ -81,8 +91,7 @@ the focused first step we propose to take.
 % ======================= 2. The Problem =======================
 \section{The Problem}
 
-Finding and paying for a good artisan today is difficult and risky. The reasons are
-straightforward.
+Finding a good artisan today is difficult. The reasons are straightforward.
 
 \subsection{You Cannot Verify Who Is Qualified}
 
@@ -95,12 +104,6 @@ verifiable. A customer must simply take a chance.
 Quotes are almost always verbal. For the same job, different artisans may quote wildly
 different prices, and the final bill often ends up higher than the original promise. Without
 anything in writing, the customer has little ground to dispute it.
-
-\subsection{Payment Is Insecure for Both Sides}
-
-Payment is usually cash, made before or during the work. The customer risks paying for shoddy,
-incomplete or abandoned work, while the artisan risks not being paid at all for work done.
-Neither side is protected.
 
 \subsection{Reputation Does Not Exist}
 
@@ -116,7 +119,7 @@ reliable way to reach an available, nearby professional. People often wait days 
 simply cannot find anyone.
 
 Taken together, these problems mean a service everyone needs is delivered slowly, unfairly and
-with risk on both sides.
+unreliably.
 
 % ======================= 3. Why Now =======================
 \section{Why Now}
@@ -129,23 +132,20 @@ in place:
           demand for reliable repair and improvement services is rising quickly.
     \item \textbf{More people on phones.} A large and growing share of households now use
           smartphones, so a phone-based solution can reach them easily.
-    \item \textbf{Ready-made digital payment.} People already pay for daily goods and
-          services on their phones. Secure, cashless payment is a habit, not a new idea to
-          teach.
-    \item \textbf{A proven approach.} The idea of matching customers with providers, holding
-          payment unless the job is done, and publishing reviews has transformed other
-          sectors. It has simply not yet been applied to skilled home services here.
+    \item \textbf{A proven approach.} The idea of matching customers with nearby providers and
+          publishing honest reviews has transformed other sectors. It has simply not yet been
+          applied to skilled home services here.
 \end{itemize}
 
 FundiLink brings these already-present habits together. We are not asking people to change
-their behaviour; we are taking how they already hire and pay, and making it safe and reliable.
+their behaviour; we are taking how they already hire artisans and making it faster, fairer and
+more reliable.
 
 % ======================= 4. How We Solve It =======================
 \section{How We Solve It}
 
-The heart of the solution is simple: turn an informal, risky handshake into a clear, ordered
-process that protects both sides at every step. Each job on FundiLink follows the same
-sequence.
+The heart of the solution is simple: turn an informal, uncertain handshake into a clear,
+ordered process. Each job on FundiLink follows the same sequence.
 
 \begin{enumerate}[leftmargin=1.5em]
     \item \textbf{Request.} The customer describes the problem in their own words, adds a
@@ -155,15 +155,12 @@ sequence.
           how close they are.
     \item \textbf{Agreed price.} Customer and artisan agree on a clear price before any work
           begins, so there is no surprise on the final bill.
-    \item \textbf{Secure payment.} The agreed amount is set aside safely before work starts.
-          The customer knows the money will only be released when the job is complete, and
-          the artisan knows the money is there and will be paid.
     \item \textbf{Watching the job.} The customer can see when the artisan is on the way, has
           arrived, and is working, so there is no wondering or waiting in the dark.
-    \item \textbf{Completion and payment.} Once the customer confirms the work is done, the
-          payment is released to the artisan, and the customer leaves a rating and a review.
-    \item \textbf{Fairness, always.} If there is any disagreement, a neutral team can step in,
-          review what happened, and release or return the payment fairly.
+    \item \textbf{Completion and review.} Once the customer confirms the work is done, they
+          leave a rating and a review that help the next customer decide.
+    \item \textbf{Fairness, always.} If anything goes wrong, a neutral team can step in, review
+          what happened, and settle the matter fairly.
 \end{enumerate}
 
 \subsection{How Trust Is Built and Kept}
@@ -179,8 +176,8 @@ the strongest force for good service available.
 \subsection{Designed Around the Customer}
 
 FundiLink is built for how people really live and work here: signing up with a phone number,
-paying the way they already pay, and using a local language. The whole experience is made
-simple, because the point is to take the stress out of getting help, not to add complexity.
+communicating in a local language, and using a simple experience. The whole journey is made
+easy, because the point is to take the stress out of getting help, not to add complexity.
 
 % ======================= 5. The MVP =======================
 \section{Our First Step: A Clear, Focused MVP}
@@ -211,8 +208,6 @@ match with someone near enough to help.
           artisans close by, and the customer is notified as soon as one accepts.
     \item \textbf{Agreeing on a price.} Customer and artisan agree on a clear price before
           work starts, removing surprise on the final bill.
-    \item \textbf{Secure payment.} The agreed amount is held safely until the customer
-          confirms the job is done, then released to the artisan.
     \item \textbf{Rating and review.} After each job, the customer rates the work, building a
           store of honest, public feedback that guides future customers.
 \end{itemize}
@@ -228,16 +223,15 @@ quickly and make it excellent before we grow.
 \section{What We Need to Make It Happen}
 
 FundiLink is already working as a proven prototype. The whole journey -- finding an artisan,
-agreeing on a price, paying safely, following the job, and leaving a review -- has been built
-and demonstrated from start to finish. Support will take it from this working foundation to a
-trusted service people rely on daily. We will focus on four things.
+agreeing on a price, following the job, and leaving a review -- has been built and demonstrated
+from start to finish. Support will take it from this working foundation to a trusted service
+people rely on daily. We will focus on a few things.
 
-\subsection{Bringing Payments to Live Use}
+\subsection{Perfecting the Core Experience}
 
-Today, the safe payment and holding of money works end to end. The next step is to connect
-this to real, everyday payment channels so customers can genuinely pay and artisans can
-receive their earnings for real. This is the most important step, and where we will focus
-first.
+The most important step is to make the core journey excellent: fast, reliable nearby matching,
+clear agreed pricing, and an easy way to follow the job. We will invest in making this
+experience dependable and polished for every customer and artisan.
 
 \subsection{Launching in Our First City}
 
@@ -248,8 +242,7 @@ reach the point where the marketplace keeps growing on its own.
 \subsection{Building Our Team}
 
 We are a small team today. Support will let us grow -- bringing on the people needed to build,
-support and improve the service, and to keep it secure and reliable for every user and every
-shilling that moves through it.
+support and improve the service, and to keep it reliable for every user.
 
 \subsection{Strengthening and Growing the Service}
 
@@ -259,10 +252,10 @@ and artisans, and better tools for running the marketplace fairly and well as it
 % ======================= 7. Conclusion =======================
 \section{Conclusion}
 
-There is a large, urgent and unmet need for a trustworthy way to find, hire, pay and review
-skilled artisans. The habits that make such a service possible -- growing phone use, ready
-digital payment, and comfort with booking services -- are already present. What is missing is
-a service that brings them together for skilled manual work.
+There is a large, urgent and unmet need for a trustworthy way to find, hire and review skilled
+artisans. The habits that make such a service possible -- growing phone use and comfort with
+booking services -- are already present. What is missing is a service that brings them
+together for skilled manual work.
 
 FundiLink is that service. It has been designed, built and proven, and it is ready to be taken
 fully to market with the right support. We would welcome the opportunity to discuss the
