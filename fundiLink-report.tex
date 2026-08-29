@@ -1,0 +1,383 @@
+\documentclass[11pt,a4paper]{article}
+
+% ----------------------- Packages -----------------------
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=2.5cm}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+  citecolor=blue!60!black
+}
+\usepackage{enumitem}
+\usepackage{titlesec}
+\usepackage{array}
+\usepackage{longtable}
+
+% ----------------------- Custom colours -----------------------
+\definecolor{primary}{RGB}{31,78,121}
+\definecolor{accent}{RGB}{230,126,34}
+\definecolor{lightgray}{RGB}{245,245,245}
+
+% ----------------------- Title formatting -----------------------
+\titleformat{\section}{\Large\bfseries\color{primary}}{\thesection.}{0.6em}{}
+\titleformat{\subsection}{\large\bfseries\color{primary}}{\thesubsection.}{0.6em}{}
+
+% ----------------------- Title page -----------------------
+\title{\vspace{-1.5cm}\Huge\textbf{FundiLink}\\[0.4em]
+\large Connecting Ugandan Communities to Trusted Local Artisans}
+\author{Project Report}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+% ======================= Abstract =======================
+\begin{abstract}
+\noindent
+Informal, cash-based services such as plumbing, electrical work, carpentry and painting
+form the backbone of household maintenance in many African cities, yet they remain largely
+unorganized, unverified and difficult to access. \textbf{FundiLink} is a mobile-first platform
+that bridges the gap between everyday customers and qualified local artisans (\emph{Fundis})
+by applying the trusted concepts of a gig economy--matching, transparent pricing, escrow
+payments and verified reviews--to a market that is traditionally served through word of mouth.
+This report describes the problem being solved, the proposed solution, the core subsystems
+that make it work, and the design decisions behind the end-to-end service lifecycle from
+service request to payment release.
+\end{abstract}
+
+% ======================= 1. Introduction =======================
+\section{Introduction}
+
+Across East Africa, and Uganda in particular, the vast majority of trade in skilled manual
+labour takes place outside formal marketplaces. A household in Kampala needing a leaking
+roof fixed, a faulty electrical socket repaired, or a wardrobe built must rely on personal
+referrals, roadside labour markets, or informal notice boards. Each of these channels shares
+a set of fundamental weaknesses:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{No trust or verification} --- the customer cannot easily tell whether an
+          artisan is qualified, insured, or reliable before work begins.
+    \item \textbf{No price transparency} --- quotes are opaque, often negotiated verbally,
+          and there is little accountability when costs escalate during a job.
+    \item \textbf{No protected payment} --- payment is made in cash before or during work,
+          leaving customers exposed to poor workmanship and artisans exposed to non-payment.
+    \item \textbf{No feedback loop} --- past performance is invisible, so good artisans
+          struggle to build reputations and customers cannot learn from others' experiences.
+    \item \textbf{Poor discoverability} --- location and availability are not indexed, making
+          it hard to find a skilled, nearby artisan quickly in an emergency.
+\end{itemize}
+
+\textbf{FundiLink} was conceived to address exactly these problems. It treats a skilled
+artisan the way modern platforms treat drivers, tutors and freelancers: verified profiles,
+transparent pricing, escrow-protected transactions, live progress tracking, and reviewable
+outcomes. By moving the informal service market onto a structured digital platform, FundiLink
+aims to build trust where none previously existed and to make skilled labour more accessible,
+safer, and fairly paid.
+
+% ======================= 2. Problem Statement =======================
+\section{Problem Statement}
+
+The central problem is the \textbf{absence of a trusted, structured marketplace for skilled
+manual services} in the local market. This manifests as several interconnected difficulties:
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Trust asymmetry.} Customers must commit money and home access to strangers
+          based on little verifiable information. Artisans must likewise trust customers to
+          pay for completed work. There is no neutral mechanism to reduce this mutual risk.
+    \item \textbf{Discovery and matching.} Finding an available, nearby, appropriately
+          skilled artisan at short notice is inefficient and error-prone.
+    \item \textbf{Pricing disputes.} Without agreed-upon quotes or a recorded transaction,
+          price disagreements are common and unresolved.
+    \item \textbf{Payment security.} Cash or informal transfer offers no protection for either
+          party if the job is not performed to the agreed standard.
+    \item \textbf{Reputation opacity.} A well-performing artisan has no portable reputation,
+          while a poorly performing one faces no consequence, distorting the market.
+    \item \textbf{Emergency responsiveness.} When urgent repairs are needed (e.g. a burst
+          pipe), customers often cannot locate an available professional on demand.
+\end{enumerate}
+
+These problems create a fragmented and risky service market. The objective of this project is
+to design and build a system that resolves them through a \emph{structured, trust-building
+service lifecycle} delivered on a mobile application.
+
+% ======================= 3. Proposed Solution =======================
+\section{Proposed Solution}
+
+FundiLink answers the problem with a \textbf{two-sided mobile platform}, supported by an
+administration web dashboard, that orchestrates the complete journey of a service engagement.
+The core idea is to move the informal handshake into a governed, step-by-step workflow in
+which risk is managed at each stage.
+
+\subsection{The Trusted Service Lifecycle}
+
+The platform formalizes each engagement as a \textbf{structured booking lifecycle} with clear,
+accountable stages:
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Request.} The customer describes a problem, optionally in plain language
+          assisted by an artificial-intelligence classifier that suggests the correct service
+          category, attaches photos and a location, and submits a request.
+    \item \textbf{Matching.} The system ranks candidate Fundis by a weighted combination of
+          their rating and their distance from the customer, notifies nearby eligible Fundis
+          in real time, and guides them through an accept/decline flow with a response timer.
+    \item \textbf{Price agreement.} Before work begins, both parties negotiate and formally
+          agree on a price, recording the agreement so that later disputes are minimized.
+    \item \textbf{Escrow-protected payment.} The agreed amount is held securely in an escrow
+          account before work commences, protecting the customer from paying for incomplete
+          or poor work.
+    \item \textbf{Execution \& live tracking.} The customer can follow the Fundi's live
+          location and the evolving status of the job (on the way, arrived, in progress).
+    \item \textbf{Completion \& review.} Upon confirmed completion, funds are released to the
+          Fundi (net of a platform commission), and the customer leaves a rating and review
+          that builds the Fundi's public reputation.
+    \item \textbf{Dispute resolution.} In cases of disagreement, an administrator can review
+          the engagement and either release or refund the escrowed funds.
+\end{enumerate}
+
+By treating payment, reputation and progress as explicitly managed -- rather than assumed --
+elements of the service, the platform converts an informal transaction into a governed,
+trustworthy exchange.
+
+\subsection{How the Solution Addresses Each Problem}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}p{4.4cm}p{9.2cm}@{}}
+\toprule
+\textbf{Problem} & \textbf{How FundiLink addresses it} \\
+\midrule
+Trust asymmetry & Verified Fundi profiles, identity/verification workflow, and a
+public review-and-rating history for both national and Google-authenticated users. \\
+\addlinespace[0.3em]
+Discovery \& matching & A recommendation engine ranking Fundis by rating and proximity,
+plus location-based geocoding and reverse-geocoding to find nearby offers. \\
+\addlinespace[0.3em]
+Pricing disputes & A structured price-negotiation stage with a formally recorded agreed
+price before any work proceeds. \\
+\addlinespace[0.3em]
+Payment security & A wallet-and-escrow subsystem that holds funds until job completion,
+then releases them to the Fundi minus a platform commission. \\
+\addlinespace[0.3em]
+Reputation opacity & Persistent per-Fundi review and rating records; a single consolidated
+review per Fundi per customer, editable on re-engagement. \\
+\addlinespace[0.3em]
+Emergency responsiveness & Real-time socket notifications to nearby, available Fundis with
+live status and ETA information for the customer. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ======================= 4. System Architecture =======================
+\section{System Architecture}
+
+The solution is delivered as a modular, three-component system, each responsible for a
+distinct layer of the platform.
+
+\subsection{Technology Stack}
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Layer} & \textbf{Technology} & \textbf{Role} \\
+\midrule
+Mobile client & React Native (Expo) & Customer and Fundi experience \\
+Admin client & React (web dashboard) & Platform administration and oversight \\
+Backend & Node.js + Express & REST API, business logic, orchestration \\
+Database & MongoDB & Persistent, schema-flexible document store \\
+Authentication & JWT + OTP (SMS) + Google OAuth & Secure and convenient access \\
+Maps / location & Google Maps geocoding \& routing & Location-aware services \\
+Messaging & Socket.IO & Real-time chat and notifications \\
+SMS & EgoSMS gateway & OTP delivery and service alerts \\
+AI assistance & Groq language model & SMS copy and service categorization \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Component View}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Mobile client (two modes).} A single application provides both a
+          \emph{Customer} mode (request, book, pay, track, review) and a \emph{Fundi} mode
+          (accept jobs, update status, negotiate price, withdraw earnings), allowing users to
+          operate on either side of the market.
+    \item \textbf{Admin dashboard.} A web client gives platform operators tools to verify
+          Fundis, review disputes, release or refund escrow, configure fees, and observe
+          analytics.
+    \item \textbf{Backend API.} The core orchestrator, organized into focused modules for
+          authentication, jobs and bookings, fundi matching, payments and wallets and escrow,
+          chat and notifications, reviews and ratings, AI classification, plus maps and
+          location services.
+    \item \textbf{Supporting infrastructure.} MongoDB for persistence, Socket.IO for
+          real-time updates, external SMS and geocoding providers, and an AI service for
+          natural-language understanding and message generation.
+\end{itemize}
+
+% ======================= 5. Core Subsystems =======================
+\section{Core Subsystems}
+
+The behaviour of the platform rests on several carefully designed subsystems. Each is
+summarized below in terms of the problem it solves within the overall service.
+
+\subsection{Authentication and Identity}
+Onboarding is designed to be efficient and inclusive of users who may not have an email
+address. A phone-first flow delivers a one-time password (OTP) via SMS, while an optional
+Google sign-in streamlines access and provides verified identity data. A role-picker lets a
+single user operate as a customer, a Fundi, or both, and Fundis additionally pass through a
+verification step that builds customer confidence.
+
+\subsection{Service Matching and Recommendation}
+The matching engine answers ``which Fundi should be offered this job?'' by combining two
+signals that matter most to customers: \emph{quality} (aggregate rating) and
+\emph{proximity} (distance). A weighted score
+\[
+    \text{Score} \;=\; 0.6 \cdot \text{Rating} \;+\; 0.4 \cdot \text{Proximity}
+\]
+ranks candidate Fundis, with proximity normalized so that closer artisans score higher. The
+shortlist of nearby, category-matched Fundis is notified in real time.
+
+\subsection{Booking and Job Management}
+Bookings model the full state machine of an engagement from \textsc{Pending}, through
+\textsc{Accepted}, \textsc{On the Way}, \textsc{Arrived}, \textsc{In Progress}, to
+\textsc{Completed}, with explicit \textsc{Cancelled} and \textsc{Disputed} terminal states.
+A response timer manages Fundi availability, and price negotiation records a formal agreed
+amount before work proceeds. This structured state is what makes tracking, payment release
+and dispute resolution well-defined.
+
+\subsection{Wallets, Payments and Escrow}
+Financial trust is the most delicate part of the platform and is handled by a dedicated
+subsystem:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Wallets.} Each user maintains a wallet capturing an available balance and
+          a held (escrow) balance, enabling deposits, transfers and withdrawals via mobile
+          money.
+    \item \textbf{Escrow.} On price agreement, the agreed amount is held rather than paid
+          out, protecting the customer.
+    \item \textbf{Release.} On confirmed completion the escrow releases the Fundi's payout
+          and the platform retains a commission (a client service fee). A remaining held
+          balance is tracked so funds are never lost.
+    \item \textbf{Refund.} On cancellation or dispute, escrowed funds are returned to the
+          customer.
+    \item \textbf{Ledger.} Every movement is recorded as a typed transaction with a
+          reference, giving an auditable trail that powers wallet history and administrative
+          oversight.
+\end{itemize}
+
+\subsection{Real-Time Chat and Notifications}
+Communication is kept in-context. Booking-centric conversations let the customer and Fundi
+clarify requirements without leaving the workflow, while Socket.IO drives real-time booking
+alerts, status changes and location updates. This immediacy is crucial for live tracking and
+for informing Fundis of new opportunities the moment they appear.
+
+\subsection{Reviews and Ratings}
+Reputation is the currency of trust on the platform. Reviews capture a star rating,
+a written comment, optional service details and photos. A deliberate design rule is that a
+customer retains \emph{one consolidated review per Fundi}: re-engaging a previous Fundi
+updates the existing review rather than creating duplicates, keeping the Fundi's rating
+honest and clutter-free.
+
+\subsection{AI Assistant and Classification}
+To lower the barrier to entry, a natural-language classifier interprets plain descriptions
+(e.g. ``my sink is leaking'') and suggests the correct service category with a confidence
+score, steering customers to the right Fundis. AI assistance is also used to generate
+natural SMS copy for service events, keeping users informed without manual authoring.
+
+\subsection{Administration and Governance}
+A web dashboard gives operators the tools to govern the market: verifying Fundis, resolving
+disputes, releasing or refunding escrow, configuring platform fees and settings, and viewing
+aggregate analytics. This governance layer is what gives the two-sided marketplace its
+accountability and keeps financial operations auditable.
+
+% ======================= 6. Methodology =======================
+\section{Methodology}
+
+The project follows an iterative, prototype-driven methodology suited to a fast-moving,
+multi-actor system:
+
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Problem discovery.} Interviews and domain analysis in the target market
+          identified trust, discovery, pricing and payment as the dominant friction points.
+    \item \textbf{Service design.} The engagement was decomposed into its natural stages
+          (request $\rightarrow$ match $\rightarrow$ agree $\rightarrow$ pay $\rightarrow$
+          execute $\rightarrow$ complete $\rightarrow$ review), which became the booking
+          state machine.
+    \item \textbf{Prototype development.} A functional mobile prototype was built end-to-end
+          across all three components, with each subsystem implemented, integrated and
+          exercised against the live backend.
+    \item \textbf{Feedback and iteration.} Real usage surfaced usability and data-integrity
+          issues (for example duplicate reviews when a customer re-hired the same Fundi),
+          which were corrected through targeted design changes rather than one-off fixes.
+    \item \textbf{Validation.} Core scenarios -- booking, payment, live tracking, review and
+          admin governance -- were validated end-to-end against the deployed environment.
+\end{enumerate}
+
+% ======================= 7. Evaluation =======================
+\section{Evaluation}
+
+The platform was evaluated against the objectives it set out to achieve:
+
+\begin{table}[h]
+\centering
+\small
+\begin{tabular}{@{}p{5.2cm}p{8.4cm}@{}}
+\toprule
+\textbf{Objective} & \textbf{Outcome} \\
+\midrule
+Trusted service delivery & Verified profiles, escrow, and a persistent one-review-per-Fundi
+policy reduce risk for both parties. \\
+\addlinespace[0.3em]
+Efficient discovery & Weighted rating--proximity matching plus geocoding deliver relevant,
+nearby Fundis quickly. \\
+\addlinespace[0.3em]
+Transparent pricing & A recorded negotiation stage with an agreed price minimizes disputes. \\
+\addlinespace[0.3em]
+Payment security & Escrow holds funds until confirmed completion, then release net of an
+explicit commission. \\
+\addlinespace[0.3em]
+Reputation & Reviews and ratings accumulate per Fundi and update on re-engagement, keeping
+reputations accurate. \\
+\addlinespace[0.3em]
+On-demand responsiveness & Real-time notifications and live tracking make urgent repairs
+actionable. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ======================= 8. Conclusion and Future Work =======================
+\section{Conclusion and Future Work}
+
+FundiLink demonstrates that the trust-building mechanics of the gig economy can be applied
+directly to the informal skilled-labour market. By structuring each engagement as a governed
+lifecycle--service request, intelligent matching, recorded price agreement, escrow-protected
+payment, live execution, and reviewable completion--the platform resolves the core problems
+of trust asymmetry, opaque pricing, insecure payment, poor discoverability and invisible
+reputation that have long hindered this market.
+
+Future work can extend the current foundation in several directions:
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Real payment-gateway integration} to the platform's wallet and escrow,
+          replacing simulated mobile-money deposits with genuine, verifiable transactions.
+    \item \textbf{Enhanced recommendation signals.} Incorporating response time, job
+          completion rate and in-demand category weighting into the matching score.
+    \item \textbf{Advanced analytics.} Segmenting platform usage and earnings to surface
+          market-level insights to administrators.
+    \item \textbf{Localisation.} Deepening multi-language support beyond English and Luganda,
+          and expanding coverage across additional regions.
+    \item \textbf{Trust-safety hardening.} Automated document verification and fraud
+          detection to strengthen the governance layer as the user base grows.
+\end{itemize}
+
+\end{document}
