@@ -53,6 +53,7 @@ export function BookingProvider({
   fundiCoords,
   onNavigate,
 }) {
+  const [activeBookings, setActiveBookings] = useState([]);
   const [activeBooking, setActiveBooking] = useState(null);
   const [pendingRequest, setPendingRequest] = useState(null);
   const [bookings, setBookings] = useState([]);
@@ -85,9 +86,17 @@ export function BookingProvider({
 
       // Sync in-flight state with the DB — also clears stale entries once a
       // booking is completed/cancelled, so restore always reflects the truth.
-      const current =
-        list.find((b) => ACTIVE_STATUSES.includes(b.status)) || null;
-      setActiveBooking(current);
+      // A client may have several concurrent active bookings, so keep them all
+      // instead of only the first, and track the most recent as the primary.
+      const actives = list.filter((b) => ACTIVE_STATUSES.includes(b.status));
+      setActiveBookings(actives);
+      setActiveBooking(
+        actives.length
+          ? actives.sort(
+              (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+            )[0]
+          : null,
+      );
 
       // Fundis: restore requests that arrived while logged out. A PENDING
       // booking with no assigned fundi is still a live request for this fundi.
@@ -126,17 +135,8 @@ export function BookingProvider({
         const mapped = mapApiBooking(data.booking, roleKey);
         if (!mapped) return null;
 
-        // Only keep activeBooking if the booking is still active;
-        // clear it when the booking is completed/cancelled so the
-        // home-screen banner disappears immediately.
-        if (ACTIVE_STATUSES.includes(mapped.status)) {
-          setActiveBooking(mapped);
-        } else {
-          setActiveBooking((prev) =>
-            prev && prev.id === mapped.id ? null : prev,
-          );
-        }
-
+        // Keep the active list in sync per-booking so one booking's refresh
+        // never wipes out another concurrent active booking.
         setBookings((prev) => {
           const idx = prev.findIndex((b) => b.id === mapped.id);
           if (idx < 0) return [mapped, ...prev];
@@ -144,6 +144,27 @@ export function BookingProvider({
           next[idx] = mapped;
           return next;
         });
+
+        setActiveBookings((prev) => {
+          const rest = (prev || []).filter((b) => b.id !== mapped.id);
+          if (ACTIVE_STATUSES.includes(mapped.status)) {
+            const next = [...rest, mapped];
+            return next.sort(
+              (a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0),
+            );
+          }
+          return rest;
+        });
+
+        // Refresh the primary booking too, but only touch it when this is the
+        // booking it currently points at (screens hold their own id-keyed copy).
+        setActiveBooking((prev) => {
+          if (prev && prev.id === mapped.id) {
+            return ACTIVE_STATUSES.includes(mapped.status) ? mapped : null;
+          }
+          return prev;
+        });
+
         return mapped;
       } catch (e) {
         setError(getErrorMessage(e));
@@ -267,12 +288,12 @@ export function BookingProvider({
       }),
       subscribeSocket('fundi_location_update', (payload) => {
         if (!payload?.lat || !payload?.lng) return;
-        setFundiLocation({ lat: payload.lat, lng: payload.lng, updatedAt: payload.updatedAt });
-        setActiveBooking((prev) =>
-          prev?.id === payload.bookingId
-            ? { ...prev, fundiLocation: { lat: payload.lat, lng: payload.lng } }
-            : prev
-        );
+        const loc = { lat: payload.lat, lng: payload.lng, updatedAt: payload.updatedAt };
+        setFundiLocation(loc);
+        const apply = (b) =>
+          b?.id === payload.bookingId ? { ...b, fundiLocation: loc } : b;
+        setActiveBooking((prev) => apply(prev));
+        setActiveBookings((prev) => (prev || []).map(apply));
       }),
       subscribeSocket('error', (payload) => {
         setError(payload?.message || 'Something went wrong');
@@ -301,6 +322,7 @@ export function BookingProvider({
   const value = useMemo(
     () => ({
       activeBooking,
+      activeBookings,
       activeJob,
       pendingRequest,
       setPendingRequest,
@@ -317,6 +339,7 @@ export function BookingProvider({
     }),
     [
       activeBooking,
+      activeBookings,
       activeJob,
       pendingRequest,
       bookings,

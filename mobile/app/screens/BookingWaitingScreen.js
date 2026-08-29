@@ -30,7 +30,6 @@ import { useLanguage } from '../i18n/LanguageContext';
 
 export default function BookingWaitingScreen({ booking: initialBooking, onNavigate, onBack, onComplete }) {
   const {
-    activeBooking,
     setActiveBooking,
     refreshBookingById,
     notification,
@@ -40,14 +39,28 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
   } = useBooking();
   const { t } = useLanguage();
 
-  const booking = activeBooking || initialBooking;
+  // A client can have several concurrent active bookings. Track this screen's
+  // own copy keyed off the booking id that was passed in, instead of relying on
+  // the shared context activeBooking slot (which another booking's events
+  // could overwrite).
+  const [localBooking, setLocalBooking] = useState(initialBooking || null);
+  const booking = localBooking;
   const [loading, setLoading] = useState(false);
   const [priceLoading, setPriceLoading] = useState(false);
   const [completeLoading, setCompleteLoading] = useState(false);
   const [localError, setLocalError] = useState('');
 
   useEffect(() => {
-    if (booking?.id) refreshBookingById(booking.id);
+    if (initialBooking?.id) setLocalBooking(initialBooking);
+  }, [initialBooking?.id]);
+
+  useEffect(() => {
+    if (booking?.id) {
+      refreshBookingById(booking.id).then((result) => {
+        if (result) setLocalBooking(result);
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booking?.id, refreshBookingById]);
 
   // Safety net: re-fetch while the outcome is still open so a proposal made
@@ -59,7 +72,11 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
     booking?.status === 'PENDING' || booking?.status === 'ACCEPTED';
   useEffect(() => {
     if (!stillOpen || !booking?.id) return undefined;
-    const id = setInterval(() => refreshBookingById(booking.id), 8000);
+    const id = setInterval(() => {
+      refreshBookingById(booking.id).then((result) => {
+        if (result) setLocalBooking(result);
+      });
+    }, 8000);
     return () => clearInterval(id);
   }, [stillOpen, booking?.id, refreshBookingById]);
 
@@ -118,8 +135,13 @@ export default function BookingWaitingScreen({ booking: initialBooking, onNaviga
       const res = await completeBooking(booking.id);
       const updated = res?.data?.booking;
       if (!updated || updated.status === 'COMPLETED') {
-        // Clear the active booking so it disappears from the home screen
-        setActiveBooking(null);
+        // Clear this booking's copy so it disappears; refreshing by id keeps
+        // the context's active list in sync without dropping other bookings.
+        await refreshBookingById(booking.id);
+        setActiveBooking((prev) =>
+          prev && prev.id === booking.id ? null : prev,
+        );
+        setLocalBooking(null);
         onComplete?.(updated || booking);
         onNavigate?.('rateExperience', { job: updated || booking });
       } else {

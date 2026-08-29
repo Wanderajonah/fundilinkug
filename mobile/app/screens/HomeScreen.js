@@ -22,7 +22,7 @@ import theme from "../theme";
 import { useBookingOptional } from "../../context/BookingContext";
 import { useLocation } from "../../context/LocationContext";
 import { useLanguage } from "../i18n/LanguageContext";
-import { bookingRoute } from "../utils/bookings";
+import { bookingRoute, bookingToActiveJob } from "../utils/bookings";
 
 const H_PAD = 20;
 
@@ -206,22 +206,28 @@ function HeroSlider({ onNavigate }) {
   );
 }
 
-function ListHeader({ userName, userRole, fundiEnabled, onNavigate, locationLabel, activeJob, bookingsLoading, walletBalance }) {
+function ListHeader({ userName, userRole, fundiEnabled, onNavigate, locationLabel, activeJob, activeJobs, bookingsLoading, walletBalance }) {
   const { t } = useLanguage();
   const bookingCtx = useBookingOptional();
 
   // Route by the booking's CURRENT server state, not where the banner assumes.
-  const openActiveBooking = async () => {
-    const fresh = activeJob?.id
-      ? await bookingCtx?.refreshBookingById?.(activeJob.id)
+  const openActiveBooking = async (bookingId) => {
+    const fresh = bookingId
+      ? await bookingCtx?.refreshBookingById?.(bookingId)
       : null;
-    const route = bookingRoute(fresh || bookingCtx?.activeBooking || null);
+    const route = bookingRoute(fresh || null);
     if (!route) {
       onNavigate?.("jobInProgress");
       return;
     }
     onNavigate?.(route.key, route.params);
   };
+
+  // One banner per concurrent in-progress job so a second active booking
+  // never hides the first.
+  const inProgressJobs = (activeJobs || []).filter(
+    (b) => String(b.status).toLowerCase() === "in_progress"
+  );
 
   const [showBalance, setShowBalance] = useState(true);
   return (
@@ -280,24 +286,25 @@ function ListHeader({ userName, userRole, fundiEnabled, onNavigate, locationLabe
         ) : null}
       </View>
 
-      {/* Active booking banner — only show for in-progress jobs */}
-      {activeJob?.status === "in_progress" ? (
+      {/* Active booking banners — one per in-progress job */}
+      {inProgressJobs.map((job) => (
         <TouchableOpacity
+          key={job.id}
           style={styles.activeBanner}
-          onPress={openActiveBooking}
+          onPress={() => openActiveBooking(job.id)}
           activeOpacity={0.9}
         >
           <View style={{ flex: 1 }}>
             <Text style={styles.activeBannerTitle}>
-              {t('Active booking')} · {activeJob.service}
+              {t('Active booking')} · {job.service}
             </Text>
             <Text style={styles.activeBannerSub}>
-              {activeJob.fundiName} · {formatUgx(activeJob.amount)}
+              {job.fundiName} · {formatUgx(job.amount)}
             </Text>
           </View>
           <Text style={styles.activeBannerCta}>{t('Open')}</Text>
         </TouchableOpacity>
-      ) : null}
+      ))}
 
       {/* Fundi mode switch for dual-role users */}
       {fundiEnabled && userRole === "customer" ? (
@@ -413,6 +420,8 @@ export default function HomeScreen({
 }) {
   const bookingCtx = useBookingOptional();
   const resolvedActiveJob = bookingCtx?.activeJob || activeJob;
+  // All concurrent active bookings, mapped to the job shape used for banners.
+  const resolvedActiveJobs = (bookingCtx?.activeBookings || []).map(bookingToActiveJob).filter(Boolean);
   const { address } = useLocation();
   const { t } = useLanguage();
   const [walletBalance, setWalletBalance] = useState(null);
@@ -464,6 +473,7 @@ export default function HomeScreen({
             onNavigate={onNavigate}
             locationLabel={address}
             activeJob={resolvedActiveJob}
+            activeJobs={resolvedActiveJobs}
             bookingsLoading={bookingCtx?.loading}
             walletBalance={walletBalance}
           />

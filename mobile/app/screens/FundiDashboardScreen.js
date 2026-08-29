@@ -207,7 +207,14 @@ export default function FundiDashboardScreen({
   }, [refreshBookings]);
 
   const activeBookings = useMemo(
-    () => bookings.filter((b) => ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status)),
+    () =>
+      bookings.filter(
+        (b) =>
+          ['ACCEPTED', 'ON_THE_WAY', 'ARRIVED', 'IN_PROGRESS'].includes(b.status) &&
+          // A job is done as soon as both parties have confirmed completion,
+          // even if a stale snapshot still reads IN_PROGRESS.
+          !(b.clientCompleted && b.fundiCompleted),
+      ),
     [bookings],
   );
 
@@ -309,13 +316,14 @@ export default function FundiDashboardScreen({
     activeCard && !awaitingClientConfirm && (activeCard.priceAgreed || jobStep > 0),
   );
 
-  // Safety net: while waiting for the client's confirmation, poll so the
-  // completed job (and released payment) shows up even without socket.
+  // Safety net: while the job is still active (and especially while waiting
+  // for the client's completion confirmation), poll so the completed job —
+  // and its released payment — shows up even if a socket event was missed.
   useEffect(() => {
-    if (!awaitingClientConfirm) return undefined;
+    if (activeBookings.length === 0) return undefined;
     const id = setInterval(() => refreshBookings(), 8000);
     return () => clearInterval(id);
-  }, [awaitingClientConfirm, refreshBookings]);
+  }, [activeBookings.length, refreshBookings]);
 
   const requestCard = useMemo(() => {
     if (!request) return null;
