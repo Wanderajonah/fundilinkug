@@ -12,61 +12,36 @@
 \usepackage{enumitem}
 \usepackage{titlesec}
 \usepackage{array}
-\usepackage{parskip}
-\usepackage{setspace}
-\usepackage{fancyhdr}
-\usepackage{lastpage}
-
-% ----------------------- Default serif (formal) -----------------------
-\usepackage{times}
 
 % ----------------------- Heading styling: plain, no colour -----------------------
-\titleformat{\section}
-  {\Large\bfseries}{\thesection.}{0.7em}{}
-\titleformat{\subsection}
-  {\normalsize\bfseries}{\thesubsection.}{0.7em}{}
-\titlespacing*{\section}{0pt}{1.4em}{0.5em}
-\titlespacing*{\subsection}{0pt}{1.0em}{0.3em}
+\titleformat{\section}{\Large\bfseries}{\thesection.}{0.7em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection.}{0.7em}{}
+\titlespacing*{\section}{0pt}{1.2em}{0.5em}
+\titlespacing*{\subsection}{0pt}{0.9em}{0.3em}
 
-\setstretch{1.2}
-
-% ----------------------- Header / footer -----------------------
-\pagestyle{fancy}
-\fancyhf{}
-\fancyhead[L]{\small\textsc{FundiLink}}
-\fancyhead[R]{\small Concept Paper}
-\fancyfoot[C]{\small Page \thepage\ of \pageref{LastPage}}
-\renewcommand{\headrulewidth}{0.4pt}
-\renewcommand{\footrulewidth}{0.4pt}
+% ----------------------- Title / author -----------------------
+\title{\vspace{-1.5cm}\Huge\textbf{FundiLink}\\[0.5em]
+\Large Concept Paper\\[0.3em]
+\normalsize Connecting Communities to Trusted Local Artisans}
+\author{Prepared for Prospective Partners and Funders}
+\date{\today}
 
 \begin{document}
 
-% ======================= Cover page =======================
-\begin{titlepage}
-\vspace*{4.5cm}
-\begin{center}
-{\Huge\bfseries FundiLink}\\[1.0em]
-{\LARGE Connecting Communities to Trusted Local Artisans}\\[0.6em]
-{\large\itshape Concept Paper}\\[2.5em]
-{\small
-\rule{0.6\textwidth}{0.4pt}
-}\\[2.2em]
-\begin{minipage}{0.85\textwidth}
-\centering
-A plain-language introduction to the problem FundiLink solves, how we
-solve it, and the focused first step we propose to take.
-\end{minipage}\\[3.0em]
-\begin{minipage}{0.9\textwidth}
-\centering
-\begin{tabular}{@{}l@{\hspace{2em}}l@{}}
-\textbf{Prepared by:} & \makebox[5cm]{}\\
-\textbf{Contact:}     & \makebox[5cm]{}\\
-\textbf{Date:}        & \today\\
-\end{tabular}
-\end{minipage}
-\end{center}
-\vfill
-\end{titlepage}
+\maketitle
+
+% ======================= Abstract =======================
+\begin{abstract}
+\noindent
+Skilled manual work -- plumbing, electrical repairs, carpentry and painting -- is essential to
+every home and small business, yet getting this kind of help remains a constant gamble. There
+is no reliable way to know who is qualified, what the job should cost, or whether the work
+will be done properly. \textbf{FundiLink} solves this by bringing order and trust to an
+informal market: it uses where a customer is to connect them, almost instantly, to a qualified
+and trusted artisan working nearby, then sets a clear agreed price and builds each artisan's
+reputation through genuine, public reviews. This paper explains the problem, why now is the
+right time to solve it, how we propose to solve it, and the focused first step we plan to take.
+\end{abstract}
 
 % ======================= 1. The Bottom Line =======================
 \section{The Bottom Line}
@@ -84,9 +59,6 @@ artisan's reputation through genuine, public reviews.
 Think of it like the way a trusted ride-hailing service finds a driver already close to you --
 but for skilled home services. Instead of waiting days and taking a chance on whoever you can
 find, you are matched with a nearby, vetted artisan in minutes.
-
-This paper explains the problem, why now is the right time to solve it, how we solve it, and
-the focused first step we propose to take.
 
 % ======================= 2. The Problem =======================
 \section{The Problem}
@@ -260,12 +232,5 @@ together for skilled manual work.
 FundiLink is that service. It has been designed, built and proven, and it is ready to be taken
 fully to market with the right support. We would welcome the opportunity to discuss the
 project with you, to show the working service, and to explore a partnership together.
-
-\vspace{1em}
-\begin{center}
-\small
-\rule{0.4\textwidth}{0.4pt}\\[0.6em]
-\textit{Thank you for your time and consideration. We look forward to hearing from you.}
-\end{center}
 
 \end{document}
