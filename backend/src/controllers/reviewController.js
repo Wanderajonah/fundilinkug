@@ -25,6 +25,26 @@ const createReview = async (req, res, next) => {
       }
     }
 
+    // A client has exactly ONE review per fundi. If they have already rated
+    // this fundi (e.g. from a previous job), update that review instead of
+    // creating a duplicate — re-hiring the same fundi should edit, not add.
+    const existingForFundi = await Review.findOne({
+      fundiId,
+      customerId: req.user._id,
+    });
+
+    if (existingForFundi) {
+      existingForFundi.rating = rating;
+      existingForFundi.comment = comment || existingForFundi.comment;
+      existingForFundi.photoUrls = Array.isArray(photoUrls) ? photoUrls : existingForFundi.photoUrls;
+      existingForFundi.service = service || existingForFundi.service;
+      existingForFundi.amount = amount || existingForFundi.amount;
+      if (jobId) existingForFundi.jobId = jobId;
+      await existingForFundi.save();
+      await refreshFundiRating(fundiId);
+      return res.status(200).json(existingForFundi);
+    }
+
     const review = await Review.create({
       fundiId,
       customerId: req.user._id,

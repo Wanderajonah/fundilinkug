@@ -269,15 +269,7 @@ function AppContent() {
       } else if (!editingReview) {
         const job = params?.job || activeJob;
         const fundiId = job?.fundiId || job?.fundi;
-        const existing = fundiId
-          ? reviewHistory.find(
-              (r) =>
-                (r.fundiId === fundiId || r.fundi?._id === fundiId) &&
-                r.reviewId &&
-                !String(r.reviewId).startsWith("demo") &&
-                !String(r.reviewId).startsWith("local-"),
-            )
-          : null;
+        const existing = findExistingReviewForFundi(reviewHistory, fundiId);
         setEditingReview(existing || null);
       }
       return pushAndNavigate("rateExperience");
@@ -429,6 +421,25 @@ function AppContent() {
     };
   }, [screen]);
 
+  const findExistingReviewForFundi = (reviewList, fundiId) => {
+    if (!fundiId) return null;
+    const normalized = String(fundiId);
+    const match = (r) => {
+      const rid =
+        r.fundiId?._id || r.fundi?._id || r._id || r.fundiId || r.fundi;
+      return String(rid || "") === normalized;
+    };
+    return (
+      (reviewList || []).find(
+        (r) =>
+          match(r) &&
+          (r.reviewId || r._id || r.id) &&
+          !String(r.reviewId || r._id || r.id).startsWith("demo") &&
+          !String(r.reviewId || r._id || r.id).startsWith("local-"),
+      ) || null
+    );
+  };
+
   const handleJobComplete = async (job) => {
     const completed = {
       ...job,
@@ -437,19 +448,39 @@ function AppContent() {
     };
     setActiveJob(completed);
 
-    // Check if the client already reviewed this fundi — if so, load that
-    // review so the screen offers an "Update review" flow instead of
-    // creating a duplicate.
+    // Look for an existing review for this fundi so the screen offers an
+    // "Update review" flow instead of creating a duplicate. Search both the
+    // in-memory history and a fresh fetch (covers cold starts where the
+    // cached list is empty) so re-hiring the same fundi reliably edits.
     const fundiId = job.fundiId || job.fundi;
-    const existingForFundi = fundiId
-      ? reviewHistory.find(
-          (r) =>
-            (r.fundiId === fundiId || r.fundi?._id === fundiId) &&
-            r.reviewId &&
-            !String(r.reviewId).startsWith("demo") &&
-            !String(r.reviewId).startsWith("local-"),
-        )
-      : null;
+    let existingForFundi = findExistingReviewForFundi(reviewHistory, fundiId);
+    if (!existingForFundi && authToken) {
+      try {
+        const { data } = await getMyReviews();
+        if (Array.isArray(data) && data.length) {
+          const normalized = String(fundiId);
+          const fresh = data.find(
+            (r) => String(r.fundiId?._id || r.fundi || r.fundiId || "") === normalized,
+          );
+          if (fresh) {
+            existingForFundi = {
+              id: fresh._id,
+              reviewId: fresh._id,
+              fundiId: fresh.fundiId?._id || fresh.fundiId,
+              fundiName: fresh.fundiId?.name || job.fundiName || "Fundi",
+              service: fresh.service || job.service,
+              amount: fresh.amount || job.amount,
+              rating: fresh.rating,
+              comment: fresh.comment,
+              photoUrls: fresh.photoUrls || [],
+              date: fresh.updatedAt || fresh.createdAt,
+            };
+          }
+        }
+      } catch {
+        // fall back to whatever state we have
+      }
+    }
 
     setEditingReview(existingForFundi || null);
     pushAndNavigate("rateExperience");

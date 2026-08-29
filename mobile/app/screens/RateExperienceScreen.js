@@ -175,12 +175,17 @@ export default function RateExperienceScreen({
     if (existingReview || !onSetEditingReview) return;
     const fundiId = job.fundiId || job.fundi;
     if (!fundiId) return;
-    const found = reviewHistory.find(
+    const normalized = String(fundiId);
+    const match = (r) => {
+      const rid = r.fundiId?._id || r.fundi?._id || r._id || r.fundiId || r.fundi;
+      return String(rid || "") === normalized;
+    };
+    const found = (reviewHistory || []).find(
       (r) =>
-        (r.fundiId === fundiId || r.fundi?._id === fundiId) &&
-        r.reviewId &&
-        !String(r.reviewId).startsWith('demo') &&
-        !String(r.reviewId).startsWith('local-'),
+        match(r) &&
+        (r.reviewId || r._id || r.id) &&
+        !String(r.reviewId || r._id || r.id).startsWith("demo") &&
+        !String(r.reviewId || r._id || r.id).startsWith("local-"),
     );
     if (found) onSetEditingReview(found);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
