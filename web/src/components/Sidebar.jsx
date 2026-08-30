@@ -19,6 +19,7 @@ import {
 } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
 import { getInitials } from '../utils/format';
+import { getNotifications } from '../services/api';
 
 const navItems = [
   { icon: RiDashboardLine, label: 'Dashboard', to: '/dashboard' },
@@ -43,9 +44,8 @@ const Sidebar = () => {
 
   const fetchUnread = useCallback(async () => {
     try {
-      const res = await fetch('https://fundilinkug.onrender.com/api/admin/notifications?limit=1');
-      const data = await res.json();
-      setUnread(data.unread || 0);
+      const res = await getNotifications({ limit: 1 });
+      setUnread(res.data?.unread || 0);
     } catch {
     }
   }, []);

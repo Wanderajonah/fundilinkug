@@ -180,7 +180,7 @@ export function BookingProvider({
       return undefined;
     }
 
-    connectSocket(userId);
+    connectSocket(userId, authToken);
     refreshBookings();
 
     const unsubs = [

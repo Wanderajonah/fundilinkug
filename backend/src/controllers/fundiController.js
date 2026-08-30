@@ -32,7 +32,9 @@ const getFundis = async (req, res, next) => {
       const or = [];
       if (excludePhone) or.push({ phone: excludePhone });
       if (excludeEmail) or.push({ email: excludeEmail });
-      const siblings = await User.find({ role: "fundi", $or: or }).select("_id");
+      const siblings = await User.find({
+        $or: [{ role: "fundi" }, { fundiEnabled: true }, ...or],
+      }).select("_id");
       siblings.forEach((s) => excludeIds.add(String(s._id)));
     }
 
@@ -91,7 +93,9 @@ const getNegotiableFundis = async (req, res, next) => {
       const or = [];
       if (excludePhone) or.push({ phone: excludePhone });
       if (excludeEmail) or.push({ email: excludeEmail });
-      const siblings = await User.find({ role: "fundi", $or: or }).select("_id");
+      const siblings = await User.find({
+        $or: [{ role: "fundi" }, { fundiEnabled: true }, ...or],
+      }).select("_id");
       siblings.forEach((s) => excludeIds.add(String(s._id)));
     }
 

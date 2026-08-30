@@ -19,7 +19,7 @@ function ensureListener(event) {
   }
 }
 
-export function connectSocket(userId) {
+export function connectSocket(userId, token = '') {
   if (!userId) return null;
 
   const url = getSocketUrl();
@@ -40,6 +40,9 @@ export function connectSocket(userId) {
     reconnectionAttempts: Infinity,
     reconnectionDelay: 2000,
     reconnectionDelayMax: 15000,
+    // Authenticate the handshake with the JWT so the server can derive the
+    // user id from the verified token rather than trusting a client-supplied id.
+    auth: { token },
   });
 
   socket.userId = userId;

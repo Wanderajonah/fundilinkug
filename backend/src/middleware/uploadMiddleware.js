@@ -32,5 +32,6 @@ const uploadChat = createUpload("chat");
 const uploadBooking = createUpload("bookings");
 const uploadPortfolio = createUpload("portfolio");
 const uploadVerification = createUpload("verification", true);
+const uploadReview = createUpload("reviews");
 
-module.exports = { uploadProfile, uploadChat, uploadBooking, uploadPortfolio, uploadVerification, createUpload };
+module.exports = { uploadProfile, uploadChat, uploadBooking, uploadPortfolio, uploadVerification, uploadReview, createUpload };

@@ -22,6 +22,7 @@ import {
   getErrorMessage,
 } from '../../services/bookingsApi';
 import { getProfile } from '../../services/usersApi';
+import { getWallet } from '../../services/walletApi';
 import { emitSocket } from '../../services/socketService';
 import { computeEarnings, getGreeting } from '../utils/jobs';
 import { BOOKING_STATUS_LABELS } from '../utils/bookings';
@@ -187,6 +188,8 @@ export default function FundiDashboardScreen({
   onNavigate,
   userName,
   userFullName,
+  fundiEnabled,
+  onSwitchToClientMode,
 }) {
   const { t, language, setLanguage } = useLanguage();
   const {
@@ -201,6 +204,7 @@ export default function FundiDashboardScreen({
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [acceptLoading, setAcceptLoading] = useState(false);
   const [declineLoading, setDeclineLoading] = useState(false);
+  const [heldBalance, setHeldBalance] = useState(0);
 
   useEffect(() => {
     refreshBookings();
@@ -344,7 +348,22 @@ export default function FundiDashboardScreen({
     let cancelled = false;
     getProfile()
       .then(({ data }) => {
-        if (!cancelled) setFundiRating(Number(data?.fundiProfile?.rating) || 0);
+        if (cancelled) return;
+        setFundiRating(Number(data?.fundiProfile?.rating) || 0);
+        // Hydrate the real availability from the fundi profile instead of
+        // always defaulting to "online" on reload.
+        const isAvailable = data?.fundiProfile?.isAvailable != null
+          ? Boolean(data.fundiProfile.isAvailable)
+          : true;
+        const negotiable = Boolean(data?.fundiProfile?.availableForNegotiation);
+        setAvailabilityMode(!isAvailable ? "offline" : negotiable ? "negotiable" : "online");
+      })
+      .catch(() => {});
+    getWallet()
+      .then(({ data }) => {
+        if (!cancelled && data?.wallet?.heldBalance != null) {
+          setHeldBalance(Number(data.wallet.heldBalance) || 0);
+        }
       })
       .catch(() => {});
     return () => {
@@ -353,7 +372,8 @@ export default function FundiDashboardScreen({
   }, []);
   const avgRating = fundiRating;
   const pendingCount = activeBookings.length + (request ? 1 : 0);
-  const escrow = Math.round(heroEarnings * 0.17);
+  // Real escrow balance comes from the fundi wallet (see getWallet above).
+  const escrow = heldBalance;
 
   const handleSetAvailability = async (mode) => {
     const prev = availabilityMode;
@@ -460,6 +480,22 @@ export default function FundiDashboardScreen({
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Client mode back-switch for dual-role (fundi-enabled) users */}
+        {fundiEnabled && onSwitchToClientMode ? (
+          <TouchableOpacity
+            style={styles.clientModeBanner}
+            onPress={onSwitchToClientMode}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="person-outline" size={20} color={theme.colors.accent} />
+            <View style={{ flex: 1, marginLeft: 10 }}>
+              <Text style={styles.clientModeTitle}>{t('Client Mode')}</Text>
+              <Text style={styles.clientModeSub}>{t('Switch back to browsing and booking jobs as a client')}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={16} color={theme.colors.mutedDark} />
+          </TouchableOpacity>
+        ) : null}
 
         <View style={styles.availabilityRow}>
           {[
@@ -789,6 +825,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
+  },
+  clientModeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.colors.input,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginTop: 12,
+  },
+  clientModeTitle: {
+    color: theme.colors.accent,
+    fontWeight: '800',
+    fontSize: 13,
+  },
+  clientModeSub: {
+    color: theme.colors.muted,
+    fontSize: 11,
+    marginTop: 2,
   },
   bellButton: {
     width: 40,

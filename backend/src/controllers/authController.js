@@ -261,17 +261,23 @@ const verifyOtpLogin = async (req, res, next) => {
 
 const selectRole = async (req, res, next) => {
   try {
-    const { role, userId } = req.body;
+    const { role } = req.body;
     if (!role || !["customer", "fundi"].includes(role)) {
       return res.status(400).json({ message: "role must be 'customer' or 'fundi'" });
     }
-    if (!userId) {
-      return res.status(400).json({ message: "userId is required" });
-    }
-    const user = await User.findById(userId).select("-password");
+
+    // The authenticated user comes from the JWT in the Authorization header
+    // (via the `protect` middleware) -- never trust a userId supplied in the body.
+    const user = await User.findById(req.user._id).select("-password");
     if (!user) {
       return res.status(404).json({ message: "Account not found" });
     }
+
+    // Only a dual-role (fundi-enabled) account may switch to the "fundi" view.
+    if (role === "fundi" && !user.fundiEnabled) {
+      return res.status(403).json({ message: "This account is not enabled as a fundi" });
+    }
+
     return res.json({
       token: generateToken(user._id),
       user: formatUser(user),

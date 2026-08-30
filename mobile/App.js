@@ -145,6 +145,21 @@ function AppContent() {
     }
   };
 
+  // Switch a dual-role (fundi-enabled) user into fundi mode. The active role
+  // must reflect the chosen view so tabs/dashboard/booking scoping are correct.
+  const switchToFundiMode = () => {
+    historyRef.current = [];
+    setUserRole("fundi");
+    setScreen("fundiDashboard");
+  };
+
+  // Switch a dual-role (fundi-enabled) user back into client mode.
+  const switchToClientMode = () => {
+    historyRef.current = [];
+    setUserRole("customer");
+    setScreen("home");
+  };
+
   const handleLogout = async () => {
     // Clear API token and local auth state
     try {
@@ -365,26 +380,19 @@ function AppContent() {
     if (screen !== "chat") setChatTargetUserId(null);
   }, [screen]);
 
-  // Make the Android system navigation bar dark so no light strip shows
+  // Keep the Android system navigation bar in sync with the dark theme.
+  // The app runs edge-to-edge, so the nav bar is transparent and Android paints
+  // the app's background behind it. The background color is handled natively via
+  // the config plugin (values/styles.xml) + this root View's dark background.
+  // Here we only ensure light (white) nav-bar buttons on the dark background.
   useEffect(() => {
     if (Platform.OS === "android") {
-      (async () => {
-        try {
-          if (NavigationBar.setBackgroundColorAsync) {
-            await NavigationBar.setBackgroundColorAsync("#000000");
-          }
-          await NavigationBar.setButtonStyleAsync("light");
-        } catch {
-          /* non-blocking */
-        }
-        try {
-          if (SystemUI.setBackgroundColorAsync) {
-            await SystemUI.setBackgroundColorAsync("#000000");
-          }
-        } catch {
-          /* non-blocking */
-        }
-      })();
+      NavigationBar.setButtonStyleAsync("light").catch(() => {
+        /* non-blocking */
+      });
+      SystemUI.setBackgroundColorAsync("#000000").catch(() => {
+        /* non-blocking */
+      });
     }
   }, []);
 
@@ -615,6 +623,8 @@ function AppContent() {
     authToken,
     fundiEnabled,
     onNavigate: handleNavigate,
+    onSwitchToFundiMode: switchToFundiMode,
+    onSwitchToClientMode: switchToClientMode,
     activeJob,
   };
   const tabPropsWithLogout = { ...tabProps, onLogout: handleLogout };
@@ -859,7 +869,7 @@ function AppContent() {
           }
           const { data } = await verifyOtpLogin(otpPhone, code);
           if (data.requireRoleSelection) {
-            setPendingUsers([data.user]);
+            setPendingUsers([data.user, data.token]);
             setScreen("rolePicker");
             return;
           }
@@ -887,6 +897,8 @@ function AppContent() {
         user={dualUser}
         onSelect={async (role) => {
           try {
+            const loginToken = pendingUsers?.[1] || "";
+            if (loginToken) setApiAuthToken(loginToken);
             const { data } = await selectRole(role, dualUser?.id || dualUser?._id);
             setPendingUsers(null);
             await applySession(data);
@@ -1169,6 +1181,7 @@ function AppContent() {
         }}
         onSubmit={handleReviewSubmit}
         onSetEditingReview={setEditingReview}
+        authToken={authToken}
       />
     );
   }

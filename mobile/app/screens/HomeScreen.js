@@ -206,7 +206,7 @@ function HeroSlider({ onNavigate }) {
   );
 }
 
-function ListHeader({ userName, userRole, fundiEnabled, onNavigate, locationLabel, activeJob, activeJobs, bookingsLoading, walletBalance }) {
+function ListHeader({ userName, userRole, fundiEnabled, onNavigate, onSwitchToFundiMode, locationLabel, activeJob, activeJobs, bookingsLoading, walletBalance }) {
   const { t } = useLanguage();
   const bookingCtx = useBookingOptional();
 
@@ -310,7 +310,7 @@ function ListHeader({ userName, userRole, fundiEnabled, onNavigate, locationLabe
       {fundiEnabled && userRole === "customer" ? (
         <TouchableOpacity
           style={styles.fundiModeBanner}
-          onPress={() => onNavigate?.("fundiDashboard")}
+          onPress={() => onSwitchToFundiMode?.()}
           activeOpacity={0.85}
         >
           <Ionicons name="briefcase-outline" size={20} color={theme.colors.accent} />
@@ -417,6 +417,7 @@ export default function HomeScreen({
   fundiEnabled,
   activeJob,
   onNavigate,
+  onSwitchToFundiMode,
 }) {
   const bookingCtx = useBookingOptional();
   const resolvedActiveJob = bookingCtx?.activeJob || activeJob;
@@ -471,6 +472,7 @@ export default function HomeScreen({
             userRole={userRole}
             fundiEnabled={fundiEnabled}
             onNavigate={onNavigate}
+            onSwitchToFundiMode={onSwitchToFundiMode}
             locationLabel={address}
             activeJob={resolvedActiveJob}
             activeJobs={resolvedActiveJobs}

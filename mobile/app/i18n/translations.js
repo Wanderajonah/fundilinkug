@@ -28,6 +28,8 @@ export const translations = {
     'Could not enable fundi mode': 'Tetwasobola kutandika enkola ya Fundi',
     'Something went wrong': 'Ekintu kigenderedde obubi',
     'Switch to fundi view to manage jobs': 'Kyusa okuyingira mu Fundi okulondoola emirimu',
+    'Client Mode': 'Enkola ya Mukozesa',
+    'Switch back to browsing and booking jobs as a client': 'Komawo okulaba n\'okusaba emirimu nga mukozesa',
     'Welcome to FundiLink!': 'Tukulamusizza ku FundiLink!',
     'Accept your first job to start earning. Your earnings and stats will appear here.': 'Kkiriza omulimu gwo ogusooka otandike okufuna ssente. Ebijjio byo n\'eby\'enkolagana birirabikira wano.',
     'View Available Jobs': 'Laba Emirimu Ebiri',

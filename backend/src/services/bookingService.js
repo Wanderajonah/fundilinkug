@@ -82,7 +82,7 @@ async function createBooking(clientId, bookingData) {
     if (fundiId) {
       // Direct booking to a specific fundi chosen by the client
       const fundi = await User.findById(fundiId);
-      if (!fundi || fundi.role !== "fundi") {
+      if (!fundi || (fundi.role !== "fundi" && !fundi.fundiEnabled)) {
         booking.status = "CANCELLED";
         booking.cancelledBy = "SYSTEM";
         booking.cancellationReason = "Selected fundi not found";
@@ -134,17 +134,28 @@ async function sendToNextFundi(booking) {
     // Get already notified fundi IDs
     const notifiedFundiIds = booking.notifiedFundis.map(n => n.fundiId.toString());
     
-    // Find next nearest available fundi
-    const availableFundis = await findNearestAvailableFundis(
-      booking.location.lat,
-      booking.location.lng,
-      booking.category,
-      50,
-      notifiedFundiIds
-    );
+    // Search progressively wider areas so a client is never told "no fundis"
+    // just because nobody matched within the immediate radius. We expand the
+    // radius in steps before eventually giving up.
+    const RADIUS_STEPS = [50, 100, 200]; // km
+    let availableFundis = [];
+    let foundRadius = 0;
+    for (const radiusKm of RADIUS_STEPS) {
+      availableFundis = await findNearestAvailableFundis(
+        booking.location.lat,
+        booking.location.lng,
+        booking.category,
+        radiusKm,
+        notifiedFundiIds
+      );
+      if (availableFundis.length > 0) {
+        foundRadius = radiusKm;
+        break;
+      }
+    }
     
     if (availableFundis.length === 0) {
-      // No more fundis available
+      // No more fundis available even after widening the search area
       await handleNoFundiAvailable(booking);
       return;
     }
@@ -178,7 +189,8 @@ async function sendToNextFundi(booking) {
       clientPhone: client.phone,
       expiresAt: booking.expiresAt,
       timeLeft: 300, // 5 minutes in seconds
-      distanceKm: Math.round(nextFundi.distance * 10) / 10
+      distanceKm: Math.round(nextFundi.distance * 10) / 10,
+      searchRadiusKm: foundRadius // surface how far we had to look
     });
     
     // Update notification channels
@@ -433,18 +445,21 @@ async function updateBookingStatus(bookingId, fundiId, newStatus) {
       }
     }
     
-    // Notify client of status update
+    // Notify client of status update. In-flight status changes
+    // (on_the_way / arrived / in_progress) are delivered in-app only via
+    // socket push and polling -- we explicitly disable paid SMS here so status
+    // updates never burn SMS credits in production.
     const eventMap = {
       "ON_THE_WAY": "status_on_the_way",
       "ARRIVED": "status_arrived",
       "IN_PROGRESS": "status_in_progress"
     };
-    
+
     if (eventMap[newStatus]) {
       await notifyClient(booking.clientId, eventMap[newStatus], {
         bookingId: booking._id,
         status: newStatus
-      });
+      }, { allowSms: false });
     }
     
     console.log(`Booking ${bookingId} status updated to ${newStatus}`);

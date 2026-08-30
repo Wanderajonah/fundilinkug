@@ -11,13 +11,8 @@ import { getPlatformPricing } from '../../services/api';
 import { holdEscrow as holdPaymentApi, getWallet } from '../../services/walletApi';
 import { useLanguage } from '../i18n/LanguageContext';
 
-import mtnIcon from '../../assets/mtn.png';
-import airtelIcon from '../../assets/airtel.png';
-
 const METHODS = [
   { key: 'wallet', name: 'Pay with Wallet', icon: null, phoneLabel: '', hint: 'Pay directly from your wallet balance.' },
-  { key: 'mtn', name: 'MTN Mobile Money', icon: mtnIcon, phoneLabel: 'MTN MOMO NUMBER', hint: "You'll receive a MoMo STK push prompt to approve on your phone." },
-  { key: 'airtel', name: 'Airtel Money', icon: airtelIcon, phoneLabel: 'AIRTEL MONEY NUMBER', hint: "You'll receive an Airtel Money STK push prompt to approve on your phone." },
 ];
 
 export default function PaymentScreen({ booking = {}, onBack, onPay, loading = false, onNavigate }) {

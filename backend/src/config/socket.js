@@ -1,4 +1,5 @@
 const { setIo, notifyFundiLocation } = require("../services/notificationService");
+const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const FundiProfile = require("../models/FundiProfile");
 const Booking = require("../models/Booking");
@@ -15,14 +16,42 @@ function initializeSocket(httpServer) {
   
   // Set io instance in notification service
   setIo(io);
+
+  // Authenticate every socket connection by verifying the JWT supplied in the
+  // handshake. The authenticated user id is derived server-side from the token
+  // and is NEVER taken from client-sent data, preventing identity hijacking.
+  io.use((socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
+      if (!token) {
+        return next(new Error("Authentication required"));
+      }
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      if (!decoded?.id) {
+        return next(new Error("Invalid token"));
+      }
+      socket.userId = decoded.id;
+      return next();
+    } catch (error) {
+      return next(new Error("Invalid token"));
+    }
+  });
   
   io.on("connection", (socket) => {
     console.log(`User connected: ${socket.id}`);
+
+    // Bind the socket to its verified user room immediately on connection.
+    if (socket.userId) {
+      socket.join(`user:${socket.userId}`);
+    }
     
     // Handle user connection with authentication
     socket.on("user_connect", async (data) => {
       try {
-        const { userId } = data;
+        // The userId is always taken from the verified JWT (socket.userId),
+        // never from the client payload. The incoming data may repeat the id
+        // but it is ignored here for security.
+        const userId = socket.userId;
         if (!userId) return;
         
         await User.findByIdAndUpdate(userId, {
@@ -30,7 +59,6 @@ function initializeSocket(httpServer) {
           socketId: socket.id
         });
         
-        socket.userId = userId;
         socket.join(`user:${userId}`);
         console.log(`User ${userId} connected with socket ${socket.id}`);
         
@@ -262,10 +290,11 @@ function initializeSocket(httpServer) {
       }
     });
 
-    // Join user-specific room for targeted notifications
-    socket.on("join_user_room", (data) => {
-      if (data?.userId) {
-        socket.join(`user:${data.userId}`);
+    // Join user-specific room for targeted notifications. The room is derived
+    // from the verified token identity (socket.userId), not client-supplied data.
+    socket.on("join_user_room", () => {
+      if (socket.userId) {
+        socket.join(`user:${socket.userId}`);
       }
     });
 

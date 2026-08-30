@@ -15,7 +15,7 @@ router.post("/register", register);
 router.post("/otp/send", sendOtp);
 router.post("/otp/verify-register", verifyOtpRegister);
 router.post("/otp/verify-login", verifyOtpLogin);
-router.post("/select-role", selectRole);
+router.post("/select-role", protect, selectRole);
 
 module.exports = router;
 

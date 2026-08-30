@@ -9,9 +9,24 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = localStorage.getItem('admin');
-    if (token && user) setAdmin(JSON.parse(user));
+    try {
+      const token = localStorage.getItem('token');
+      const user = localStorage.getItem('admin');
+      if (token && user) {
+        setAdmin(JSON.parse(user));
+      } else {
+        // Clear any half-written/stale session so auth state stays consistent.
+        if (token !== user) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('admin');
+        }
+      }
+    } catch {
+      // Corrupt 'admin' entry (invalid JSON) would otherwise crash the app.
+      localStorage.removeItem('admin');
+      localStorage.removeItem('token');
+      setAdmin(null);
+    }
     setLoading(false);
   }, []);
 

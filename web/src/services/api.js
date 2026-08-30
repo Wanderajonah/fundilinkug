@@ -15,10 +15,14 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    // A 401 from the login endpoint is an expected outcome (bad credentials),
+    // not a session-expiry event. Only treat 401s on authenticated requests as
+    // "session expired", and avoid a redundant reload if already on /login.
+    const isLoginRequest = err.config?.url?.includes('/admin/login');
+    if (err.response?.status === 401 && !isLoginRequest && window.location.pathname !== '/login') {
       localStorage.removeItem('token');
       localStorage.removeItem('admin');
-      window.location.href = '/login';
+      window.location.assign('/login');
     }
     return Promise.reject(err);
   },

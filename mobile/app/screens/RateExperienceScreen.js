@@ -19,6 +19,7 @@ import StarRating from '../components/StarRating';
 import theme from '../theme';
 import { formatUgx, initials } from '../utils/ratings';
 import { useLanguage } from '../i18n/LanguageContext';
+import { uploadReviewImages } from '../../services/reviewsApi';
 
 const MAX_COMMENT = 300;
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -149,6 +150,7 @@ export default function RateExperienceScreen({
   onBack,
   onSubmit,
   onSetEditingReview,
+  authToken = '',
 }) {
   const [rating, setRating] = useState(existingReview?.rating || 0);
   const [comment, setComment] = useState(existingReview?.comment || '');
@@ -262,10 +264,36 @@ export default function RateExperienceScreen({
     setSubmitting(true);
     try {
       const moodText = selectedMoods.length > 0 ? `\n\nHighlights: ${selectedMoods.join(', ')}` : '';
+
+      // Upload any newly-picked local photos to the server. Existing photos that
+      // are already server URLs (e.g. when editing a review) are kept as-is.
+      let finalPhotoUrls = photos;
+      if (authToken && photos.length) {
+        const localUris = photos.filter(
+          (p) => !/^https?:\/\//.test(p) && !/^\/uploads\//.test(p),
+        );
+        if (localUris.length) {
+          try {
+            const uploaded = await uploadReviewImages(localUris);
+            finalPhotoUrls = [
+              ...photos.filter((p) => !localUris.includes(p)),
+              ...uploaded,
+            ];
+          } catch (uploadErr) {
+            Alert.alert(
+              t('Upload failed'),
+              t('Could not upload photos. Try again or remove the photos.'),
+            );
+            setSubmitting(false);
+            return;
+          }
+        }
+      }
+
       await onSubmit?.({
         rating,
         comment: (comment.trim() + moodText).trim(),
-        photoUrls: photos,
+        photoUrls: finalPhotoUrls,
         reviewId: existingReview?.reviewId || existingReview?._id || existingReview?.id,
       });
       setSubmitted(true);
