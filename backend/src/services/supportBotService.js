@@ -3,7 +3,34 @@ const path = require("path");
 const mongoose = require("mongoose");
 const { guessTradeFromText } = require("../utils/trades");
 const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
-const VISION_MODEL = process.env.GROQ_VISION_MODEL || "qwen/qwen3.6-27b";
+const DEFAULT_VISION_MODEL = "qwen/qwen3.6-27b";
+
+// Models that only accept text inputs. If GROQ_VISION_MODEL is accidentally
+// pointed at the platform's text-only chat model (e.g. llama-3.1-8b-instant),
+// image requests would fail with a 400. Fall back to a vision-capable model so
+// photo analysis keeps working.
+const TEXT_ONLY_MODELS = new Set([
+  "llama-3.1-8b-instant",
+  "llama-3.1-70b-versatile",
+  "llama-3.3-70b-versatile",
+  "llama-3.2-1b-preview",
+  "llama-3.2-3b-preview",
+  "gemma2-9b-it",
+  "gemma-7b-it",
+  "mixtral-8x7b-32768",
+]);
+
+function resolveVisionModel() {
+  const configured = (process.env.GROQ_VISION_MODEL || "").trim();
+  // Only trust the configured model if it isn't a known text-only model.
+  if (configured && !TEXT_ONLY_MODELS.has(configured)) return configured;
+  if (configured) {
+    console.warn(
+      `[supportBot] GROQ_VISION_MODEL="${configured}" is text-only; using ${DEFAULT_VISION_MODEL} for image analysis. Set GROQ_VISION_MODEL to a vision-capable model.`
+    );
+  }
+  return DEFAULT_VISION_MODEL;
+}
 
 const MIME_BY_EXT = {
   ".jpg": "image/jpeg",
@@ -243,7 +270,7 @@ async function analyzeProblemImage(imageUrl, userText) {
   ];
 
   const body = {
-    model: VISION_MODEL,
+    model: resolveVisionModel(),
     messages: [
       { role: "system", content: VISION_SYSTEM_PROMPT },
       { role: "user", content }
