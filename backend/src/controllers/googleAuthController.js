@@ -69,6 +69,12 @@ const googleAuth = async (req, res, next) => {
         phoneVerified: user.phoneVerified,
         dateOfBirth: user.dateOfBirth,
         onboardingComplete: user.onboardingComplete,
+        locationConfigured:
+          Number(user.location?.lat) !== 0 || Number(user.location?.lng) !== 0,
+        location: user.location
+          ? { lat: user.location.lat, lng: user.location.lng }
+          : null,
+        locationLabel: user.locationLabel || "",
       },
     });
   } catch (error) {

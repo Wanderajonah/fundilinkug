@@ -120,7 +120,12 @@ function AppContent() {
   const [reviewSuccessMessage, setReviewSuccessMessage] = useState("");
   // simple navigation history stack (stores previous screen keys)
   const historyRef = useRef([]);
-  const { ensureLocationForLogin, setAuthTokenForSync, coords } = useLocation();
+  const {
+    ensureLocationForLogin,
+    setAuthTokenForSync,
+    setManualLocation,
+    coords,
+  } = useLocation();
   const [selectedBookingId, setSelectedBookingId] = useState(null);
   const [clientBookingDraft, setClientBookingDraft] = useState(null);
   const [chatTargetUserId, setChatTargetUserId] = useState(null);
@@ -203,6 +208,39 @@ function AppContent() {
     }
     await proceedAfterLogin(data, role);
     return role;
+  };
+
+  // Finish a login/OTP/role-selection flow. Location is only mandatory during
+  // registration; here we trust the backend flag: if the user already has a
+  // saved location (lat/lng), reuse it and skip the device location gate so
+  // returning users can still log in on emulators without GPS/services.
+  const finishLogin = async (data, role) => {
+    setAuthTokenForSync(data.token || "");
+    const saved = data.user;
+    if (
+      saved?.locationConfigured &&
+      saved?.location &&
+      Number(saved.location.lat) !== 0 &&
+      Number(saved.location.lng) !== 0
+    ) {
+      await setManualLocation(
+        saved.location.lat,
+        saved.location.lng,
+        saved.locationLabel || undefined,
+      );
+      goHome(role);
+      return;
+    }
+    const locationOk = await ensureLocationForLogin();
+    if (!locationOk) {
+      Alert.alert(
+        "Location required",
+        "FundiLink needs location access to show nearby services.",
+      );
+      handleLogout();
+      return;
+    }
+    goHome(role);
   };
 
   const applySession = async (data) => {
@@ -804,18 +842,7 @@ function AppContent() {
         }}
         onLoggedIn={async (data) => {
           const role = await applySession(data);
-
-          setAuthTokenForSync(data.token || "");
-          const locationOk = await ensureLocationForLogin();
-          if (!locationOk) {
-            Alert.alert(
-              "Location required",
-              "FundiLink needs location access to show nearby services.",
-            );
-            handleLogout();
-            return;
-          }
-          goHome(role);
+          await finishLogin(data, role);
         }}
       />
     );
@@ -874,17 +901,7 @@ function AppContent() {
             return;
           }
           const role = await applySession(data);
-          setAuthTokenForSync(data.token || "");
-          const locationOk = await ensureLocationForLogin();
-          if (!locationOk) {
-            Alert.alert(
-              "Location required",
-              "FundiLink needs location access to show nearby services.",
-            );
-            handleLogout();
-            return;
-          }
-          goHome(role);
+          await finishLogin(data, role);
         }}
       />
     );
@@ -906,16 +923,8 @@ function AppContent() {
             // for single-account dual-role, but UI must reflect the chosen view.
             setUserRole(role);
             setAuthTokenForSync(data.token || "");
-            const locationOk = await ensureLocationForLogin();
-            if (!locationOk) {
-              Alert.alert(
-                "Location required",
-                "FundiLink needs location access to show nearby services.",
-              );
-              handleLogout();
-              return;
-            }
-            goHome(role);
+            await finishLogin(data, role);
+            return;
           } catch (e) {
             Alert.alert("Error", getErrorMessage(e));
           }

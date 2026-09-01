@@ -20,6 +20,9 @@ const buildFullName = (firstName, lastName, fallback = "FundiLink User") => {
   return full || fallback;
 };
 
+const hasSavedLocation = (user) =>
+  Number(user.location?.lat) !== 0 || Number(user.location?.lng) !== 0;
+
 const formatUser = (user) => ({
   id: user._id,
   name: user.name,
@@ -35,6 +38,15 @@ const formatUser = (user) => ({
   coverPhoto: user.coverPhoto,
   onboardingComplete: user.onboardingComplete,
   createdAt: user.createdAt,
+  // A user who already saved a location during registration does not need to
+  // be forced through the location gate again on subsequent logins (e.g. on
+  // emulators with no GPS/services). The mobile app skips the gate when this
+  // flag is true and reuses the stored coords.
+  locationConfigured: hasSavedLocation(user),
+  location: user.location
+    ? { lat: user.location.lat, lng: user.location.lng }
+    : null,
+  locationLabel: user.locationLabel || "",
 });
 
 const createFundiProfile = async (userId, skills, experience) => {
