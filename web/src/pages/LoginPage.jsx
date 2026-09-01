@@ -17,7 +17,7 @@ const LoginPage = () => {
     setSubmitting(true);
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate('/admin/dashboard');
     } catch (err) {
       setError(err.response?.data?.message || 'Login failed. Check your credentials and try again.');
     } finally {
@@ -33,6 +33,9 @@ const LoginPage = () => {
           <div className="text-white text-sm">Uganda</div>
           <div className="text-muted text-xs uppercase tracking-widest mt-1">Admin Dashboard</div>
         </div>
+        <a href="/" className="block mb-5 text-xs text-muted hover:text-primary transition-colors">
+          &larr; Back to website
+        </a>
         {error && <div className="bg-red-500/10 border border-danger text-danger text-sm rounded-input px-4 py-3 mb-5">{error}</div>}
         <label className="block text-muted text-xs font-bold uppercase tracking-wider mb-2" htmlFor="email">
           Email

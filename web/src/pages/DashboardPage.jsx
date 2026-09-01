@@ -119,7 +119,7 @@ const DashboardPage = () => {
         <div className="lg:col-span-3 bg-bg-card border border-border rounded-card p-5 shadow-card">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-white font-bold text-base">Recent Bookings</h2>
-            <Link to="/bookings" className="text-primary text-sm hover:text-amber-400">
+            <Link to="/admin/bookings" className="text-primary text-sm hover:text-amber-400">
               View all
             </Link>
           </div>
@@ -151,7 +151,7 @@ const DashboardPage = () => {
                   <div className="text-muted text-xs truncate">{fundi.trade || fundi.category || 'Artisan'}</div>
                 </div>
               </div>
-              <Link to="/fundis" className="px-3 py-1 bg-primary text-primary-text text-xs font-bold rounded-pill hover:bg-amber-400 transition-colors">
+              <Link to="/admin/fundis" className="px-3 py-1 bg-primary text-primary-text text-xs font-bold rounded-pill hover:bg-amber-400 transition-colors">
                 Verify
               </Link>
             </div>

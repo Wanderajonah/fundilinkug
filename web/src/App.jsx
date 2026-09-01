@@ -9,6 +9,7 @@ import DashboardPage from './pages/DashboardPage';
 import DisputesPage from './pages/DisputesPage';
 import FundisPage from './pages/FundisPage';
 import JobsPage from './pages/JobsPage';
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import NotificationsPage from './pages/NotificationsPage';
 import PaymentsPage from './pages/PaymentsPage';
@@ -31,10 +32,11 @@ const DashboardLayout = () => (
 const App = () => (
   <AuthProvider>
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/admin/login" element={<LoginPage />} />
       <Route element={<ProtectedRoute />}>
-        <Route path="/" element={<DashboardLayout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="/admin" element={<DashboardLayout />}>
+          <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
           <Route path="fundis" element={<FundisPage />} />
@@ -49,7 +51,7 @@ const App = () => (
           <Route path="settings" element={<SettingsPage />} />
         </Route>
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   </AuthProvider>
 );

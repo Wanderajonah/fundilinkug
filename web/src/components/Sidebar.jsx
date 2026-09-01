@@ -22,18 +22,18 @@ import { getInitials } from '../utils/format';
 import { getNotifications } from '../services/api';
 
 const navItems = [
-  { icon: RiDashboardLine, label: 'Dashboard', to: '/dashboard' },
-  { icon: RiBarChartBoxLine, label: 'Analytics', to: '/analytics' },
-  { icon: RiUserStarLine, label: 'Fundis', to: '/fundis' },
-  { icon: RiShieldCheckLine, label: 'Verification', to: '/verification' },
-  { icon: RiGroupLine, label: 'Clients', to: '/clients' },
-  { icon: RiCalendarCheckLine, label: 'Bookings', to: '/bookings' },
-  { icon: RiBriefcaseLine, label: 'Jobs', to: '/jobs' },
-  { icon: RiScalesLine, label: 'Disputes', to: '/disputes' },
-  { icon: RiBankCardLine, label: 'Payments', to: '/payments' },
-  { icon: RiStarLine, label: 'Reviews', to: '/reviews' },
-  { icon: RiNotification3Line, label: 'Notifications', to: '/notifications' },
-  { icon: RiSettings4Line, label: 'Settings', to: '/settings' },
+  { icon: RiDashboardLine, label: 'Dashboard', to: '/admin/dashboard' },
+  { icon: RiBarChartBoxLine, label: 'Analytics', to: '/admin/analytics' },
+  { icon: RiUserStarLine, label: 'Fundis', to: '/admin/fundis' },
+  { icon: RiShieldCheckLine, label: 'Verification', to: '/admin/verification' },
+  { icon: RiGroupLine, label: 'Clients', to: '/admin/clients' },
+  { icon: RiCalendarCheckLine, label: 'Bookings', to: '/admin/bookings' },
+  { icon: RiBriefcaseLine, label: 'Jobs', to: '/admin/jobs' },
+  { icon: RiScalesLine, label: 'Disputes', to: '/admin/disputes' },
+  { icon: RiBankCardLine, label: 'Payments', to: '/admin/payments' },
+  { icon: RiStarLine, label: 'Reviews', to: '/admin/reviews' },
+  { icon: RiNotification3Line, label: 'Notifications', to: '/admin/notifications' },
+  { icon: RiSettings4Line, label: 'Settings', to: '/admin/settings' },
 ];
 
 const Sidebar = () => {
@@ -58,7 +58,7 @@ const Sidebar = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate('/admin/login');
   };
 
   return (
@@ -96,7 +96,7 @@ const Sidebar = () => {
               >
                 <Icon className="text-lg" />
                 <span className="flex-1">{item.label}</span>
-                {item.to === '/notifications' && unread > 0 && (
+                {item.to === '/admin/notifications' && unread > 0 && (
                   <span className="bg-primary text-primary-text text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">{unread}</span>
                 )}
               </NavLink>

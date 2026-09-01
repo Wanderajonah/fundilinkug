@@ -6,14 +6,14 @@ import { getInitials } from '../utils/format';
 import { getNotifications } from '../services/api';
 
 const titles = {
-  '/dashboard': 'Dashboard',
-  '/fundis': 'Fundis',
-  '/clients': 'Clients',
-  '/bookings': 'Bookings',
-  '/notifications': 'Notifications',
-  '/payments': 'Payments',
-  '/reviews': 'Reviews',
-  '/settings': 'Settings',
+  '/admin/dashboard': 'Dashboard',
+  '/admin/fundis': 'Fundis',
+  '/admin/clients': 'Clients',
+  '/admin/bookings': 'Bookings',
+  '/admin/notifications': 'Notifications',
+  '/admin/payments': 'Payments',
+  '/admin/reviews': 'Reviews',
+  '/admin/settings': 'Settings',
 };
 
 const TopBar = () => {
@@ -44,7 +44,7 @@ const TopBar = () => {
           placeholder="Search admin"
           className="hidden sm:block bg-bg-raised border border-border rounded-input px-4 py-2 text-white text-sm outline-none w-56 focus:border-primary placeholder:text-muted transition-colors duration-200"
         />
-        <Link to="/notifications" className="relative p-2 text-muted hover:text-white transition-colors" aria-label="Notifications">
+        <Link to="/admin/notifications" className="relative p-2 text-muted hover:text-white transition-colors" aria-label="Notifications">
           <RiNotification3Line className="text-xl" />
           {unread > 0 && (
             <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-primary text-primary-text text-[10px] font-bold rounded-full flex items-center justify-center px-1">{unread}</span>

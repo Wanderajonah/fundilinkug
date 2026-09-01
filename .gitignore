@@ -7,3 +7,6 @@ web/dist/
 *.log
 uploads/
 .DS_Store
+
+# Scraped theme reference (source material, not app code)
+web/20260901082355833/
