@@ -17,9 +17,9 @@ import OtpScreen from "./app/screens/OtpScreen";
 import LocationPermissionScreen from "./app/screens/LocationPermissionScreen";
 import SetLocationScreen from "./app/screens/SetLocationScreen";
 import HomeScreen from "./app/screens/HomeScreen";
-import BrowseArtisansScreen from "./app/screens/BrowseArtisansScreen";
+import BrowseFundisScreen from "./app/screens/BrowseFundisScreen";
 import FundiDashboardScreen from "./app/screens/FundiDashboardScreen";
-import ArtisanProfileScreen from "./app/screens/ArtisanProfileScreen";
+import FundiProfileScreen from "./app/screens/FundiProfileScreen";
 import RequestServiceScreen from "./app/screens/RequestServiceScreen";
 import PaymentScreen from "./app/screens/PaymentScreen";
 import BookingConfirmationScreen from "./app/screens/BookingConfirmationScreen";
@@ -974,7 +974,7 @@ function AppContent() {
   }
 
   if (screen === "browse") {
-    return tabLayout(bookingWrap(<BrowseArtisansScreen {...tabProps} />), "browse");
+    return tabLayout(bookingWrap(<BrowseFundisScreen {...tabProps} />), "browse");
   }
 
   if (screen === "bookings") {
@@ -1058,7 +1058,7 @@ function AppContent() {
 
   if (screen === "artisan") {
     return (
-      <ArtisanProfileScreen
+      <FundiProfileScreen
         artisan={selectedArtisan || {}}
         onNavigate={handleNavigate}
       />

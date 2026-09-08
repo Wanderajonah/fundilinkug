@@ -113,7 +113,7 @@ function FundiCard({ item, onPress }) {
   );
 }
 
-export default function BrowseArtisansScreen({
+export default function BrowseFundisScreen({
   initialCategory = "all",
   userRole = "customer",
   userId,
