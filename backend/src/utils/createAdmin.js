@@ -20,7 +20,7 @@ const createAdmin = async () => {
       lastName: name.split(" ").slice(1).join(" ") || "Admin",
       email,
       password: hashedPassword,
-      role: "admin",
+      role: "super_admin",
       phoneVerified: true,
       onboardingComplete: true,
     },

@@ -113,7 +113,7 @@ const seed = async () => {
 
   // Clear existing data (keep admin users)
   await Promise.all([
-    User.deleteMany({ role: { $ne: "admin" } }),
+    User.deleteMany({ role: { $nin: ["admin", "super_admin"] } }),
     FundiProfile.deleteMany({}),
     Job.deleteMany({}),
     Booking.deleteMany({}),

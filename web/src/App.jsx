@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar';
 import TopBar from './components/TopBar';
 import { AuthProvider, ProtectedRoute } from './context/AuthContext';
 import AnalyticsPage from './pages/AnalyticsPage';
+import AdminsPage from './pages/AdminsPage';
 import BookingsPage from './pages/BookingsPage';
 import ClientsPage from './pages/ClientsPage';
 import DashboardPage from './pages/DashboardPage';
@@ -39,6 +40,7 @@ const App = () => (
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardPage />} />
           <Route path="analytics" element={<AnalyticsPage />} />
+          <Route path="admins" element={<AdminsPage />} />
           <Route path="fundis" element={<FundisPage />} />
           <Route path="verification" element={<VerificationPage />} />
           <Route path="clients" element={<ClientsPage />} />

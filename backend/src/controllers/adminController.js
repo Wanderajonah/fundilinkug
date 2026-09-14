@@ -20,7 +20,7 @@ const login = async (req, res, next) => {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    const user = await User.findOne({ email, role: "admin" });
+    const user = await User.findOne({ email, role: { $in: ["admin", "super_admin"] } });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
@@ -79,7 +79,7 @@ const getStats = async (req, res, next) => {
 
     const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
 
-    const recentUsers = await User.find({ role: { $ne: "admin" } })
+    const recentUsers = await User.find({ role: { $nin: ["admin", "super_admin"] } })
       .sort({ createdAt: -1 })
       .limit(5)
       .select("name email role createdAt profilePhoto");
@@ -495,7 +495,7 @@ const getAnalytics = async (req, res, next) => {
     const [monthlyGrowth, serviceDistribution, bookingStatusDist, avgRating, jobCompletion, weeklyJobs, weeklyRevenue] =
       await Promise.all([
         User.aggregate([
-          { $match: { role: { $ne: "admin" }, createdAt: { $gte: sixMonthsAgo } } },
+          { $match: { role: { $nin: ["admin", "super_admin"] }, createdAt: { $gte: sixMonthsAgo } } },
           {
             $group: {
               _id: { $dateToString: { format: "%Y-%m", date: "$createdAt" } },
@@ -622,15 +622,155 @@ const getAnalytics = async (req, res, next) => {
 const createUser = async (req, res, next) => {
   try {
     const { name, email, phone, password, role } = req.body;
+    if (!["customer", "fundi"].includes(role)) {
+      return res.status(400).json({
+        message: "Only 'customer' or 'fundi' accounts can be created here. Admins are managed by the super admin.",
+      });
+    }
     const existing = await User.findOne({ email });
     if (existing) {
       return res.status(400).json({ message: "User with this email already exists" });
     }
-    const user = await User.create({ name, email, phone, password, role });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await User.create({ name, email, phone, password: hashedPassword, role });
     if (role === "fundi") {
       await FundiProfile.create({ userId: user._id });
     }
     return res.status(201).json({ message: "User created successfully", user });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+// --- Super admin: admin management ---
+
+const getAdmins = async (req, res, next) => {
+  try {
+    const admins = await User.find({ role: { $in: ["admin", "super_admin"] } })
+      .sort({ createdAt: -1 })
+      .select("-password");
+    return res.json({ admins });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const createAdminUser = async (req, res, next) => {
+  try {
+    const { name, email, phone, password } = req.body;
+    if (!name || !email || !password) {
+      return res.status(400).json({ message: "name, email and password are required" });
+    }
+    if (String(password).length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters" });
+    }
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const existing = await User.findOne({ email: normalizedEmail });
+    if (existing) {
+      return res.status(400).json({ message: "An account with this email already exists" });
+    }
+
+    const hashedPassword = await bcrypt.hash(String(password), 10);
+    const admin = await User.create({
+      name: String(name).trim(),
+      firstName: String(name).trim().split(" ")[0],
+      lastName: String(name).trim().split(" ").slice(1).join(" "),
+      email: normalizedEmail,
+      phone,
+      password: hashedPassword,
+      role: "admin",
+      phoneVerified: true,
+      onboardingComplete: true,
+    });
+
+    return res.status(201).json({
+      message: "Admin created successfully",
+      admin: { id: admin._id, name: admin.name, email: admin.email, phone: admin.phone, role: admin.role, createdAt: admin.createdAt },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const updateAdminUser = async (req, res, next) => {
+  try {
+    const target = await User.findById(req.params.id);
+    if (!target) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+    if (!["admin", "super_admin"].includes(target.role)) {
+      return res.status(400).json({ message: "Target user is not an admin" });
+    }
+    if (String(target._id) === String(req.user._id)) {
+      return res.status(400).json({
+        message: "You cannot edit your own account here — use your profile settings.",
+      });
+    }
+
+    const { name, email, phone, password } = req.body;
+    const updates = {};
+
+    if (name !== undefined) {
+      const clean = String(name).trim();
+      if (!clean) return res.status(400).json({ message: "Name cannot be empty" });
+      updates.name = clean;
+      const parts = clean.split(" ");
+      updates.firstName = parts[0] || "";
+      updates.lastName = parts.slice(1).join(" ") || "";
+    }
+
+    if (email !== undefined) {
+      const normalized = String(email).trim().toLowerCase();
+      if (!normalized) return res.status(400).json({ message: "Email cannot be empty" });
+      const duplicate = await User.findOne({ email: normalized, _id: { $ne: target._id } });
+      if (duplicate) {
+        return res.status(400).json({ message: "An account with this email already exists" });
+      }
+      updates.email = normalized;
+    }
+
+    if (phone !== undefined) updates.phone = phone;
+
+    if (password !== undefined && String(password).length > 0) {
+      if (String(password).length < 6) {
+        return res.status(400).json({ message: "Password must be at least 6 characters" });
+      }
+      updates.password = await bcrypt.hash(String(password), 10);
+    }
+
+    const admin = await User.findByIdAndUpdate(target._id, updates, { new: true }).select("-password");
+
+    return res.json({
+      message: "Admin updated successfully",
+      admin: { id: admin._id, name: admin.name, email: admin.email, phone: admin.phone, role: admin.role, createdAt: admin.createdAt },
+    });
+  } catch (error) {
+    return next(error);
+  }
+};
+
+const deleteAdminUser = async (req, res, next) => {
+  try {
+    const target = await User.findById(req.params.id);
+    if (!target) {
+      return res.status(404).json({ message: "Admin not found" });
+    }
+    if (!["admin", "super_admin"].includes(target.role)) {
+      return res.status(400).json({ message: "Target user is not an admin" });
+    }
+    if (String(target._id) === String(req.user._id)) {
+      return res.status(400).json({ message: "You cannot delete your own account" });
+    }
+
+    if (target.role === "super_admin") {
+      const superAdminCount = await User.countDocuments({ role: "super_admin" });
+      if (superAdminCount <= 1) {
+        return res.status(400).json({ message: "Cannot delete the last super admin" });
+      }
+    }
+
+    await User.findByIdAndDelete(target._id);
+    return res.json({ message: "Admin removed successfully" });
   } catch (error) {
     return next(error);
   }
@@ -848,4 +988,8 @@ module.exports = {
   getSettings,
   updateSettings,
   createUser,
+  getAdmins,
+  createAdminUser,
+  updateAdminUser,
+  deleteAdminUser,
 };

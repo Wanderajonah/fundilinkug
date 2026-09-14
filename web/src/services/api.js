@@ -60,4 +60,9 @@ export const markAllNotificationsRead = () => api.patch('/admin/notifications/re
 export const getSettings = () => api.get('/admin/settings');
 export const updateSettings = (data) => api.put('/admin/settings', data);
 
+export const getAdmins = () => api.get('/admin/admins');
+export const createAdmin = (data) => api.post('/admin/admins', data);
+export const updateAdmin = (id, data) => api.patch(`/admin/admins/${id}`, data);
+export const deleteAdmin = (id) => api.delete(`/admin/admins/${id}`);
+
 export default api;

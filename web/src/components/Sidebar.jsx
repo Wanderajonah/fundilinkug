@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
+  RiAdminLine,
   RiBankCardLine,
   RiBarChartBoxLine,
   RiBriefcaseLine,
@@ -24,6 +25,7 @@ import { getNotifications } from '../services/api';
 const navItems = [
   { icon: RiDashboardLine, label: 'Dashboard', to: '/admin/dashboard' },
   { icon: RiBarChartBoxLine, label: 'Analytics', to: '/admin/analytics' },
+  { icon: RiAdminLine, label: 'Admins', to: '/admin/admins', superAdminOnly: true },
   { icon: RiUserStarLine, label: 'Fundis', to: '/admin/fundis' },
   { icon: RiShieldCheckLine, label: 'Verification', to: '/admin/verification' },
   { icon: RiGroupLine, label: 'Clients', to: '/admin/clients' },
@@ -81,7 +83,9 @@ const Sidebar = () => {
           <div className="text-muted text-xs mt-0.5">Admin Panel</div>
         </div>
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {navItems.map((item) => {
+          {navItems
+            .filter((item) => !item.superAdminOnly || admin?.role === 'super_admin')
+            .map((item) => {
             const Icon = item.icon;
             return (
               <NavLink

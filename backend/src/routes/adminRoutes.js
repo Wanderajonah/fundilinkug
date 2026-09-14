@@ -26,6 +26,10 @@ const {
   getSettings,
   updateSettings,
   createUser,
+  getAdmins,
+  createAdminUser,
+  updateAdminUser,
+  deleteAdminUser,
 } = require("../controllers/adminController");
 const { protect, requireRole } = require("../middleware/authMiddleware");
 
@@ -34,7 +38,14 @@ const router = express.Router();
 router.post("/login", login);
 router.get("/health", getHealth);
 
-router.use(protect, requireRole("admin"));
+// Admins (super_admin included) can use the whole panel.
+router.use(protect, requireRole("admin", "super_admin"));
+
+// Admin management — super admin only.
+router.get("/admins", requireRole("super_admin"), getAdmins);
+router.post("/admins", requireRole("super_admin"), createAdminUser);
+router.patch("/admins/:id", requireRole("super_admin"), updateAdminUser);
+router.delete("/admins/:id", requireRole("super_admin"), deleteAdminUser);
 
 router.get("/stats", getStats);
 router.get("/users", getUsers);

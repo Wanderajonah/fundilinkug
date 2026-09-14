@@ -7,6 +7,7 @@ import { getNotifications } from '../services/api';
 
 const titles = {
   '/admin/dashboard': 'Dashboard',
+  '/admin/admins': 'Admins',
   '/admin/fundis': 'Fundis',
   '/admin/clients': 'Clients',
   '/admin/bookings': 'Bookings',
