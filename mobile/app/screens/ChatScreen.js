@@ -654,6 +654,7 @@ export function SupportChat({ userId, inTab, onNavigate }) {
 export default function ChatScreen({ onNavigate, userRole, userId, targetUserId, inTab }) {
   const { t } = useLanguage();
   const chatCtx = useChatOptional();
+  const isFundi = userRole === 'fundi';
   const [tab, setTab] = useState('messages');
   const [view, setView] = useState('list');
   const [activeConvId, setActiveConvId] = useState(null);
@@ -714,16 +715,18 @@ export default function ChatScreen({ onNavigate, userRole, userId, targetUserId,
     <ScreenWrapper style={styles.safe} edges={['top', 'left', 'right']}>
       <View style={styles.headerRow}>
         <Text style={styles.headerTitle}>{t('Messages')}</Text>
-        <TouchableOpacity
-          style={styles.headerBtn}
-          onPress={() => setTab(tab === 'messages' ? 'support' : 'messages')}
-        >
-          <Ionicons
-            name={tab === 'support' ? 'chatbubbles' : 'headset-outline'}
-            size={22}
-            color={theme.colors.accent}
-          />
-        </TouchableOpacity>
+        {!isFundi && (
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => setTab(tab === 'messages' ? 'support' : 'messages')}
+          >
+            <Ionicons
+              name={tab === 'support' ? 'chatbubbles' : 'headset-outline'}
+              size={22}
+              color={theme.colors.accent}
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
       {tab === 'messages' ? (

@@ -51,27 +51,30 @@ function isConfigured() {
 
 const SYSTEM_PROMPT = `You are a helpful customer support assistant for FundiLink, a platform that connects clients with local fundis (artisans/skilled workers) in Uganda.
 
+CRITICAL BEHAVIOR - Problem Detection:
+When a user describes a home or property problem (e.g. "my sink is leaking", "the lights went out", "my door is broken", "I need my wall painted"), you MUST:
+1. Identify which trade category they need: plumbing, electrical, carpentry, or painting
+2. Tell them which category to look for in the Browse section
+3. Guide them to find a fundi for that specific problem
+
+Trade categories and their common problems:
+- PLUMBING: leaking pipes, broken taps, toilet issues, sink problems, drain blockages, water heater issues, bathroom/kitchen plumbing
+- ELECTRICAL: power outages, broken sockets, faulty wiring, light/switch issues, fuse problems, short circuits
+- CARPENTRY: broken furniture, damaged cabinets, door repairs, shelf installation, wooden fixtures
+- PAINTING: wall painting, repainting, plaster work, wall finishing, decorative painting
+
 Your role:
-- Help users understand how the platform works
+- When users describe a problem, identify the trade and guide them to Browse → the right category
 - Answer questions about booking, pricing, payments, and safety
-- Guide users through common tasks (creating a booking, accepting jobs, etc.)
-- Be friendly, professional, and concise in your responses
-- If you don't know something, say so honestly
+- Be friendly, professional, and concise
 - Keep responses brief (2-3 sentences max when possible)
 
 Key platform features:
-- Clients can browse fundis by category (plumbers, electricians, carpenters, painters, etc.)
+- Clients can browse fundis by category (plumbers, electricians, carpenters, painters)
 - Bookings have a 5-minute response window for fundis
 - Price negotiation happens after booking acceptance
 - Fundis are matched by proximity and availability
-- Communication happens through the app's chat and socket system
-- SMS notifications are sent for key events
-- Payments and ratings come after job completion
-
-Common issues:
-- If a fundi doesn't respond within 5 minutes, the booking moves to the next available fundi
-- Prices can be negotiated between client and fundi after acceptance
-- Cancellations can be made by either party before the job starts`;
+- Payments and ratings come after job completion`;
 
 const VISION_SYSTEM_PROMPT = `You are the FundiLink problem-detection assistant. A customer uploads a photo of a home or property problem (e.g. a leaking pipe, broken socket, cracked wall, damaged furniture).
 
@@ -334,11 +337,18 @@ async function getBotResponse({ messages, imageUrl, userText } = {}) {
   }
 
   const model = process.env.GROQ_MODEL;
+  const lastUserText = [...(messages || [])].reverse().find((m) => m?.role === "user")?.content || "";
+  const detectedCategory = guessTradeFromText(lastUserText);
+
+  let systemPrompt = SYSTEM_PROMPT;
+  if (detectedCategory) {
+    systemPrompt += `\n\nIMPORTANT: The user is describing a ${detectedCategory} problem. Respond by identifying it as a ${detectedCategory} issue and tell them to go to Browse and select "${detectedCategory.charAt(0).toUpperCase() + detectedCategory.slice(1)}" to find a fundi who can help. Keep it brief and friendly.`;
+  }
 
   const body = {
     model,
     messages: [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: systemPrompt },
       ...(messages || []).slice(-10)
     ],
     max_tokens: 300,
@@ -382,6 +392,22 @@ function fallbackResponse(messages) {
     {
       keys: ["plumber", "plumbing", "electrician", "electrical", "carpenter", "carpentry", "painter", "painting", "mechanic", "welder", "tiles", "masonry"],
       reply: "FundiLink has skilled fundis across categories like plumbing, electrical, carpentry, and painting. Go to Browse, pick the category you need, and choose a verified fundi near you.",
+    },
+    {
+      keys: ["sink", "leak", "leaking", "pipe", "tap", "toilet", "water", "drain", "bathroom", "kitchen"],
+      reply: "I can help with plumbing issues! Go to Browse, select 'Plumber', and you'll find skilled fundis near you who can fix your sink, pipe, or other plumbing problems.",
+    },
+    {
+      keys: ["socket", "wiring", "light", "fuse", "switch", "power", "electrical"],
+      reply: "I can help with electrical issues! Go to Browse, select 'Electrician', and you'll find qualified fundis near you who can handle your electrical problems safely.",
+    },
+    {
+      keys: ["wood", "furniture", "cabinet", "door", "shelf"],
+      reply: "I can help with carpentry work! Go to Browse, select 'Carpenter', and you'll find skilled fundis near you who can repair or build wooden furniture and fixtures.",
+    },
+    {
+      keys: ["wall", "repaint", "plaster", "paint"],
+      reply: "I can help with painting work! Go to Browse, select 'Painter', and you'll find experienced fundis near you who can repaint or finish your walls.",
     },
     {
       keys: ["fundi", "artisan", "worker", "skilled"],

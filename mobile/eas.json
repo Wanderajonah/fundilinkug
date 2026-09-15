@@ -31,6 +31,19 @@
         "simulator": false
       }
     },
+    "test": {
+      "distribution": "internal",
+      "channel": "test",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "http://192.168.42.239:5001/api",
+        "EXPO_PUBLIC_MAP_PROVIDER": "maplibre",
+        "EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID": "400047786149-k9l5fkpdo19eoqlauv9joq50tne9461d.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "400047786149-h3cv4q1go2pul769kc45pbc07hgki6pq.apps.googleusercontent.com"
+      },
+      "android": {
+        "buildType": "apk"
+      }
+    },
     "production": {
       "channel": "production",
       "env": {

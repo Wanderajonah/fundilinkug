@@ -9,7 +9,7 @@ import {
   Layer,
 } from '@maplibre/maplibre-react-native';
 import {
-  DARK_MAP_STYLE_URL,
+  MAPLIBRE_STYLE_URL,
   DEFAULT_REGION,
   deltaToZoom,
   zoomToDelta,
@@ -133,7 +133,7 @@ export default function MapLibreView({
   return (
     <Map
       style={style}
-      mapStyle={DARK_MAP_STYLE_URL}
+      mapStyle={MAPLIBRE_STYLE_URL}
       onDidFailLoadingMap={() => setMapError(true)}
       onDidFinishLoadingMap={handleMapReady}
       onRegionIsChanging={handleRegionIsChanging}

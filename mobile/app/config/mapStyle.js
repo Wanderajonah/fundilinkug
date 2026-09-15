@@ -15,13 +15,22 @@ export const MAP_PROVIDER =
       ? 'maplibre'
       : 'google';
 
-// MapLibre — dark vector style. Override the style URL at build time with
-// EXPO_PUBLIC_MAP_STYLE_URL (e.g. a self-hosted or commercial style).
+// MapLibre — light vector basemap built on OpenStreetMap data (free CARTO
+// Basemaps, no API key). Voyager is the closest free style to Google's tiles:
+// Nearest to Google's tiles: green parks, blue water, white roads with gray
+// casings. The rest of the app is dark, but the map stays light so it reads
+// like Google Maps. The rest of the app
+// is dark, but the map stays light so it reads like Google Maps.
+export const DEFAULT_MAPLIBRE_STYLE_URL =
+  'https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json';
+
+// Optional dark fallback for those who prefer a night-mode basemap (still OSM
+// data via CARTO) — set EXPO_PUBLIC_MAP_STYLE_URL to this URL to opt back in.
 export const DEFAULT_DARK_STYLE_URL =
   'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
 
-export const DARK_MAP_STYLE_URL =
-  process.env.EXPO_PUBLIC_MAP_STYLE_URL || DEFAULT_DARK_STYLE_URL;
+export const MAPLIBRE_STYLE_URL =
+  process.env.EXPO_PUBLIC_MAP_STYLE_URL || DEFAULT_MAPLIBRE_STYLE_URL;
 
 // Google Maps — equivalent dark styling for customMapStyle.
 export const DARK_MAP_STYLE = [

@@ -88,6 +88,7 @@ module.exports = {
         },
       ],
       './plugins/withAndroidNavigationBarTheme',
+      './plugins/withAndroidCleartext',
       [
         'expo-splash-screen',
         {

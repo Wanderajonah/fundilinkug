@@ -267,13 +267,6 @@ export default function ProfileScreen({
                     )}
                   </View>
                 </LinearGradient>
-                <TouchableOpacity
-                  style={styles.avatarEditBtn}
-                  onPress={() => onNavigate?.('edit')}
-                  activeOpacity={0.85}
-                >
-                  <Ionicons name="pencil" size={14} color={theme.colors.textDark} />
-                </TouchableOpacity>
               </View>
 
               <View style={styles.identity}>
@@ -497,20 +490,6 @@ const styles = StyleSheet.create({
   },
   avatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   avatarText: { color: theme.colors.white, fontWeight: '900', fontSize: 30 },
-  avatarEditBtn: {
-    position: 'absolute',
-    right: -6,
-    bottom: 2,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: theme.colors.accent,
-    borderWidth: 2.5,
-    borderColor: theme.colors.black,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...theme.elevation.sm,
-  },
 
   identity: { alignItems: 'center', marginTop: 12 },
   name: { color: theme.colors.white, fontWeight: '900', fontSize: 22 },

@@ -121,7 +121,6 @@ function AppContent() {
   // simple navigation history stack (stores previous screen keys)
   const historyRef = useRef([]);
   const {
-    ensureLocationForLogin,
     setAuthTokenForSync,
     setManualLocation,
     coords,
@@ -194,26 +193,19 @@ function AppContent() {
     setScreen("locationPermission");
   };
 
+  // Registration path (new account): request location for the first time via
+  // the LocationPermissionScreen so saved coords can power nearby matching.
   const afterAuth = async (data) => {
     const role = await applySession(data);
     setAuthTokenForSync(data.token || "");
-    const locationOk = await ensureLocationForLogin();
-    if (!locationOk) {
-      Alert.alert(
-        "Location required",
-        "FundiLink needs location access to show nearby services.",
-      );
-      handleLogout();
-      return role;
-    }
     await proceedAfterLogin(data, role);
     return role;
   };
 
-  // Finish a login/OTP/role-selection flow. Location is only mandatory during
-  // registration; here we trust the backend flag: if the user already has a
-  // saved location (lat/lng), reuse it and skip the device location gate so
-  // returning users can still log in on emulators without GPS/services.
+  // Finish a login/OTP/role-selection flow. Returning users are NOT forced
+  // through the device location gate at login — location is requested during
+  // registration and when the fundi is navigating/tracking. If the account
+  // already has saved coords, reuse them so nearby results work immediately.
   const finishLogin = async (data, role) => {
     setAuthTokenForSync(data.token || "");
     const saved = data.user;
@@ -228,17 +220,6 @@ function AppContent() {
         saved.location.lng,
         saved.locationLabel || undefined,
       );
-      goHome(role);
-      return;
-    }
-    const locationOk = await ensureLocationForLogin();
-    if (!locationOk) {
-      Alert.alert(
-        "Location required",
-        "FundiLink needs location access to show nearby services.",
-      );
-      handleLogout();
-      return;
     }
     goHome(role);
   };
@@ -409,7 +390,7 @@ function AppContent() {
           setScreen(key);
         }}
       />
-      {authToken && userId ? <FloatingSupportChat userId={userId} onNavigate={handleNavigate} /> : null}
+      {authToken && userId && userRole !== "fundi" ? <FloatingSupportChat userId={userId} onNavigate={handleNavigate} /> : null}
     </View>
   );
 

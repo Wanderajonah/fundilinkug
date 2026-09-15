@@ -315,6 +315,7 @@ export default function EditProfileScreen({ onNavigate }) {
   return (
     <ScreenWrapper style={styles.safe} edges={["top", "left", "right"]}>
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
       >
@@ -517,7 +518,11 @@ export default function EditProfileScreen({ onNavigate }) {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: theme.colors.black },
-  container: { paddingHorizontal: 16, paddingBottom: 32 },
+  container: {
+    paddingHorizontal: 16,
+    paddingBottom: 64,
+    flexGrow: 1,
+  },
 
   headerRow: {
     flexDirection: "row",

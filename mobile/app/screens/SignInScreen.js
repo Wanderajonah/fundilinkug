@@ -14,45 +14,31 @@ import AuthButton from '../components/AuthButton';
 import PhoneInput from '../components/PhoneInput';
 import theme from '../theme';
 import { getErrorMessage, handleGoogleSignInResponse } from '../../services/authApi';
-import { useGoogleSignIn } from '../../services/googleSignIn';
+import { isGoogleConfigured, useGoogleSignIn } from '../../services/googleSignIn';
 import { useLanguage } from '../i18n/LanguageContext';
 
-export default function SignInScreen({
-  role = 'client',
-  onBack,
-  onPhoneOtp,
-  onLoggedIn,
-  onCreateAccount,
-  onGoogleNewUser,
-}) {
-  const [phone, setPhone] = useState('');
-  const [phoneFocused, setPhoneFocused] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [otpSending, setOtpSending] = useState(false);
+/**
+ * Google sign-in section — only mounts when Google OAuth client IDs are
+ * configured.  This avoids the expo-auth-session error on Android when
+ * `androidClientId` is missing.
+ */
+function GoogleAuthSection({ role, onLoggedIn, onGoogleNewUser }) {
+  const { promptAsync, disabled } = useGoogleSignIn();
+  const [loading, setLoading] = useState(false);
   const { t } = useLanguage();
 
-  const { promptAsync, disabled: googleDisabled } = useGoogleSignIn();
-
-  const isFundi = role === 'fundi';
-
   const handleGoogle = async () => {
-    setGoogleLoading(true);
+    setLoading(true);
     try {
       const result = await promptAsync();
       if (result?.type === 'success') {
-        // expo-auth-session returns idToken in authentication.idToken
-        // or in params.id_token depending on the provider version
         const idToken = result.authentication?.idToken || result.params?.id_token;
-
         if (!idToken) {
           Alert.alert(t('Sign in failed'), t('Could not get Google ID token. Please try again.'));
           return;
         }
-
         const data = await handleGoogleSignInResponse(idToken);
-
         const isNewUser = data?.isNewUser === true || !data?.user;
-
         if (isNewUser) {
           onGoogleNewUser?.({
             role,
@@ -64,15 +50,42 @@ export default function SignInScreen({
           });
           return;
         }
-
         onLoggedIn?.(data);
       }
     } catch (error) {
       Alert.alert(t('Sign in failed'), getErrorMessage(error));
     } finally {
-      setGoogleLoading(false);
+      setLoading(false);
     }
   };
+
+  return (
+    <AuthButton
+      variant="google"
+      label={disabled ? t('Google (not configured)') : t('Google')}
+      onPress={handleGoogle}
+      loading={loading}
+      disabled={disabled}
+    />
+  );
+}
+
+const googleAvailable = isGoogleConfigured();
+
+export default function SignInScreen({
+  role = 'client',
+  onBack,
+  onPhoneOtp,
+  onLoggedIn,
+  onCreateAccount,
+  onGoogleNewUser,
+}) {
+  const [phone, setPhone] = useState('');
+  const [phoneFocused, setPhoneFocused] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const { t } = useLanguage();
+
+  const isFundi = role === 'fundi';
 
   const handlePhoneContinue = async () => {
     if (!phone.trim()) {
@@ -126,13 +139,13 @@ export default function SignInScreen({
         <View style={styles.dividerLine} />
       </View>
 
-      <AuthButton
-        variant="google"
-        label={googleDisabled ? t('Google (not configured)') : t('Google')}
-        onPress={handleGoogle}
-        loading={googleLoading}
-        disabled={googleDisabled}
-      />
+      {googleAvailable && (
+        <GoogleAuthSection
+          role={role}
+          onLoggedIn={onLoggedIn}
+          onGoogleNewUser={onGoogleNewUser}
+        />
+      )}
 
       <TouchableOpacity onPress={onCreateAccount} style={styles.createRow}>
         <Text style={styles.createText}>

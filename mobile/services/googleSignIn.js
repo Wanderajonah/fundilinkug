@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 
@@ -5,6 +6,13 @@ import * as Google from 'expo-auth-session/providers/google';
 WebBrowser.maybeCompleteAuthSession();
 
 const GOOGLE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v2/userinfo';
+
+/** Returns true when the current platform has at least one Google client ID configured. */
+export function isGoogleConfigured() {
+  const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
+  const iosClientId = process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID;
+  return !!(androidClientId || iosClientId);
+}
 
 export function useGoogleSignIn() {
   const androidClientId = process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID;
