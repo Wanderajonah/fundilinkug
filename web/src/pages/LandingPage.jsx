@@ -185,28 +185,30 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10" />
-        <div className="absolute top-20 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 left-0 w-72 h-72 bg-primary/5 rounded-full blur-3xl" />
+        <div
+          className="absolute inset-0 bg-no-repeat"
+          style={{
+            backgroundImage: 'url(/bg.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: '100% center',
+          }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-6">
-            <HiOutlineSparkles className="text-primary text-sm" />
-            <span className="text-primary text-sm font-medium">AI-Powered Home Services</span>
-          </div>
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-xl lg:max-w-2xl [text-shadow:0_2px_12px_rgba(0,0,0,0.85)]">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6 text-white">
+              Your Trusted Fundis,
+              <br />
+              <span className="text-primary">One Tap Away</span>
+            </h1>
 
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6">
-            Your Trusted Fundis,
-            <br />
-            <span className="text-primary">One Tap Away</span>
-          </h1>
+            <p className="text-white/90 text-lg md:text-xl max-w-xl mb-10 leading-relaxed">
+              Find verified plumbers, electricians, carpenters, and painters near you.
+              Book in seconds, track in real-time, pay securely through escrow.
+            </p>
 
-          <p className="text-muted text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
-            Find verified plumbers, electricians, carpenters, and painters near you.
-            Book in seconds, track in real-time, pay securely through escrow.
-          </p>
-
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <div className="flex flex-col sm:flex-row items-start gap-4">
             <a
               href="#cta"
               className="bg-primary hover:bg-primary/90 text-bg-primary px-8 py-3.5 rounded-xl text-base font-semibold transition-all hover:shadow-lg hover:shadow-primary/20 flex items-center gap-2"
@@ -220,6 +222,7 @@ export default function LandingPage() {
             >
               Become a Fundi
             </a>
+            </div>
           </div>
         </div>
       </section>
@@ -385,12 +388,6 @@ export default function LandingPage() {
                 >
                   <i className="fab fa-google-play" />
                   Download for Android
-                </a>
-                <a
-                  href="#"
-                  className="border border-border hover:border-primary/50 text-white px-8 py-3.5 rounded-xl text-base font-semibold transition-all hover:bg-primary/5"
-                >
-                  Visit Our Website
                 </a>
               </div>
             </div>
