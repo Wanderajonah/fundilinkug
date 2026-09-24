@@ -184,44 +184,37 @@ export default function LandingPage() {
       </nav>
 
       {/* Hero */}
-      <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
-        <div
-          className="absolute inset-0 bg-no-repeat"
-          style={{
-            backgroundImage: 'url(/bg.png)',
-            backgroundSize: 'cover',
-            backgroundPosition: '100% center',
-          }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-r from-black via-black/70 to-transparent" />
+      <section className="relative pt-28 pb-16 sm:pt-32 sm:pb-20 md:pt-40 md:pb-28 overflow-hidden">
+        <div className="absolute inset-0 bg-cover bg-no-repeat bg-[position:60%_center] md:bg-[position:100%_center]" style={{ backgroundImage: 'url(/bg.png)' }} />
+        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/80 to-black/40 md:bg-gradient-to-r md:from-black md:via-black/70 md:to-transparent" />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-xl lg:max-w-2xl [text-shadow:0_2px_12px_rgba(0,0,0,0.85)]">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight mb-6 text-white">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold leading-tight mb-4 sm:mb-6 text-white">
               Your Trusted Fundis,
               <br />
               <span className="text-primary">One Tap Away</span>
             </h1>
 
-            <p className="text-white/90 text-lg md:text-xl max-w-xl mb-10 leading-relaxed">
+            <p className="text-white/90 text-base sm:text-lg md:text-xl max-w-xl mb-8 sm:mb-10 leading-relaxed">
               Find verified plumbers, electricians, carpenters, and painters near you.
               Book in seconds, track in real-time, pay securely through escrow.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-start gap-4">
-            <a
-              href="#cta"
-              className="bg-primary hover:bg-primary/90 text-bg-primary px-8 py-3.5 rounded-xl text-base font-semibold transition-all hover:shadow-lg hover:shadow-primary/20 flex items-center gap-2"
-            >
-              Find a Fundi
-              <HiOutlineArrowRight className="text-lg" />
-            </a>
-            <a
-              href="#cta"
-              className="border border-border hover:border-primary/50 text-white px-8 py-3.5 rounded-xl text-base font-semibold transition-all hover:bg-primary/5"
-            >
-              Become a Fundi
-            </a>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-start gap-3 sm:gap-4 max-w-sm sm:max-w-none">
+              <a
+                href="#cta"
+                className="bg-primary hover:bg-primary/90 text-bg-primary px-8 py-3.5 rounded-xl text-base font-semibold transition-all hover:shadow-lg hover:shadow-primary/20 flex items-center justify-center gap-2"
+              >
+                Find a Fundi
+                <HiOutlineArrowRight className="text-lg" />
+              </a>
+              <a
+                href="#cta"
+                className="border border-border hover:border-primary/50 text-white px-8 py-3.5 rounded-xl text-base font-semibold transition-all hover:bg-primary/5 flex items-center justify-center"
+              >
+                Become a Fundi
+              </a>
             </div>
           </div>
         </div>
